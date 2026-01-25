@@ -1,13 +1,28 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer,
   GeoJSON,
   useMap,
 } from 'react-leaflet';
-import type { Region, MetricType } from '../../types';
+import type { LatLngBoundsExpression } from 'leaflet';
+import type { Region, MetricType, GeoJSONPolygon } from '../../types';
 import api from '../../services/api';
 import './SplitScreenCompare.css';
+
+// Helper to compute bounds from GeoJSON coordinates
+function getBoundsFromGeometry(geometry: GeoJSONPolygon | undefined): LatLngBoundsExpression | undefined {
+  if (!geometry?.coordinates?.[0]) return undefined;
+
+  const coords = geometry.coordinates[0];
+  const lats = coords.map((c) => c[1]);
+  const lngs = coords.map((c) => c[0]);
+
+  return [
+    [Math.min(...lats), Math.min(...lngs)],
+    [Math.max(...lats), Math.max(...lngs)],
+  ];
+}
 
 interface SplitScreenCompareProps {
   region: Region;
@@ -140,10 +155,16 @@ export function SplitScreenCompare({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-          <TileLayer
-            url={api.getTileUrl(region.id, metric, dateA)}
-            opacity={0.8}
-          />
+          {(() => {
+            const regionBounds = getBoundsFromGeometry(region.geometry);
+            return regionBounds ? (
+              <TileLayer
+                url={api.getTileUrl(region.id, metric, dateA)}
+                opacity={0.8}
+                bounds={regionBounds}
+              />
+            ) : null;
+          })()}
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
           {mapB && <SyncedMap targetMap={mapB} onMove={handleMapMove} />}
         </LeafletMapContainer>
@@ -184,10 +205,16 @@ export function SplitScreenCompare({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-          <TileLayer
-            url={api.getTileUrl(region.id, metric, dateB)}
-            opacity={0.8}
-          />
+          {(() => {
+            const regionBounds = getBoundsFromGeometry(region.geometry);
+            return regionBounds ? (
+              <TileLayer
+                url={api.getTileUrl(region.id, metric, dateB)}
+                opacity={0.8}
+                bounds={regionBounds}
+              />
+            ) : null;
+          })()}
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
           {mapA && <SyncedMap targetMap={mapA} onMove={handleMapMove} />}
         </LeafletMapContainer>

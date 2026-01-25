@@ -181,17 +181,17 @@ class TileGenerator:
         metric: str,
         date: date | None,
     ) -> np.ndarray | None:
-        """Load raster data from storage."""
+        """Load raster data from storage or generate synthetic data from observation values."""
         from sqlalchemy import select
 
         from app.core.database import get_db_context
         from app.models.observation import Observation
 
         async with get_db_context() as db:
+            # First try to find observation with raster
             query = select(Observation).where(
                 Observation.region_id == region_id,
                 Observation.metric == metric,
-                Observation.raster_path.isnot(None),
             )
 
             if date:
@@ -202,18 +202,44 @@ class TileGenerator:
             result = await db.execute(query.limit(1))
             obs = result.scalar_one_or_none()
 
-            if obs is None or obs.raster_path is None:
+            if obs is None:
                 return None
 
-            # Load raster
-            try:
-                import rasterio
+            # If raster file exists, load it
+            if obs.raster_path:
+                try:
+                    import rasterio
 
-                with rasterio.open(obs.raster_path) as src:
-                    return src.read(1)
-            except Exception as e:
-                logger.error("Failed to load raster", path=obs.raster_path, error=str(e))
-                return None
+                    with rasterio.open(obs.raster_path) as src:
+                        return src.read(1)
+                except Exception as e:
+                    logger.error("Failed to load raster", path=obs.raster_path, error=str(e))
+
+            # Generate synthetic raster from observation value
+            # This creates a gradient tile showing the metric intensity
+            if obs.value is not None:
+                return self._generate_synthetic_raster(obs.value, metric)
+
+            return None
+
+    def _generate_synthetic_raster(self, value: float, metric: str) -> np.ndarray:
+        """Generate a synthetic raster from an observation value."""
+        # Normalize value based on metric ranges
+        value_ranges = {
+            "ndvi": (-1.0, 1.0),
+            "nightlights": (0.0, 100.0),
+            "urban_density": (0.0, 1.0),
+            "parking": (0.0, 1.0),
+        }
+        vmin, vmax = value_ranges.get(metric, (0.0, 1.0))
+        normalized = (value - vmin) / (vmax - vmin)
+        normalized = max(0.0, min(1.0, normalized))
+
+        # Create uniform tile with the normalized value
+        # This creates a consistent heatmap across all tiles for the region
+        raster = np.full((TILE_SIZE, TILE_SIZE), normalized, dtype=np.float32)
+
+        return raster
 
     def _extract_tile(
         self,

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer,
@@ -9,11 +9,25 @@ import {
   FeatureGroup,
 } from 'react-leaflet';
 import { EditControl } from 'react-leaflet-draw';
-import type { LatLngBounds, Map as LeafletMap } from 'leaflet';
+import type { LatLngBounds, LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
 import { useStore } from '../../store';
 import type { Region, GeoJSONPolygon } from '../../types';
 import api from '../../services/api';
 import './MapContainer.css';
+
+// Helper to compute bounds from GeoJSON coordinates
+function getBoundsFromGeometry(geometry: GeoJSONPolygon | undefined): LatLngBoundsExpression | undefined {
+  if (!geometry?.coordinates?.[0]) return undefined;
+
+  const coords = geometry.coordinates[0];
+  const lats = coords.map((c) => c[1]);
+  const lngs = coords.map((c) => c[0]);
+
+  return [
+    [Math.min(...lats), Math.min(...lngs)],
+    [Math.max(...lats), Math.max(...lngs)],
+  ];
+}
 
 interface MapContainerProps {
   regions?: Region[];
@@ -124,13 +138,18 @@ export function MapView({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Metric overlay layer */}
-        {selectedRegion && selectedMetric && (
-          <TileLayer
-            url={api.getTileUrl(selectedRegion.id, selectedMetric, tileDate)}
-            opacity={0.7}
-          />
-        )}
+        {/* Metric overlay layer - constrained to region bounds */}
+        {selectedRegion && selectedMetric && (() => {
+          const regionBounds = getBoundsFromGeometry(selectedRegion.geometry);
+          return regionBounds ? (
+            <TileLayer
+              key={`${selectedRegion.id}-${selectedMetric}-${tileDate}`}
+              url={api.getTileUrl(selectedRegion.id, selectedMetric, tileDate)}
+              opacity={0.7}
+              bounds={regionBounds}
+            />
+          ) : null;
+        })()}
 
         {/* Region polygons - GeoJSON for regions with geometry */}
         {regions

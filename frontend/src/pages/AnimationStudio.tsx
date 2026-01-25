@@ -31,8 +31,8 @@ export function AnimationStudio() {
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('nightlights');
   const [dateRange, setDateRange] = useState({
-    start: new Date(new Date().getFullYear() - 1, 0, 1),
-    end: new Date(),
+    start: new Date(2023, 0, 1),  // Jan 1, 2023 - matches available data
+    end: new Date(2024, 11, 31),  // Dec 31, 2024 - matches available data
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -337,6 +337,7 @@ export function AnimationStudio() {
                 <div className="preview-map">
                   <MapView
                     regions={[selectedRegion]}
+                    selectedRegion={selectedRegion}
                     selectedMetric={selectedMetric}
                     tileDate={currentDate.toISOString().split('T')[0]}
                   />
