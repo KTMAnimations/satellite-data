@@ -1,0 +1,83 @@
+.map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+  z-index: 1;
+}
+
+.map-controls {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.map-legend {
+  background: var(--color-surface);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  min-width: 120px;
+}
+
+.legend-title {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-bottom: 0.5rem;
+}
+
+.legend-gradient {
+  height: 12px;
+  border-radius: 2px;
+  margin-bottom: 0.25rem;
+}
+
+.legend-gradient[data-metric="ndvi"] {
+  background: linear-gradient(to right, #a50026, #f46d43, #fee08b, #a6d96a, #1a9850);
+}
+
+.legend-gradient[data-metric="nightlights"] {
+  background: linear-gradient(to right, #000000, #3d0066, #990099, #ff6600, #ffff00, #ffffff);
+}
+
+.legend-gradient[data-metric="urban_density"] {
+  background: linear-gradient(to right, #ffffe5, #fee391, #fe9929, #cc4c02, #662506);
+}
+
+.legend-gradient[data-metric="parking"] {
+  background: linear-gradient(to right, #f7fbff, #c6dbef, #6baed6, #2171b5, #08306b);
+}
+
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.625rem;
+  color: var(--color-text-secondary);
+}
+
+/* Leaflet draw toolbar styling */
+.leaflet-draw-toolbar {
+  background: var(--color-surface) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.leaflet-draw-toolbar a {
+  background-color: var(--color-surface) !important;
+}
+
+.leaflet-draw-toolbar a:hover {
+  background-color: var(--color-background) !important;
+}

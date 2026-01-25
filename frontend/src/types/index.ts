@@ -1,0 +1,199 @@
+// Region types
+export interface Region {
+  id: string;
+  name: string;
+  description: string | null;
+  geometry: GeoJSONPolygon;
+  type: 'predefined' | 'custom';
+  country: string | null;
+  state_province: string | null;
+  category: 'major_city' | 'megacity' | 'migration_hotspot' | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeoJSONPolygon {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+export interface RegionListResponse {
+  regions: Region[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// Metrics types
+export type MetricType = 'ndvi' | 'nightlights' | 'urban_density' | 'parking';
+
+export interface MetricDataPoint {
+  date: string;
+  value: number;
+}
+
+export interface MetricData {
+  unit: string;
+  data: MetricDataPoint[];
+}
+
+export interface SeasonalAverage {
+  ndvi: number | null;
+  nightlights: number | null;
+  urban_density: number | null;
+  parking: number | null;
+}
+
+export interface SeasonalSummary {
+  winter_avg: SeasonalAverage;
+  summer_avg: SeasonalAverage;
+  change_pct: SeasonalAverage;
+}
+
+export interface MetricsResponse {
+  region_id: string;
+  region_name: string;
+  metrics: Record<MetricType, MetricData>;
+  seasonal_summary: SeasonalSummary | null;
+}
+
+// Analysis types
+export type AnalysisType = 'seasonal_change' | 'urban_growth' | 'migration' | 'covid_impact';
+
+export interface AnalysisRequest {
+  region_id: string;
+  analysis_type: AnalysisType;
+  start_date: string;
+  end_date: string;
+  parameters?: Record<string, unknown>;
+}
+
+export interface AnalysisStatus {
+  id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  message: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface AnalysisResults {
+  summary: Record<string, unknown>;
+  metrics: Record<string, unknown>;
+  visualizations: Record<string, unknown>[] | null;
+  methodology: string | null;
+}
+
+export interface AnalysisResponse {
+  id: string;
+  region_id: string;
+  region_name: string;
+  analysis_type: AnalysisType;
+  start_date: string;
+  end_date: string;
+  results: AnalysisResults;
+  created_at: string;
+}
+
+// Compare types
+export interface CompareRequest {
+  region_id: string;
+  period_a_start: string;
+  period_a_end: string;
+  period_b_start: string;
+  period_b_end: string;
+  metrics?: string[];
+}
+
+export interface PeriodSummary {
+  start_date: string;
+  end_date: string;
+  averages: Record<string, number>;
+  observation_count: number;
+}
+
+export interface CompareResponse {
+  region_id: string;
+  region_name: string;
+  period_a: PeriodSummary;
+  period_b: PeriodSummary;
+  change: Record<string, number>;
+  change_absolute: Record<string, number>;
+}
+
+// Export types
+export interface ExportRequest {
+  region_id: string;
+  format: 'pdf' | 'html' | 'csv';
+  start_date?: string;
+  end_date?: string;
+  metrics?: string[];
+  include_charts?: boolean;
+  include_maps?: boolean;
+  title?: string;
+  description?: string;
+}
+
+export interface ExportResponse {
+  id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  format: string;
+  download_url: string | null;
+  file_size: number | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface AnimationRequest {
+  region_id: string;
+  metric: string;
+  format: 'gif' | 'webm' | 'frames';
+  start_date: string;
+  end_date: string;
+  frame_duration_ms?: number;
+  width?: number;
+  height?: number;
+}
+
+// API Key types
+export interface APIKeyCreate {
+  name: string;
+}
+
+export interface APIKeyResponse {
+  id: string;
+  name: string;
+  key: string | null;
+  created_at: string;
+  last_used: string | null;
+  is_active: boolean;
+}
+
+// Map types
+export interface MapBounds {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+export interface RegionBounds {
+  region_id: string;
+  bounds: MapBounds;
+  center: {
+    lon: number;
+    lat: number;
+  };
+}
+
+// App state types
+export interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+export interface MapState {
+  center: [number, number];
+  zoom: number;
+  selectedRegionId: string | null;
+}

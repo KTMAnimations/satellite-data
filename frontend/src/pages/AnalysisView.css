@@ -1,0 +1,356 @@
+.analysis-view {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.header-info h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0.25rem 0;
+}
+
+.header-info p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.back-link {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--color-primary);
+}
+
+.category-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.5rem;
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+.analysis-content {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.analysis-sidebar {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-section,
+.metrics-section,
+.date-section {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.section-header h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.metric-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+}
+
+.map-container-small {
+  height: 200px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.metrics-section h3,
+.date-section h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.metric-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.metric-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.metric-toggle input {
+  accent-color: var(--color-primary);
+}
+
+.toggle-label {
+  font-size: 0.875rem;
+}
+
+.toggle-label.metric-nightlights {
+  color: #f59e0b;
+}
+
+.toggle-label.metric-ndvi {
+  color: #22c55e;
+}
+
+.toggle-label.metric-urban_density {
+  color: #8b5cf6;
+}
+
+.toggle-label.metric-parking {
+  color: #3b82f6;
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.date-inputs input {
+  flex: 1;
+  padding: 0.375rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+}
+
+.date-inputs span {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.date-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.preset-btn {
+  padding: 0.25rem 0.5rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.625rem;
+  cursor: pointer;
+}
+
+.preset-btn:hover {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+/* Main Content */
+.analysis-main {
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.chart-card {
+  background: var(--color-surface);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.chart-card-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.chart-subtitle {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  background: var(--color-surface);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--color-border);
+}
+
+.stat-card.metric-nightlights {
+  border-color: #f59e0b;
+}
+
+.stat-card.metric-ndvi {
+  border-color: #22c55e;
+}
+
+.stat-card.metric-urban_density {
+  border-color: #8b5cf6;
+}
+
+.stat-card.metric-parking {
+  border-color: #3b82f6;
+}
+
+.stat-card h4 {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.stat-card .stat-label {
+  font-size: 0.625rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.625rem;
+  color: var(--color-text-secondary);
+}
+
+/* Seasonal Summary */
+.seasonal-summary {
+  background: var(--color-surface);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.seasonal-summary h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.seasonal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.seasonal-item {
+  text-align: center;
+  padding: 0.75rem;
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+}
+
+.seasonal-item .metric-name {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.seasonal-item .change-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.seasonal-item .change-value.positive {
+  color: #22c55e;
+}
+
+.seasonal-item .change-value.negative {
+  color: #ef4444;
+}
+
+.seasonal-item .change-label {
+  display: block;
+  font-size: 0.625rem;
+  color: var(--color-text-secondary);
+}
+
+/* States */
+.loading,
+.no-data,
+.no-region {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.no-region h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+}
+
+.no-region .btn {
+  margin-top: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .analysis-content {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    max-height: 300px;
+  }
+}

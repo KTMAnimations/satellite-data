@@ -1,0 +1,80 @@
+from datetime import date
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
+
+
+MetricType = Literal["ndvi", "nightlights", "urban_density", "parking"]
+
+
+class ObservationBase(BaseModel):
+    """Base schema for observation data."""
+
+    date: date
+    metric: MetricType
+    value: float
+    metadata: dict[str, Any] | None = None
+
+
+class ObservationResponse(ObservationBase):
+    """Schema for observation response."""
+
+    id: str
+    region_id: str
+    raster_path: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class MetricDataPoint(BaseModel):
+    """Single data point in a time series."""
+
+    date: str  # YYYY-MM format
+    value: float
+
+
+class MetricData(BaseModel):
+    """Time series data for a single metric."""
+
+    unit: str
+    data: list[MetricDataPoint]
+
+
+class SeasonalAverage(BaseModel):
+    """Seasonal average values."""
+
+    ndvi: float | None = None
+    nightlights: float | None = None
+    urban_density: float | None = None
+    parking: float | None = None
+
+
+class SeasonalSummary(BaseModel):
+    """Summary of seasonal variations."""
+
+    winter_avg: SeasonalAverage
+    summer_avg: SeasonalAverage
+    change_pct: SeasonalAverage
+
+
+class MetricsResponse(BaseModel):
+    """Response schema for metrics endpoint."""
+
+    region_id: str
+    region_name: str
+    metrics: dict[MetricType, MetricData]
+    seasonal_summary: SeasonalSummary | None = None
+
+
+class MetricsQuery(BaseModel):
+    """Query parameters for metrics."""
+
+    start_date: date | None = Field(None, description="Start date for time range")
+    end_date: date | None = Field(None, description="End date for time range")
+    metrics: list[MetricType] | None = Field(
+        None, description="Specific metrics to retrieve"
+    )
+    granularity: Literal["daily", "weekly", "monthly"] = Field(
+        "monthly", description="Temporal granularity"
+    )
