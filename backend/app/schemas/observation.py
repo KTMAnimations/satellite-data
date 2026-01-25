@@ -13,7 +13,7 @@ class ObservationBase(BaseModel):
     date: date
     metric: MetricType
     value: float
-    metadata: dict[str, Any] | None = None
+    extra_data: dict[str, Any] | None = None
 
 
 class ObservationResponse(ObservationBase):

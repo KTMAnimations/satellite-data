@@ -10,14 +10,16 @@
 }
 
 .gallery-header h1 {
+  font-family: var(--font-display, var(--font-body));
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 0.75rem;
+  color: var(--text-primary);
 }
 
 .gallery-header p {
   font-size: 1.125rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   max-width: 600px;
   margin: 0 auto;
 }
@@ -25,23 +27,53 @@
 /* Presets Grid */
 .presets-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
   gap: 2rem;
   margin-bottom: 3rem;
 }
 
 .preset-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  position: relative;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: border-color 0.2s ease;
+}
+
+.preset-card:hover {
+  border-color: var(--accent-primary);
+}
+
+/* Corner brackets for preset cards */
+.preset-card::before,
+.preset-card::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: var(--border-bracket, var(--border-panel));
+  border-style: solid;
+  z-index: 1;
+}
+
+.preset-card::before {
+  top: 0;
+  left: 0;
+  border-width: 2px 0 0 2px;
+}
+
+.preset-card::after {
+  top: 0;
+  right: 0;
+  border-width: 2px 2px 0 0;
 }
 
 .preset-image {
-  height: 200px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  height: 160px;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--metric-tertiary) 100%);
   position: relative;
 }
 
@@ -51,11 +83,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.placeholder-icon {
-  font-size: 4rem;
-  opacity: 0.5;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .preset-content {
@@ -66,14 +94,16 @@
 }
 
 .preset-content h2 {
-  font-size: 1.25rem;
+  font-family: var(--font-body);
+  font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.75rem;
+  color: var(--text-primary);
 }
 
 .preset-description {
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 1rem;
 }
@@ -89,27 +119,35 @@
 }
 
 .detail-label {
+  font-family: var(--font-mono);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   width: 70px;
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 
 .detail-value {
-  color: var(--color-text-secondary);
+  color: var(--text-tertiary);
 }
 
 .preset-findings {
-  background: var(--color-background);
+  background: var(--surface-recessed);
   padding: 1rem;
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   margin-bottom: 1rem;
   flex: 1;
 }
 
 .preset-findings h4 {
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
+  color: var(--text-secondary);
 }
 
 .preset-findings ul {
@@ -119,8 +157,12 @@
 
 .preset-findings li {
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  color: var(--text-tertiary);
   margin-bottom: 0.25rem;
+}
+
+.preset-findings li::marker {
+  color: var(--accent-primary);
 }
 
 .preset-content .btn {
@@ -130,22 +172,49 @@
 
 /* Methodology Section */
 .methodology-section {
-  background: var(--color-surface);
+  position: relative;
+  background: var(--surface-panel);
   padding: 2rem;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Corner brackets for methodology section */
+.methodology-section::before,
+.methodology-section::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: var(--border-bracket, var(--border-panel));
+  border-style: solid;
+}
+
+.methodology-section::before {
+  top: 0;
+  left: 0;
+  border-width: 2px 0 0 2px;
+}
+
+.methodology-section::after {
+  top: 0;
+  right: 0;
+  border-width: 2px 2px 0 0;
 }
 
 .methodology-section h2 {
+  font-family: var(--font-body);
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
+  color: var(--text-primary);
 }
 
 .methodology-section p {
   font-size: 0.875rem;
   line-height: 1.6;
   margin-bottom: 1rem;
+  color: var(--text-secondary);
 }
 
 .methodology-section ul {
@@ -157,13 +226,27 @@
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
   line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.methodology-section li strong {
+  color: var(--text-primary);
+}
+
+.methodology-section li::marker {
+  color: var(--accent-primary);
 }
 
 .disclaimer {
-  background: #fef3c7;
+  background: var(--surface-recessed);
   padding: 1rem;
-  border-radius: var(--radius-sm);
-  border-left: 4px solid #f59e0b;
+  border-radius: 4px;
+  border-left: 3px solid var(--metric-secondary);
+  margin-top: 1rem;
+}
+
+.disclaimer strong {
+  color: var(--metric-secondary);
 }
 
 @media (max-width: 768px) {

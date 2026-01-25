@@ -11,10 +11,10 @@ interface TimeSeriesChartProps {
 }
 
 const METRIC_COLORS: Record<MetricType, string> = {
-  ndvi: '#22c55e',
-  nightlights: '#f59e0b',
-  urban_density: '#8b5cf6',
-  parking: '#3b82f6',
+  ndvi: '#059669',           // Emerald-600
+  nightlights: '#D97706',    // Amber-600
+  urban_density: '#7C3AED',  // Violet-600
+  parking: '#0D9488',        // Teal-600
 };
 
 const METRIC_LABELS: Record<MetricType, string> = {

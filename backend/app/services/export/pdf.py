@@ -72,6 +72,7 @@ class PDFReportGenerator:
         include_maps: bool = True,
         title: str | None = None,
         description: str | None = None,
+        export_id: str | None = None,
     ) -> str:
         """
         Generate a PDF report for a region.
@@ -104,7 +105,8 @@ class PDFReportGenerator:
             observations = obs_result.scalars().all()
 
         # Generate PDF
-        output_path = Path(self.settings.exports_dir) / f"{region_id}_report.pdf"
+        filename = f"{export_id}.pdf" if export_id else f"{region_id}_report.pdf"
+        output_path = Path(self.settings.exports_dir) / filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         doc = SimpleDocTemplate(

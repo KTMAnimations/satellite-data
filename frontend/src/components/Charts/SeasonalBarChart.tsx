@@ -9,13 +9,6 @@ interface SeasonalBarChartProps {
   height?: number;
 }
 
-const METRIC_COLORS: Record<MetricType, string> = {
-  ndvi: '#22c55e',
-  nightlights: '#f59e0b',
-  urban_density: '#8b5cf6',
-  parking: '#3b82f6',
-};
-
 const METRIC_LABELS: Record<MetricType, string> = {
   ndvi: 'NDVI',
   nightlights: 'Nighttime Lights',
@@ -97,24 +90,24 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
       .attr('class', 'metric-group')
       .attr('transform', (d) => `translate(${x0Scale(d.metric)},0)`);
 
-    // Winter bars
+    // Winter bars - using teal
     groups
       .append('rect')
       .attr('x', x1Scale('winter') || 0)
       .attr('y', (d) => yScale(d.winter))
       .attr('width', x1Scale.bandwidth())
       .attr('height', (d) => innerHeight - yScale(d.winter))
-      .attr('fill', '#60a5fa')
+      .attr('fill', '#0D9488')
       .attr('rx', 2);
 
-    // Summer bars
+    // Summer bars - using amber
     groups
       .append('rect')
       .attr('x', x1Scale('summer') || 0)
       .attr('y', (d) => yScale(d.summer))
       .attr('width', x1Scale.bandwidth())
       .attr('height', (d) => innerHeight - yScale(d.summer))
-      .attr('fill', '#f97316')
+      .attr('fill', '#D97706')
       .attr('rx', 2);
 
     // Change labels
@@ -125,7 +118,7 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
       .attr('text-anchor', 'middle')
       .attr('font-size', '10px')
       .attr('font-weight', 'bold')
-      .attr('fill', (d) => (d.change > 0 ? '#22c55e' : '#ef4444'))
+      .attr('fill', (d) => (d.change > 0 ? '#059669' : '#DC2626'))
       .text((d) => `${d.change > 0 ? '+' : ''}${d.change.toFixed(1)}%`);
 
     // Legend
@@ -135,18 +128,18 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
       .append('rect')
       .attr('width', 12)
       .attr('height', 12)
-      .attr('fill', '#60a5fa');
+      .attr('fill', '#0D9488');
 
-    legend.append('text').attr('x', 16).attr('y', 10).attr('font-size', '11px').text('Winter');
+    legend.append('text').attr('x', 16).attr('y', 10).attr('font-size', '11px').attr('fill', '#57534E').text('Winter');
 
     legend
       .append('rect')
       .attr('x', 70)
       .attr('width', 12)
       .attr('height', 12)
-      .attr('fill', '#f97316');
+      .attr('fill', '#D97706');
 
-    legend.append('text').attr('x', 86).attr('y', 10).attr('font-size', '11px').text('Summer');
+    legend.append('text').attr('x', 86).attr('y', 10).attr('font-size', '11px').attr('fill', '#57534E').text('Summer');
   }, [data, width, height]);
 
   return (

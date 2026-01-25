@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import {
+  FilePdf,
+  Table,
+  FilmStrip,
+  DownloadSimple,
+  Clock,
+  CheckCircle,
+  Spinner,
+  WarningCircle,
+} from '@phosphor-icons/react';
 import api from '../services/api';
 import type { ExportResponse, MetricType } from '../types';
 import './ExportCenter.css';
@@ -130,21 +140,21 @@ export function ExportCenter() {
                 className={`format-btn ${exportFormat === 'pdf' ? 'active' : ''}`}
                 onClick={() => setExportFormat('pdf')}
               >
-                <span className="format-icon">📄</span>
+                <FilePdf size={24} weight="duotone" className="format-icon" />
                 <span>PDF Report</span>
               </button>
               <button
                 className={`format-btn ${exportFormat === 'csv' ? 'active' : ''}`}
                 onClick={() => setExportFormat('csv')}
               >
-                <span className="format-icon">📊</span>
+                <Table size={24} weight="duotone" className="format-icon" />
                 <span>CSV Data</span>
               </button>
               <button
                 className={`format-btn ${exportFormat === 'animation' ? 'active' : ''}`}
                 onClick={() => setExportFormat('animation')}
               >
-                <span className="format-icon">🎬</span>
+                <FilmStrip size={24} weight="duotone" className="format-icon" />
                 <span>Animation</span>
               </button>
             </div>
@@ -252,10 +262,23 @@ export function ExportCenter() {
           ) : (
             <div className="export-list">
               {exports.map((exp) => (
-                <div key={exp.id} className="export-item">
+                <div key={exp.id} className="export-item instrument-panel">
+                  <span className="bracket-bl" />
+                  <span className="bracket-br" />
                   <div className="export-info">
-                    <span className="export-format">{exp.format.toUpperCase()}</span>
-                    <span className={`export-status ${exp.status}`}>{exp.status}</span>
+                    <span className="export-format">
+                      {exp.format === 'pdf' && <FilePdf size={16} weight="duotone" />}
+                      {exp.format === 'csv' && <Table size={16} weight="duotone" />}
+                      {exp.format === 'animation' && <FilmStrip size={16} weight="duotone" />}
+                      {exp.format.toUpperCase()}
+                    </span>
+                    <span className={`export-status ${exp.status}`}>
+                      {exp.status === 'pending' && <Clock size={14} />}
+                      {exp.status === 'processing' && <Spinner size={14} className="spinning" />}
+                      {exp.status === 'completed' && <CheckCircle size={14} />}
+                      {exp.status === 'failed' && <WarningCircle size={14} />}
+                      {exp.status}
+                    </span>
                   </div>
                   <div className="export-meta">
                     <span>Created: {new Date(exp.created_at).toLocaleString()}</span>
@@ -266,6 +289,7 @@ export function ExportCenter() {
                       className="btn btn-outline btn-sm"
                       download
                     >
+                      <DownloadSimple size={14} />
                       Download
                     </a>
                   )}

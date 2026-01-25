@@ -1,0 +1,78 @@
+.time-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.time-slider-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.play-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.play-btn:hover {
+  background: var(--accent-primary-hover);
+}
+
+.play-btn.playing {
+  background: var(--metric-secondary);
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.speed-control label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.speed-control select {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  min-width: 70px;
+}
+
+.time-slider svg {
+  cursor: pointer;
+}
+
+.time-slider svg.dragging {
+  cursor: grabbing;
+}
+
+.slider-thumb circle {
+  transition: transform 0.1s ease;
+}
+
+.time-slider:hover .slider-thumb circle {
+  transform: scale(1.1);
+}
+
+.time-slider svg:active .slider-thumb circle {
+  cursor: grabbing;
+}

@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 from app.api.dependencies import DBSession, OptionalAPIKey
+from app.core.redis import STATUS_PREFIX_EXPORT, get_redis_client
 from app.models.region import Region
 from app.schemas.export import (
     AnimationRequest,
@@ -16,9 +17,6 @@ from app.schemas.export import (
 )
 
 router = APIRouter()
-
-# In-memory export status tracking
-export_status: dict[str, dict] = {}
 
 
 @router.post("/pdf", response_model=ExportResponse, status_code=status.HTTP_202_ACCEPTED)
@@ -42,7 +40,7 @@ async def export_pdf(
     export_id = str(uuid4())
     now = datetime.now(timezone.utc)
 
-    export_status[export_id] = {
+    status_data = {
         "id": export_id,
         "status": "pending",
         "format": "pdf",
@@ -52,6 +50,9 @@ async def export_pdf(
         "completed_at": None,
     }
 
+    redis_client = get_redis_client()
+    await redis_client.set_status(export_id, status_data, STATUS_PREFIX_EXPORT)
+
     # Queue background task
     background_tasks.add_task(
         generate_pdf_report,
@@ -59,14 +60,19 @@ async def export_pdf(
         request,
     )
 
-    return ExportResponse(**export_status[export_id])
+    return ExportResponse(**status_data)
 
 
 async def generate_pdf_report(export_id: str, request: ExportRequest) -> None:
     """Background task to generate PDF report."""
     from app.services.export.pdf import PDFReportGenerator
 
-    export_status[export_id]["status"] = "processing"
+    redis_client = get_redis_client()
+    await redis_client.update_status(
+        export_id,
+        {"status": "processing"},
+        STATUS_PREFIX_EXPORT,
+    )
 
     try:
         generator = PDFReportGenerator()
@@ -79,14 +85,24 @@ async def generate_pdf_report(export_id: str, request: ExportRequest) -> None:
             include_maps=request.include_maps,
             title=request.title,
             description=request.description,
+            export_id=export_id,
         )
 
-        export_status[export_id]["status"] = "completed"
-        export_status[export_id]["download_url"] = f"/api/v1/exports/download/{export_id}"
-        export_status[export_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        await redis_client.update_status(
+            export_id,
+            {
+                "status": "completed",
+                "download_url": f"/api/v1/exports/download/{export_id}",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            },
+            STATUS_PREFIX_EXPORT,
+        )
     except Exception as e:
-        export_status[export_id]["status"] = "failed"
-        export_status[export_id]["error"] = str(e)
+        await redis_client.update_status(
+            export_id,
+            {"status": "failed", "error": str(e)},
+            STATUS_PREFIX_EXPORT,
+        )
 
 
 @router.post("/csv", response_model=ExportResponse, status_code=status.HTTP_202_ACCEPTED)
@@ -100,7 +116,7 @@ async def export_csv(
     export_id = str(uuid4())
     now = datetime.now(timezone.utc)
 
-    export_status[export_id] = {
+    status_data = {
         "id": export_id,
         "status": "pending",
         "format": "csv",
@@ -110,20 +126,28 @@ async def export_csv(
         "completed_at": None,
     }
 
+    redis_client = get_redis_client()
+    await redis_client.set_status(export_id, status_data, STATUS_PREFIX_EXPORT)
+
     background_tasks.add_task(
         generate_csv_export,
         export_id,
         request,
     )
 
-    return ExportResponse(**export_status[export_id])
+    return ExportResponse(**status_data)
 
 
 async def generate_csv_export(export_id: str, request: CSVExportRequest) -> None:
     """Background task to generate CSV export."""
     from app.services.export.csv import CSVExporter
 
-    export_status[export_id]["status"] = "processing"
+    redis_client = get_redis_client()
+    await redis_client.update_status(
+        export_id,
+        {"status": "processing"},
+        STATUS_PREFIX_EXPORT,
+    )
 
     try:
         exporter = CSVExporter()
@@ -133,14 +157,24 @@ async def generate_csv_export(export_id: str, request: CSVExportRequest) -> None
             start_date=request.start_date,
             end_date=request.end_date,
             include_metadata=request.include_metadata,
+            export_id=export_id,
         )
 
-        export_status[export_id]["status"] = "completed"
-        export_status[export_id]["download_url"] = f"/api/v1/exports/download/{export_id}"
-        export_status[export_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        await redis_client.update_status(
+            export_id,
+            {
+                "status": "completed",
+                "download_url": f"/api/v1/exports/download/{export_id}",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            },
+            STATUS_PREFIX_EXPORT,
+        )
     except Exception as e:
-        export_status[export_id]["status"] = "failed"
-        export_status[export_id]["error"] = str(e)
+        await redis_client.update_status(
+            export_id,
+            {"status": "failed", "error": str(e)},
+            STATUS_PREFIX_EXPORT,
+        )
 
 
 @router.post(
@@ -166,7 +200,7 @@ async def export_animation(
     export_id = str(uuid4())
     now = datetime.now(timezone.utc)
 
-    export_status[export_id] = {
+    status_data = {
         "id": export_id,
         "status": "pending",
         "format": request.format,
@@ -177,20 +211,28 @@ async def export_animation(
         "completed_at": None,
     }
 
+    redis_client = get_redis_client()
+    await redis_client.set_status(export_id, status_data, STATUS_PREFIX_EXPORT)
+
     background_tasks.add_task(
         generate_animation,
         export_id,
         request,
     )
 
-    return AnimationResponse(**export_status[export_id])
+    return AnimationResponse(**status_data)
 
 
 async def generate_animation(export_id: str, request: AnimationRequest) -> None:
     """Background task to generate animation."""
     from app.services.export.animation import AnimationGenerator
 
-    export_status[export_id]["status"] = "processing"
+    redis_client = get_redis_client()
+    await redis_client.update_status(
+        export_id,
+        {"status": "processing"},
+        STATUS_PREFIX_EXPORT,
+    )
 
     try:
         generator = AnimationGenerator()
@@ -205,26 +247,37 @@ async def generate_animation(export_id: str, request: AnimationRequest) -> None:
             height=request.height,
         )
 
-        export_status[export_id]["status"] = "completed"
-        export_status[export_id]["frame_count"] = result["frame_count"]
-        export_status[export_id]["download_url"] = f"/api/v1/exports/download/{export_id}"
-        export_status[export_id]["file_size"] = result["file_size"]
-        export_status[export_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        await redis_client.update_status(
+            export_id,
+            {
+                "status": "completed",
+                "frame_count": result["frame_count"],
+                "download_url": f"/api/v1/exports/download/{export_id}",
+                "file_size": result["file_size"],
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            },
+            STATUS_PREFIX_EXPORT,
+        )
     except Exception as e:
-        export_status[export_id]["status"] = "failed"
-        export_status[export_id]["error"] = str(e)
+        await redis_client.update_status(
+            export_id,
+            {"status": "failed", "error": str(e)},
+            STATUS_PREFIX_EXPORT,
+        )
 
 
 @router.get("/{export_id}/status")
 async def get_export_status(export_id: str) -> ExportResponse | AnimationResponse:
     """Get the status of an export request."""
-    if export_id not in export_status:
+    redis_client = get_redis_client()
+    status_data = await redis_client.get_status(export_id, STATUS_PREFIX_EXPORT)
+
+    if status_data is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Export with ID {export_id} not found",
         )
 
-    status_data = export_status[export_id]
     if "frame_count" in status_data:
         return AnimationResponse(**status_data)
     return ExportResponse(**status_data)
@@ -233,13 +286,15 @@ async def get_export_status(export_id: str) -> ExportResponse | AnimationRespons
 @router.get("/download/{export_id}")
 async def download_export(export_id: str) -> FileResponse:
     """Download a completed export."""
-    if export_id not in export_status:
+    redis_client = get_redis_client()
+    status_data = await redis_client.get_status(export_id, STATUS_PREFIX_EXPORT)
+
+    if status_data is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Export with ID {export_id} not found",
         )
 
-    status_data = export_status[export_id]
     if status_data["status"] != "completed":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

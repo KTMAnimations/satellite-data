@@ -27,7 +27,7 @@ class NDVIExtractor(BaseFeatureExtractor):
 
     @property
     def required_bands(self) -> list[str]:
-        return ["B04", "B08"]  # Red and NIR for Sentinel-2
+        return ["B4", "B8"]  # Red and NIR for Sentinel-2
 
     @property
     def unit(self) -> str:
@@ -41,8 +41,8 @@ class NDVIExtractor(BaseFeatureExtractor):
         """Calculate NDVI from satellite imagery."""
         try:
             # Get band indices
-            red_idx = imagery.bands.index("B04") if "B04" in imagery.bands else 0
-            nir_idx = imagery.bands.index("B08") if "B08" in imagery.bands else 1
+            red_idx = imagery.bands.index("B4") if "B4" in imagery.bands else 0
+            nir_idx = imagery.bands.index("B8") if "B8" in imagery.bands else 1
 
             red = imagery.data[red_idx].astype(np.float32)
             nir = imagery.data[nir_idx].astype(np.float32)
@@ -101,7 +101,7 @@ class EVIExtractor(BaseFeatureExtractor):
 
     @property
     def required_bands(self) -> list[str]:
-        return ["B02", "B04", "B08"]  # Blue, Red, NIR
+        return ["B2", "B4", "B8"]  # Blue, Red, NIR
 
     @property
     def unit(self) -> str:
@@ -119,9 +119,9 @@ class EVIExtractor(BaseFeatureExtractor):
         C2 = 7.5
         L = 1.0
 
-        blue_idx = imagery.bands.index("B02") if "B02" in imagery.bands else 0
-        red_idx = imagery.bands.index("B04") if "B04" in imagery.bands else 1
-        nir_idx = imagery.bands.index("B08") if "B08" in imagery.bands else 2
+        blue_idx = imagery.bands.index("B2") if "B2" in imagery.bands else 0
+        red_idx = imagery.bands.index("B4") if "B4" in imagery.bands else 1
+        nir_idx = imagery.bands.index("B8") if "B8" in imagery.bands else 2
 
         blue = imagery.data[blue_idx].astype(np.float32) / 10000.0
         red = imagery.data[red_idx].astype(np.float32) / 10000.0

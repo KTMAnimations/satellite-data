@@ -31,7 +31,7 @@ class ParkingDetector(BaseFeatureExtractor):
 
     @property
     def required_bands(self) -> list[str]:
-        return ["B02", "B03", "B04", "B08", "B11"]  # Blue, Green, Red, NIR, SWIR
+        return ["B2", "B3", "B4", "B8", "B11"]  # Blue, Green, Red, NIR, SWIR
 
     @property
     def unit(self) -> str:
@@ -53,10 +53,10 @@ class ParkingDetector(BaseFeatureExtractor):
         try:
             # Get band indices
             bands = imagery.bands
-            blue = imagery.data[bands.index("B02")].astype(np.float32)
-            green = imagery.data[bands.index("B03")].astype(np.float32)
-            red = imagery.data[bands.index("B04")].astype(np.float32)
-            nir = imagery.data[bands.index("B08")].astype(np.float32)
+            blue = imagery.data[bands.index("B2")].astype(np.float32)
+            green = imagery.data[bands.index("B3")].astype(np.float32)
+            red = imagery.data[bands.index("B4")].astype(np.float32)
+            nir = imagery.data[bands.index("B8")].astype(np.float32)
             swir = imagery.data[bands.index("B11")].astype(np.float32)
 
             # Normalize bands

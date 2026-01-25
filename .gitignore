@@ -46,6 +46,13 @@ Thumbs.db
 *.pem
 *.key
 
+# Service Account Keys (NEVER commit these)
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+credentials/
+
 # Data
 data/cache/
 data/exports/

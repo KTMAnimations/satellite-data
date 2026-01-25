@@ -5,6 +5,8 @@ import { RegionExplorer } from './pages/RegionExplorer';
 import { AnalysisView } from './pages/AnalysisView';
 import { ExportCenter } from './pages/ExportCenter';
 import { Gallery } from './pages/Gallery';
+import { AnimationStudio } from './pages/AnimationStudio';
+import { CompareView } from './pages/CompareView';
 
 function App() {
   return (
@@ -14,8 +16,10 @@ function App() {
         <Route path="regions" element={<RegionExplorer />} />
         <Route path="regions/:regionId" element={<AnalysisView />} />
         <Route path="analysis/:regionId" element={<AnalysisView />} />
+        <Route path="compare/:regionId" element={<CompareView />} />
         <Route path="exports" element={<ExportCenter />} />
         <Route path="gallery" element={<Gallery />} />
+        <Route path="animations" element={<AnimationStudio />} />
       </Route>
     </Routes>
   );

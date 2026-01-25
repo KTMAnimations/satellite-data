@@ -1,11 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import {
+  Bird,
+  Virus,
+  Buildings,
+  GraduationCap,
+  MapPin,
+  Calendar,
+  ChartLine,
+  Export,
+  Planet,
+  Database,
+} from '@phosphor-icons/react';
 import { MapView } from '../components/Map/MapContainer';
 import api from '../services/api';
 import './Dashboard.css';
 
 export function Dashboard() {
-  const { data: regionsData, isLoading } = useQuery({
+  const { data: regionsData } = useQuery({
     queryKey: ['regions', { type: 'predefined', page_size: 100 }],
     queryFn: () => api.listRegions({ type: 'predefined', page_size: 100 }),
   });
@@ -16,28 +28,32 @@ export function Dashboard() {
       title: 'Snowbird Migration Pattern',
       description: 'Track winter population shifts to Sun Belt cities',
       regions: ['Phoenix, AZ', 'Miami, FL', 'Tampa, FL'],
-      icon: '🦅',
+      icon: Bird,
+      category: 'Migration',
     },
     {
       id: 'covid',
       title: 'COVID-19 Impact Analysis',
       description: 'Activity collapse and recovery patterns 2020-2022',
       regions: ['New York, NY', 'San Francisco, CA', 'Las Vegas, NV'],
-      icon: '🦠',
+      icon: Virus,
+      category: 'Temporal',
     },
     {
       id: 'urban-growth',
       title: 'Urban Growth: Phoenix 2015-2024',
       description: 'Tracking one of Americas fastest-growing cities',
       regions: ['Phoenix Metro'],
-      icon: '🏗️',
+      icon: Buildings,
+      category: 'Growth',
     },
     {
       id: 'college-towns',
       title: 'College Town Seasonality',
       description: 'University impact on city activity patterns',
       regions: ['Austin, TX', 'Ann Arbor, MI', 'Boulder, CO'],
-      icon: '🎓',
+      icon: GraduationCap,
+      category: 'Seasonal',
     },
   ];
 
@@ -48,11 +64,21 @@ export function Dashboard() {
     { label: 'Resolution', value: '10m (Sentinel-2)' },
   ];
 
+  const quickStartSteps = [
+    { number: 1, title: 'Select a Region', description: 'Choose from predefined cities or draw a custom polygon on the map.', icon: MapPin },
+    { number: 2, title: 'Choose Time Period', description: 'Select date ranges or use presets like "Winter vs Summer" for seasonal comparisons.', icon: Calendar },
+    { number: 3, title: 'Analyze Metrics', description: 'View nighttime lights, vegetation indices, and urban density patterns over time.', icon: ChartLine },
+    { number: 4, title: 'Export Results', description: 'Generate PDF reports, download CSV data, or create time-lapse animations.', icon: Export },
+  ];
+
   return (
     <div className="dashboard">
       {/* Hero Section */}
       <section className="dashboard-hero">
         <div className="hero-content">
+          <div className="hero-icon">
+            <Planet size={48} weight="duotone" />
+          </div>
           <h1>Satellite Migration Analysis</h1>
           <p>
             Analyze seasonal migration patterns, urban growth, and activity changes
@@ -80,8 +106,10 @@ export function Dashboard() {
       {/* Stats */}
       <section className="dashboard-stats">
         {stats.map((stat) => (
-          <div key={stat.label} className="stat-card">
-            <div className="stat-value">{stat.value}</div>
+          <div key={stat.label} className="stat-card instrument-panel">
+            <span className="bracket-bl" />
+            <span className="bracket-br" />
+            <div className="stat-value mono">{stat.value}</div>
             <div className="stat-label">{stat.label}</div>
           </div>
         ))}
@@ -91,24 +119,34 @@ export function Dashboard() {
       <section className="dashboard-section">
         <h2>Featured Analyses</h2>
         <div className="featured-grid">
-          {featuredAnalyses.map((analysis) => (
-            <Link
-              key={analysis.id}
-              to={`/gallery?preset=${analysis.id}`}
-              className="featured-card"
-            >
-              <div className="featured-icon">{analysis.icon}</div>
-              <h3>{analysis.title}</h3>
-              <p>{analysis.description}</p>
-              <div className="featured-regions">
-                {analysis.regions.map((region) => (
-                  <span key={region} className="region-tag">
-                    {region}
-                  </span>
-                ))}
-              </div>
-            </Link>
-          ))}
+          {featuredAnalyses.map((analysis) => {
+            const Icon = analysis.icon;
+            return (
+              <Link
+                key={analysis.id}
+                to={`/gallery?preset=${analysis.id}`}
+                className="featured-card instrument-panel"
+              >
+                <span className="bracket-bl" />
+                <span className="bracket-br" />
+                <div className="featured-header">
+                  <div className="featured-icon">
+                    <Icon size={24} weight="duotone" />
+                  </div>
+                  <span className="featured-category">{analysis.category}</span>
+                </div>
+                <h3>{analysis.title}</h3>
+                <p>{analysis.description}</p>
+                <div className="featured-regions">
+                  {analysis.regions.map((region) => (
+                    <span key={region} className="region-tag">
+                      {region}
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -116,37 +154,23 @@ export function Dashboard() {
       <section className="dashboard-section">
         <h2>Quick Start</h2>
         <div className="quickstart-grid">
-          <div className="quickstart-card">
-            <div className="quickstart-number">1</div>
-            <h3>Select a Region</h3>
-            <p>
-              Choose from predefined cities or draw a custom polygon on the map.
-            </p>
-          </div>
-          <div className="quickstart-card">
-            <div className="quickstart-number">2</div>
-            <h3>Choose Time Period</h3>
-            <p>
-              Select date ranges or use presets like "Winter vs Summer" for
-              seasonal comparisons.
-            </p>
-          </div>
-          <div className="quickstart-card">
-            <div className="quickstart-number">3</div>
-            <h3>Analyze Metrics</h3>
-            <p>
-              View nighttime lights, vegetation indices, and urban density
-              patterns over time.
-            </p>
-          </div>
-          <div className="quickstart-card">
-            <div className="quickstart-number">4</div>
-            <h3>Export Results</h3>
-            <p>
-              Generate PDF reports, download CSV data, or create time-lapse
-              animations.
-            </p>
-          </div>
+          {quickStartSteps.map((step) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.number} className="quickstart-card instrument-panel">
+                <span className="bracket-bl" />
+                <span className="bracket-br" />
+                <div className="quickstart-header">
+                  <div className="quickstart-number mono">{step.number}</div>
+                  <div className="quickstart-icon">
+                    <Icon size={20} weight="duotone" />
+                  </div>
+                </div>
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -155,24 +179,44 @@ export function Dashboard() {
         <h2>Data Sources</h2>
         <div className="sources-grid">
           <div className="source-card">
-            <h4>Sentinel-2</h4>
-            <p>10m optical imagery for NDVI, urban density</p>
-            <span className="source-badge">Primary</span>
+            <div className="source-icon">
+              <Planet size={20} weight="duotone" />
+            </div>
+            <div className="source-content">
+              <h4>Sentinel-2</h4>
+              <p>10m optical imagery for NDVI, urban density</p>
+              <span className="source-badge">Primary</span>
+            </div>
           </div>
           <div className="source-card">
-            <h4>VIIRS</h4>
-            <p>375m nighttime lights for activity proxy</p>
-            <span className="source-badge">Primary</span>
+            <div className="source-icon">
+              <Planet size={20} weight="duotone" />
+            </div>
+            <div className="source-content">
+              <h4>VIIRS</h4>
+              <p>375m nighttime lights for activity proxy</p>
+              <span className="source-badge">Primary</span>
+            </div>
           </div>
           <div className="source-card">
-            <h4>GHSL</h4>
-            <p>Global Human Settlement Layer for built-up areas</p>
-            <span className="source-badge">Supplementary</span>
+            <div className="source-icon">
+              <Buildings size={20} weight="duotone" />
+            </div>
+            <div className="source-content">
+              <h4>GHSL</h4>
+              <p>Global Human Settlement Layer for built-up areas</p>
+              <span className="source-badge badge-secondary">Supplementary</span>
+            </div>
           </div>
           <div className="source-card">
-            <h4>OpenStreetMap</h4>
-            <p>Road networks and POIs for context</p>
-            <span className="source-badge">Supplementary</span>
+            <div className="source-icon">
+              <Database size={20} weight="duotone" />
+            </div>
+            <div className="source-content">
+              <h4>OpenStreetMap</h4>
+              <p>Road networks and POIs for context</p>
+              <span className="source-badge badge-secondary">Supplementary</span>
+            </div>
           </div>
         </div>
       </section>

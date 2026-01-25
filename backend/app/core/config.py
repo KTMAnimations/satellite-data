@@ -29,12 +29,16 @@ class Settings(BaseSettings):
     exports_dir: str = "/data/exports"
     regions_dir: str = "/data/regions"
 
-    # Satellite providers
-    gee_service_account: str | None = None
-    gee_key_file: str | None = None
-    planetary_computer_subscription_key: str | None = None
-    sentinel_hub_client_id: str | None = None
-    sentinel_hub_client_secret: str | None = None
+    # Satellite providers - Google Earth Engine
+    gee_project_id: str | None = None
+    gee_service_account_key: str | None = None  # Path to service account JSON file
+
+    # Microsoft Planetary Computer
+    pc_subscription_key: str | None = None
+
+    # Sentinel Hub / Copernicus Data Space
+    sentinelhub_client_id: str | None = None
+    sentinelhub_client_secret: str | None = None
 
     # Processing
     max_region_area_km2: float = 50000.0  # Max region size in km²

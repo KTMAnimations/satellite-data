@@ -1,5 +1,24 @@
 import { Link } from 'react-router-dom';
+import {
+  Bird,
+  Virus,
+  Buildings,
+  GraduationCap,
+  AirplaneTilt,
+  Sun,
+  Lightbulb,
+  TreeEvergreen,
+  Car,
+} from '@phosphor-icons/react';
 import './Gallery.css';
+
+const PRESET_ICONS: Record<string, React.ComponentType<{ size?: number; weight?: 'duotone' | 'fill' | 'regular' }>> = {
+  'snowbird': Bird,
+  'covid': Virus,
+  'urban-growth': Buildings,
+  'college-towns': GraduationCap,
+  'tourism': AirplaneTilt,
+};
 
 const PRESETS = [
   {
@@ -95,13 +114,10 @@ export function Gallery() {
           <article key={preset.id} className="preset-card">
             <div className="preset-image">
               <div className="preset-image-placeholder">
-                <span className="placeholder-icon">
-                  {preset.id === 'snowbird' && '🦅'}
-                  {preset.id === 'covid' && '🦠'}
-                  {preset.id === 'urban-growth' && '🏗️'}
-                  {preset.id === 'college-towns' && '🎓'}
-                  {preset.id === 'tourism' && '✈️'}
-                </span>
+                {(() => {
+                  const Icon = PRESET_ICONS[preset.id];
+                  return Icon ? <Icon size={48} weight="duotone" /> : null;
+                })()}
               </div>
             </div>
 

@@ -67,7 +67,7 @@ def upgrade() -> None:
         sa.Column("metric", sa.String(50), nullable=False, index=True),
         sa.Column("value", sa.Float, nullable=False),
         sa.Column("raster_path", sa.String(500), nullable=True),
-        sa.Column("metadata", postgresql.JSONB, nullable=True),
+        sa.Column("extra_data", postgresql.JSONB, nullable=True),
     )
 
     # Create analysis_results table

@@ -1,72 +1,35 @@
 # SatelliteMigration
 
-A web application that analyzes satellite imagery to detect seasonal migration patterns, urban growth, and activity changes using proxy metrics derived from free satellite data.
+Satellite imagery analysis platform for detecting seasonal migration patterns, urban growth, and activity changes using proxy metrics from free satellite data.
 
-## Overview
-
-This platform uses satellite-derived proxy metrics to estimate population and activity patterns. At 10m resolution (Sentinel-2), individual vehicles cannot be detected, so we use correlational proxies instead.
-
-### Key Features
-
-- **Region Selection**: Predefined cities/regions or custom polygon drawing
-- **Temporal Analysis**: Full Sentinel-2 archive (2015+) with seasonal comparisons
-- **Proxy Metrics**: Nighttime lights, vegetation (NDVI), urban density, parking occupancy
-- **Visualizations**: Interactive heatmaps, time-lapse animations, comparative charts
-- **Exports**: PDF reports, CSV data, GIF/WebM animations
-
-## Quick Start
-
-### Prerequisites
-
-- Docker and Docker Compose
-- Node.js 20+ (for frontend development)
-- Python 3.11+ (for backend development)
-
-### Running with Docker
+## Quick Reference
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd satellite-data
-
-# Copy environment file
-cp .env.example .env
-
 # Start all services
 docker-compose up -d
 
-# Run database migrations
+# Run migrations
 docker-compose exec api alembic upgrade head
 
-# Seed predefined regions
+# Seed regions
 docker-compose exec api python scripts/seed_regions.py
 ```
 
-The application will be available at:
-- Frontend: http://localhost:5173
-- API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+**URLs:** Frontend `localhost:5173` | API `localhost:8000` | Docs `localhost:8000/docs`
 
-### Development Setup
+## Development
 
-**Backend:**
+### Backend
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# Start PostgreSQL and Redis (via Docker)
 docker-compose up -d db redis
-
-# Run migrations
 alembic upgrade head
-
-# Start the API
 uvicorn app.main:app --reload
 ```
 
-**Frontend:**
+### Frontend
 ```bash
 cd frontend
 npm install
@@ -75,124 +38,78 @@ npm run dev
 
 ## Architecture
 
-### Tech Stack
+```
+backend/
+├── app/
+│   ├── api/        # REST endpoints
+│   ├── core/       # Config, database, security
+│   ├── models/     # SQLAlchemy models
+│   ├── schemas/    # Pydantic schemas
+│   └── services/   # Business logic
+└── alembic/        # Database migrations
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React + TypeScript, Leaflet, D3.js |
-| Backend | FastAPI (Python), async |
-| Database | PostgreSQL + PostGIS |
-| Cache | Redis |
-| Task Queue | Celery |
-| Containers | Docker Compose |
+frontend/src/
+├── components/     # UI components
+├── pages/          # Page components
+├── services/       # API client
+└── store/          # Zustand state
+```
 
-### Data Sources
+## Tech Stack
 
-| Source | Data Type | Resolution |
-|--------|-----------|------------|
+- **Frontend:** React, TypeScript, Leaflet, D3.js
+- **Backend:** FastAPI (async Python)
+- **Database:** PostgreSQL + PostGIS
+- **Cache/Queue:** Redis, Celery
+- **Containers:** Docker Compose
+
+## Data Sources
+
+| Source | Type | Resolution |
+|--------|------|------------|
 | Sentinel-2 | Optical imagery | 10m |
 | VIIRS | Nighttime lights | 375m |
 | GHSL | Built-up areas | 10m |
-| OpenStreetMap | Road networks, POIs | Vector |
-
-### Project Structure
-
-```
-satellite-data/
-├── backend/           # FastAPI application
-│   ├── app/
-│   │   ├── api/       # REST endpoints
-│   │   ├── core/      # Config, database, security
-│   │   ├── models/    # SQLAlchemy models
-│   │   ├── schemas/   # Pydantic schemas
-│   │   └── services/  # Business logic
-│   └── alembic/       # Database migrations
-├── frontend/          # React application
-│   └── src/
-│       ├── components/  # UI components
-│       ├── pages/       # Page components
-│       ├── services/    # API client
-│       └── store/       # Zustand state
-├── workers/           # Celery tasks
-├── scripts/           # Utility scripts
-└── data/              # Data storage
-```
+| OpenStreetMap | Roads, POIs | Vector |
 
 ## API Endpoints
 
 ```
-# Regions
-GET    /api/v1/regions              # List regions
-POST   /api/v1/regions              # Create custom region
-GET    /api/v1/regions/{id}         # Get region details
-
-# Metrics
-GET    /api/v1/metrics/{region_id}  # Get time series data
-
-# Analysis
-POST   /api/v1/analysis             # Request new analysis
-GET    /api/v1/analysis/{id}/status # Check status
-POST   /api/v1/analysis/compare     # Compare periods
-
-# Exports
-POST   /api/v1/exports/pdf          # Generate PDF report
-POST   /api/v1/exports/csv          # Export CSV data
-POST   /api/v1/exports/animation    # Generate animation
-
-# Tiles
-GET    /api/v1/tiles/{region}/{metric}/{z}/{x}/{y}.png
+GET/POST  /api/v1/regions              # List/create regions
+GET       /api/v1/regions/{id}         # Region details
+GET       /api/v1/metrics/{region_id}  # Time series data
+POST      /api/v1/analysis             # Request analysis
+GET       /api/v1/analysis/{id}/status # Check status
+POST      /api/v1/analysis/compare     # Compare periods
+POST      /api/v1/exports/pdf|csv|animation
+GET       /api/v1/tiles/{region}/{metric}/{z}/{x}/{y}.png
 ```
 
-## Configuration
+## Environment Variables
 
-### Environment Variables
+See `.env.example` for all options. Key settings:
 
-See `.env.example` for all available options.
+- `DATABASE_URL` - PostgreSQL connection
+- `REDIS_URL` - Redis connection
+- `GEE_SERVICE_ACCOUNT` - Google Earth Engine account
+- `GEE_KEY_FILE` - Path to GEE credentials
 
-Key settings:
-- `DATABASE_URL`: PostgreSQL connection string
-- `REDIS_URL`: Redis connection string
-- `GEE_SERVICE_ACCOUNT`: Google Earth Engine service account
-- `GEE_KEY_FILE`: Path to GEE key file
+## Proxy Metrics
 
-### Satellite Provider Setup
-
-**Google Earth Engine:**
-```bash
-python scripts/setup_gee.py
-```
-
-**Microsoft Planetary Computer:**
-No setup required - free access.
-
-## Proxy Metrics Explained
-
-### Nighttime Lights (VIIRS)
-- Measures artificial light intensity
-- Proxy for population density and economic activity
-- Unit: nW/cm²/sr
-
-### NDVI (Vegetation Index)
-- Measures vegetation density
-- Values: -1 to 1 (higher = more vegetation)
-- Used to track urban sprawl
-
-### Urban Density
-- Estimates built-up area using spectral indices
-- Ratio: 0 to 1
-
-### Parking Occupancy
-- Analyzes large parking lots
-- Proxy for commercial activity
-- Limited by 10m resolution
+| Metric | Description | Notes |
+|--------|-------------|-------|
+| Nighttime Lights | Artificial light intensity (nW/cm²/sr) | Population/economic proxy |
+| NDVI | Vegetation density (-1 to 1) | Urban sprawl tracking |
+| Urban Density | Built-up area ratio (0-1) | Spectral indices |
+| Parking Occupancy | Large lot analysis | Commercial activity proxy |
 
 ## Limitations
 
-1. **Resolution**: Cannot detect individual vehicles (10m vs 30cm needed)
-2. **Proxy accuracy**: Metrics are correlational, not causal
-3. **Cloud cover**: Some regions/periods may have data gaps
-4. **Temporal lag**: Composite generation introduces delays
+- **Resolution:** 10m cannot detect individual vehicles (need 30cm)
+- **Proxy accuracy:** Correlational, not causal
+- **Cloud cover:** Data gaps in some regions/periods
+- **Temporal lag:** Composite generation delays
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT

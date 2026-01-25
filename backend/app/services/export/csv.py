@@ -29,6 +29,7 @@ class CSVExporter:
         start_date: date | None = None,
         end_date: date | None = None,
         include_metadata: bool = False,
+        export_id: str | None = None,
     ) -> str:
         """
         Export observations to CSV.
@@ -60,7 +61,8 @@ class CSVExporter:
             rows = result.all()
 
         # Generate CSV
-        output_path = Path(self.settings.exports_dir) / "export.csv"
+        filename = f"{export_id}.csv" if export_id else "export.csv"
+        output_path = Path(self.settings.exports_dir) / filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(output_path, "w", newline="") as f:

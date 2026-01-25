@@ -30,7 +30,7 @@ class Observation(Base, UUIDMixin):
     )  # 'ndvi', 'nightlights', 'urban_density', 'parking'
     value: Mapped[float] = mapped_column(Float, nullable=False)
     raster_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    extra_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Relationships
     region: Mapped["Region"] = relationship("Region", back_populates="observations")

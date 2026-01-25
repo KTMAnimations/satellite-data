@@ -5,6 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from sqlalchemy import select
 
 from app.api.dependencies import DBSession, OptionalAPIKey
+from app.core.redis import STATUS_PREFIX_ANALYSIS, get_redis_client
 from app.models.analysis import AnalysisResult
 from app.models.region import Region
 from app.schemas.analysis import (
@@ -20,9 +21,6 @@ from app.services.analysis.temporal import compute_period_averages
 
 router = APIRouter()
 
-# In-memory status tracking (in production, use Redis)
-analysis_status: dict[str, dict] = {}
-
 
 async def run_analysis_task(
     analysis_id: str,
@@ -30,18 +28,28 @@ async def run_analysis_task(
     db_url: str,
 ) -> None:
     """Background task to run analysis."""
-    # This would be replaced with actual Celery task
-    analysis_status[analysis_id]["status"] = "processing"
-    analysis_status[analysis_id]["progress"] = 50.0
-
-    # Simulate processing
     import asyncio
 
+    redis_client = get_redis_client()
+
+    await redis_client.update_status(
+        analysis_id,
+        {"status": "processing", "progress": 50.0},
+        STATUS_PREFIX_ANALYSIS,
+    )
+
+    # Simulate processing
     await asyncio.sleep(2)
 
-    analysis_status[analysis_id]["status"] = "completed"
-    analysis_status[analysis_id]["progress"] = 100.0
-    analysis_status[analysis_id]["completed_at"] = datetime.now(timezone.utc)
+    await redis_client.update_status(
+        analysis_id,
+        {
+            "status": "completed",
+            "progress": 100.0,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        },
+        STATUS_PREFIX_ANALYSIS,
+    )
 
 
 @router.post("", response_model=AnalysisStatus, status_code=status.HTTP_202_ACCEPTED)
@@ -81,14 +89,17 @@ async def request_analysis(
     analysis_id = str(uuid4())
     now = datetime.now(timezone.utc)
 
-    analysis_status[analysis_id] = {
+    status_data = {
         "id": analysis_id,
         "status": "pending",
         "progress": 0.0,
         "message": "Analysis queued",
-        "created_at": now,
+        "created_at": now.isoformat(),
         "completed_at": None,
     }
+
+    redis_client = get_redis_client()
+    await redis_client.set_status(analysis_id, status_data, STATUS_PREFIX_ANALYSIS)
 
     # Queue background task
     from app.core.config import get_settings
@@ -114,13 +125,15 @@ async def request_analysis(
 @router.get("/{analysis_id}/status", response_model=AnalysisStatus)
 async def get_analysis_status(analysis_id: str) -> AnalysisStatus:
     """Check the status of an analysis request."""
-    if analysis_id not in analysis_status:
+    redis_client = get_redis_client()
+    status_data = await redis_client.get_status(analysis_id, STATUS_PREFIX_ANALYSIS)
+
+    if status_data is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Analysis with ID {analysis_id} not found",
         )
 
-    status_data = analysis_status[analysis_id]
     return AnalysisStatus(**status_data)
 
 

@@ -42,9 +42,15 @@ services:
       DATABASE_URL: postgresql+asyncpg://satellite:satellite_dev@db:5432/satellite_data
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
+      GEE_PROJECT_ID: ${GEE_PROJECT_ID:-}
+      GEE_SERVICE_ACCOUNT_KEY: /credentials/gee-service-account.json
+      SENTINELHUB_CLIENT_ID: ${SENTINELHUB_CLIENT_ID:-}
+      SENTINELHUB_CLIENT_SECRET: ${SENTINELHUB_CLIENT_SECRET:-}
     volumes:
       - ./backend:/app
+      - ./scripts:/app/scripts
       - ./data:/data
+      - ./credentials:/credentials:ro
     depends_on:
       db:
         condition: service_healthy
@@ -61,10 +67,15 @@ services:
       DATABASE_URL: postgresql+asyncpg://satellite:satellite_dev@db:5432/satellite_data
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
+      GEE_PROJECT_ID: ${GEE_PROJECT_ID:-}
+      GEE_SERVICE_ACCOUNT_KEY: /credentials/gee-service-account.json
+      SENTINELHUB_CLIENT_ID: ${SENTINELHUB_CLIENT_ID:-}
+      SENTINELHUB_CLIENT_SECRET: ${SENTINELHUB_CLIENT_SECRET:-}
     volumes:
       - ./backend:/app
-      - ./workers:/workers
+      - ./workers:/app/workers
       - ./data:/data
+      - ./credentials:/credentials:ro
     depends_on:
       db:
         condition: service_healthy

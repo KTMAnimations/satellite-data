@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
@@ -15,11 +17,11 @@ class FeatureResult:
 
     metric_name: str
     value: float  # Aggregate value for the region
-    raster: np.ndarray | None = None  # Optional spatial raster
-    bounds: tuple[float, float, float, float] | None = None
-    date: date | None = None
-    unit: str = ""
-    metadata: dict[str, Any] | None = None
+    raster: np.ndarray | None = field(default=None)  # Optional spatial raster
+    bounds: tuple[float, float, float, float] | None = field(default=None)
+    date: date | None = field(default=None)
+    unit: str = field(default="")
+    metadata: dict[str, Any] | None = field(default=None)
 
 
 class BaseFeatureExtractor(ABC):
