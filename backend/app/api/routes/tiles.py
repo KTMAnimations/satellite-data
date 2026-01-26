@@ -20,10 +20,10 @@ logger = get_logger(__name__)
 # US-Wide Pre-generated Tiles
 # ============================================================================
 
-@router.get("/us/{metric}/{year_month}/{z}/{x}/{y}.png")
+@router.get("/us/{metric}/{date_str}/{z}/{x}/{y}.png")
 async def get_us_tile(
     metric: str,
-    year_month: str,
+    date_str: str,
     z: int,
     x: int,
     y: int,
@@ -36,50 +36,90 @@ async def get_us_tile(
 
     Args:
         metric: One of ndvi, nightlights, urban_density, parking
-        year_month: Format YYYY-MM (e.g., 2024-01)
+        date_str: Format YYYY-MM (monthly) or YYYY-MM-DD (daily, nightlights only)
         z: Zoom level (8-10)
         x: Tile X coordinate
         y: Tile Y coordinate
+
+    Note:
+        Daily granularity (YYYY-MM-DD) is only supported for nightlights metric
+        using NASA Black Marble VNP46A2 data. Other metrics use monthly composites.
     """
     from pathlib import Path
     from app.core.config import get_settings
+    import re
 
     # Validate metric
-    valid_metrics = ["ndvi", "nightlights", "urban_density", "parking"]
+    valid_metrics = [
+        "ndvi", "nightlights", "urban_density", "parking",
+        # Phase 1: Core datasets
+        "land_cover", "surface_water", "active_fire",
+        # Phase 2: Air quality & weather
+        "no2", "temperature", "precipitation", "aerosol",
+        # Phase 3: Agriculture
+        "cropland", "evapotranspiration", "soil_moisture",
+        # Phase 4: Historical & specialized
+        "impervious", "fire_historical", "canopy_height",
+    ]
     if metric not in valid_metrics:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid metric. Must be one of: {valid_metrics}",
         )
 
-    # Validate zoom level (8-11 supported)
+    # Validate zoom level (8-10 supported, 11 returns upscaled)
     if z < 8 or z > 11:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Zoom level must be between 8 and 11 for US tiles",
         )
 
-    # Validate year_month format
-    import re
-    if not re.match(r"^\d{4}-\d{2}$", year_month):
+    # Validate date format: YYYY-MM (monthly) or YYYY-MM-DD (daily)
+    is_daily = False
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        is_daily = True
+        # Daily granularity only supported for nightlights
+        if metric != "nightlights":
+            # For non-nightlights metrics, fall back to monthly
+            date_str = date_str[:7]  # Convert YYYY-MM-DD to YYYY-MM
+            is_daily = False
+    elif not re.match(r"^\d{4}-\d{2}$", date_str):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="year_month must be in format YYYY-MM",
+            detail="date must be in format YYYY-MM (monthly) or YYYY-MM-DD (daily for nightlights)",
         )
 
     # Look up the pre-generated tile
     settings = get_settings()
-    tile_path = Path(settings.cache_dir) / "us_tiles" / metric / year_month / str(z) / str(x) / f"{y}.png"
+    tile_path = Path(settings.cache_dir) / "us_tiles" / metric / date_str / str(z) / str(x) / f"{y}.png"
 
     if tile_path.exists():
+        # Shorter cache for daily tiles as they may be updated more frequently
+        cache_duration = 86400 if is_daily else 604800  # 1 day vs 1 week
         return Response(
             content=tile_path.read_bytes(),
             media_type="image/png",
             headers={
-                "Cache-Control": "public, max-age=604800",  # 1 week cache
+                "Cache-Control": f"public, max-age={cache_duration}",
                 "X-Tile-Source": "pregenerated",
+                "X-Tile-Granularity": "daily" if is_daily else "monthly",
             },
         )
+
+    # If daily tile not found, try falling back to monthly
+    if is_daily:
+        monthly_date = date_str[:7]
+        monthly_path = Path(settings.cache_dir) / "us_tiles" / metric / monthly_date / str(z) / str(x) / f"{y}.png"
+        if monthly_path.exists():
+            return Response(
+                content=monthly_path.read_bytes(),
+                media_type="image/png",
+                headers={
+                    "Cache-Control": "public, max-age=604800",
+                    "X-Tile-Source": "pregenerated",
+                    "X-Tile-Granularity": "monthly-fallback",
+                },
+            )
 
     # Return empty transparent tile if not found
     from app.services.tiles.generator import create_empty_tile
@@ -152,7 +192,17 @@ async def get_tile(
         )
 
     # Validate metric
-    valid_metrics = ["ndvi", "nightlights", "urban_density", "parking"]
+    valid_metrics = [
+        "ndvi", "nightlights", "urban_density", "parking",
+        # Phase 1: Core datasets
+        "land_cover", "surface_water", "active_fire",
+        # Phase 2: Air quality & weather
+        "no2", "temperature", "precipitation", "aerosol",
+        # Phase 3: Agriculture
+        "cropland", "evapotranspiration", "soil_moisture",
+        # Phase 4: Historical & specialized
+        "impervious", "fire_historical", "canopy_height",
+    ]
     if metric not in valid_metrics:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -255,7 +305,13 @@ def lat_lon_to_tile(lat: float, lon: float, zoom: int) -> tuple[int, int]:
 class WarmTilesRequest(BaseModel):
     """Request schema for tile warming."""
     zoom_levels: list[int] = Field(default=[10, 11, 12], description="Zoom levels to pre-warm")
-    metrics: list[Literal["ndvi", "nightlights", "urban_density", "parking"]] = Field(
+    metrics: list[Literal[
+        "ndvi", "nightlights", "urban_density", "parking",
+        "land_cover", "surface_water", "active_fire",
+        "no2", "temperature", "precipitation", "aerosol",
+        "cropland", "evapotranspiration", "soil_moisture",
+        "impervious", "fire_historical", "canopy_height",
+    ]] = Field(
         default=["ndvi", "nightlights", "urban_density", "parking"],
         description="Metrics to warm",
     )

@@ -161,14 +161,25 @@ class APIClient {
   }
 
   // US-wide pre-generated tiles (much faster, no region needed)
-  getUSTileUrl(metric: string, yearMonth: string): string {
-    // yearMonth should be in format YYYY-MM (e.g., "2024-01")
-    return `${API_BASE_URL}/tiles/us/${metric}/${yearMonth}/{z}/{x}/{y}.png`;
+  // Supports both monthly (YYYY-MM) and daily (YYYY-MM-DD) formats
+  // Daily granularity only available for nightlights metric
+  getUSTileUrl(metric: string, dateStr: string): string {
+    return `${API_BASE_URL}/tiles/us/${metric}/${dateStr}/{z}/{x}/{y}.png`;
   }
 
   // Convert date (YYYY-MM-DD) to year-month (YYYY-MM)
   dateToYearMonth(date: string): string {
     return date.substring(0, 7);
+  }
+
+  // Get the appropriate date string for tiles based on metric and granularity
+  getTileDateString(date: string, metric: string, granularity: 'daily' | 'monthly'): string {
+    // Metrics that support daily granularity
+    const dailyMetrics = ['nightlights', 'active_fire'];
+    if (granularity === 'daily' && dailyMetrics.includes(metric)) {
+      return date; // Return full YYYY-MM-DD
+    }
+    return this.dateToYearMonth(date); // Return YYYY-MM for monthly
   }
 
   async getRegionBounds(regionId: string): Promise<RegionBounds> {

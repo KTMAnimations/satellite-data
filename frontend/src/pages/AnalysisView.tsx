@@ -28,6 +28,19 @@ const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
   { value: 'ndvi', label: 'NDVI (Vegetation)', color: '#059669' },        // Emerald-600
   { value: 'urban_density', label: 'Urban Density', color: '#7C3AED' },   // Violet-600
   { value: 'parking', label: 'Parking Occupancy', color: '#0D9488' },     // Teal-600
+  { value: 'land_cover', label: 'Land Cover', color: '#9333EA' },         // Purple-600
+  { value: 'surface_water', label: 'Surface Water', color: '#2563EB' },   // Blue-600
+  { value: 'active_fire', label: 'Active Fire', color: '#DC2626' },       // Red-600
+  { value: 'no2', label: 'NO₂ Pollution', color: '#6366F1' },             // Indigo-600
+  { value: 'temperature', label: 'Temperature', color: '#EF4444' },       // Red-500
+  { value: 'precipitation', label: 'Precipitation', color: '#3B82F6' },   // Blue-500
+  { value: 'aerosol', label: 'Aerosol Index', color: '#92400E' },         // Brown-600
+  { value: 'cropland', label: 'Cropland', color: '#16A34A' },             // Green-600
+  { value: 'evapotranspiration', label: 'Evapotranspiration', color: '#0D9488' }, // Teal-600
+  { value: 'soil_moisture', label: 'Soil Moisture', color: '#7C3AED' },   // Violet-600
+  { value: 'impervious', label: 'Impervious Surface', color: '#6B7280' }, // Gray-500
+  { value: 'fire_historical', label: 'Historical Fire', color: '#EA580C' }, // Orange-600
+  { value: 'canopy_height', label: 'Canopy Height', color: '#15803D' },   // Green-700
 ];
 
 // Finest available granularity per metric (based on data source limitations)
@@ -36,6 +49,19 @@ const METRIC_GRANULARITY: Record<MetricType, 'daily' | 'weekly' | 'monthly'> = {
   parking: 'weekly',        // Sentinel-2: 5-day revisit
   nightlights: 'monthly',   // VIIRS: monthly composites only
   urban_density: 'monthly', // GHSL: static epochs
+  land_cover: 'weekly',     // Dynamic World: near real-time
+  surface_water: 'monthly', // JRC GSW: monthly history
+  active_fire: 'daily',     // VIIRS 375m: daily
+  no2: 'daily',             // Sentinel-5P: daily
+  temperature: 'daily',     // ERA5-Land: hourly aggregated to daily
+  precipitation: 'daily',   // ERA5-Land: hourly aggregated to daily
+  aerosol: 'daily',         // Sentinel-5P: daily
+  cropland: 'monthly',      // USDA CDL: annual
+  evapotranspiration: 'monthly', // OpenET: monthly
+  soil_moisture: 'weekly',  // SMAP: 3-day
+  impervious: 'monthly',    // GAIA: annual
+  fire_historical: 'monthly', // FIRMS: daily aggregated
+  canopy_height: 'monthly', // GEDI: static
 };
 
 type ViewMode = 'charts' | 'correlation' | 'yoy';
@@ -83,6 +109,19 @@ export function AnalysisView() {
       ndvi: [],
       urban_density: [],
       parking: [],
+      land_cover: [],
+      surface_water: [],
+      active_fire: [],
+      no2: [],
+      temperature: [],
+      precipitation: [],
+      aerosol: [],
+      cropland: [],
+      evapotranspiration: [],
+      soil_moisture: [],
+      impervious: [],
+      fire_historical: [],
+      canopy_height: [],
     };
 
     const result: Record<MetricType, { year: number; value: number }[]> = {
@@ -90,6 +129,19 @@ export function AnalysisView() {
       ndvi: [],
       urban_density: [],
       parking: [],
+      land_cover: [],
+      surface_water: [],
+      active_fire: [],
+      no2: [],
+      temperature: [],
+      precipitation: [],
+      aerosol: [],
+      cropland: [],
+      evapotranspiration: [],
+      soil_moisture: [],
+      impervious: [],
+      fire_historical: [],
+      canopy_height: [],
     };
 
     Object.entries(metrics.metrics).forEach(([metric, data]) => {

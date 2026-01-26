@@ -855,3 +855,2298 @@ class VIIRSClient(BaseSatelliteClient):
     @property
     def native_resolution(self) -> float:
         return 375.0
+
+
+class DynamicWorldClient(BaseSatelliteClient):
+    """Client for Google Dynamic World land cover data from GEE.
+
+    Provides near real-time land cover probabilities at 10m resolution.
+    Classes: water, trees, grass, flooded_vegetation, crops, shrub_and_scrub,
+    built, bare, snow_and_ice
+    """
+
+    DATASET_ID = "GOOGLE/DYNAMICWORLD/V1"
+    LAND_COVER_CLASSES = [
+        "water", "trees", "grass", "flooded_vegetation", "crops",
+        "shrub_and_scrub", "built", "bare", "snow_and_ice"
+    ]
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("Dynamic World client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for Dynamic World", error=str(e))
+            raise
+
+    async def get_land_cover_probabilities(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        land_cover_class: str = "built",
+    ) -> SatelliteImagery | None:
+        """Get land cover probability for a specific class.
+
+        Args:
+            geometry: Area of interest
+            start_date: Start date
+            end_date: End date
+            land_cover_class: One of the LAND_COVER_CLASSES
+
+        Returns:
+            SatelliteImagery with probability values (0-1)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        if land_cover_class not in self.LAND_COVER_CLASSES:
+            raise ValueError(f"Invalid class. Must be one of: {self.LAND_COVER_CLASSES}")
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filterDate(start_date.isoformat(), end_date.isoformat())
+                .select([land_cover_class])
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            # Create median composite
+            image = collection.median()
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array[land_cover_class][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=start_date,
+                source=f"Dynamic World ({land_cover_class})",
+                bands=[land_cover_class],
+                resolution=10.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "class": land_cover_class,
+                    "unit": "probability",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get Dynamic World data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get Dynamic World imagery - returns built-up probability by default."""
+        imagery = await self.get_land_cover_probabilities(
+            geometry, start_date, end_date, "built"
+        )
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get Dynamic World composite."""
+        return await self.get_land_cover_probabilities(
+            geometry, start_date, end_date, bands[0] if bands else "built"
+        )
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates."""
+        return [start_date, end_date]
+
+    @property
+    def source_name(self) -> str:
+        return "Google Dynamic World"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return self.LAND_COVER_CLASSES
+
+    @property
+    def native_resolution(self) -> float:
+        return 10.0
+
+
+class JRCSurfaceWaterClient(BaseSatelliteClient):
+    """Client for JRC Global Surface Water data from GEE.
+
+    Provides monthly water occurrence data from 1984-2021 at 30m resolution.
+    """
+
+    DATASET_ID = "JRC/GSW1_4/MonthlyHistory"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("JRC Surface Water client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for JRC Surface Water", error=str(e))
+            raise
+
+    async def get_water_occurrence(
+        self,
+        geometry: Polygon,
+        year: int,
+        month: int,
+    ) -> SatelliteImagery | None:
+        """Get monthly water occurrence.
+
+        Values:
+        - 0: No data
+        - 1: Not water
+        - 2: Water
+
+        Args:
+            geometry: Area of interest
+            year: Year (1984-2021)
+            month: Month (1-12)
+
+        Returns:
+            SatelliteImagery with water occurrence
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            # Filter to specific month
+            collection = ee.ImageCollection(self.DATASET_ID).filterBounds(aoi)
+
+            # Create filter for year and month
+            target_date = f"{year}-{month:02d}"
+            image = collection.filter(
+                ee.Filter.eq("system:index", target_date)
+            ).first()
+
+            if image is None:
+                return None
+
+            image = image.select(["water"])
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["water"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            # Convert to binary water mask (2 = water)
+            data = (data == 2).astype(np.float32)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=date(year, month, 1),
+                source="JRC Global Surface Water",
+                bands=["water"],
+                resolution=30.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "year": year,
+                    "month": month,
+                    "unit": "binary",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get JRC Surface Water data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get JRC Surface Water imagery."""
+        imagery = await self.get_water_occurrence(
+            geometry, start_date.year, start_date.month
+        )
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get JRC Surface Water composite."""
+        return await self.get_water_occurrence(
+            geometry, start_date.year, start_date.month
+        )
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates (monthly from 1984-2021)."""
+        dates = []
+        current = date(max(start_date.year, 1984), start_date.month, 1)
+        end = date(min(end_date.year, 2021), end_date.month, 1)
+        while current <= end:
+            dates.append(current)
+            if current.month == 12:
+                current = date(current.year + 1, 1, 1)
+            else:
+                current = date(current.year, current.month + 1, 1)
+        return dates
+
+    @property
+    def source_name(self) -> str:
+        return "JRC Global Surface Water"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["water"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 30.0
+
+
+class VIIRS375mFireClient(BaseSatelliteClient):
+    """Client for VIIRS 375m active fire data from GEE.
+
+    Provides near real-time active fire detections at 375m resolution.
+    Includes Fire Radiative Power (FRP) for fire intensity analysis.
+    """
+
+    DATASET_ID = "NASA/LANCE/SNPP_VIIRS/C2"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("VIIRS 375m Fire client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for VIIRS Fire", error=str(e))
+            raise
+
+    async def get_active_fires(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+    ) -> SatelliteImagery | None:
+        """Get active fire detections with Fire Radiative Power.
+
+        Args:
+            geometry: Area of interest
+            start_date: Start date
+            end_date: End date
+
+        Returns:
+            SatelliteImagery with FRP values (MW)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filterDate(start_date.isoformat(), end_date.isoformat())
+                .select(["FRP"])  # Fire Radiative Power in MW
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            # Max composite to capture all fire detections
+            image = collection.max()
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["FRP"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+            # Replace NaN/negative with 0
+            data = np.nan_to_num(data, nan=0.0)
+            data = np.clip(data, 0, None)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=start_date,
+                source="VIIRS 375m Active Fire",
+                bands=["FRP"],
+                resolution=375.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "unit": "MW",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get VIIRS Fire data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get VIIRS active fire imagery."""
+        imagery = await self.get_active_fires(geometry, start_date, end_date)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get fire composite."""
+        return await self.get_active_fires(geometry, start_date, end_date)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates."""
+        return [start_date, end_date]
+
+    @property
+    def source_name(self) -> str:
+        return "VIIRS 375m Active Fire"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["FRP", "Bright_ti4", "Bright_ti5", "confidence"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 375.0
+
+
+class Sentinel5PNO2Client(BaseSatelliteClient):
+    """Client for Sentinel-5P NO2 data from GEE.
+
+    Provides tropospheric NO2 column density at ~7km resolution.
+    Useful for air quality monitoring and industrial activity tracking.
+    """
+
+    DATASET_ID = "COPERNICUS/S5P/OFFL/L3_NO2"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("Sentinel-5P NO2 client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for S5P NO2", error=str(e))
+            raise
+
+    async def get_no2(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+    ) -> SatelliteImagery | None:
+        """Get tropospheric NO2 column density.
+
+        Args:
+            geometry: Area of interest
+            start_date: Start date
+            end_date: End date
+
+        Returns:
+            SatelliteImagery with NO2 values (mol/m²)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filterDate(start_date.isoformat(), end_date.isoformat())
+                .select(["tropospheric_NO2_column_number_density"])
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            # Apply quality filtering (qa_value > 0.75)
+            def filter_quality(img):
+                qa = ee.Image(self.DATASET_ID).select("qa_value")
+                return img.updateMask(qa.gt(0.75))
+
+            # Create mean composite
+            image = collection.mean()
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["tropospheric_NO2_column_number_density"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+            data = np.nan_to_num(data, nan=0.0)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=start_date,
+                source="Sentinel-5P NO2",
+                bands=["NO2"],
+                resolution=7000.0,  # ~7km
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "unit": "mol/m²",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get S5P NO2 data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get Sentinel-5P NO2 imagery."""
+        imagery = await self.get_no2(geometry, start_date, end_date)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get NO2 composite."""
+        return await self.get_no2(geometry, start_date, end_date)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates (daily from 2018)."""
+        return [start_date, end_date]
+
+    @property
+    def source_name(self) -> str:
+        return "Sentinel-5P NO2"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["tropospheric_NO2_column_number_density", "qa_value"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 7000.0
+
+
+class ERA5LandClient(BaseSatelliteClient):
+    """Client for ERA5-Land reanalysis data from GEE.
+
+    Provides hourly weather/climate data at ~11km resolution from 1950-present.
+    Useful for temperature, precipitation, and weather context.
+    """
+
+    DATASET_ID = "ECMWF/ERA5_LAND/HOURLY"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("ERA5-Land client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for ERA5-Land", error=str(e))
+            raise
+
+    async def get_temperature(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+    ) -> SatelliteImagery | None:
+        """Get 2m air temperature.
+
+        Args:
+            geometry: Area of interest
+            start_date: Start date
+            end_date: End date
+
+        Returns:
+            SatelliteImagery with temperature values (°C)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filterDate(start_date.isoformat(), end_date.isoformat())
+                .select(["temperature_2m"])
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            # Create mean composite and convert from Kelvin to Celsius
+            image = collection.mean().subtract(273.15)
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["temperature_2m"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=start_date,
+                source="ERA5-Land Temperature",
+                bands=["temperature_2m"],
+                resolution=11132.0,  # ~11km
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "unit": "°C",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get ERA5-Land temperature data", error=str(e), exc_info=True)
+            return None
+
+    async def get_precipitation(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+    ) -> SatelliteImagery | None:
+        """Get total precipitation.
+
+        Args:
+            geometry: Area of interest
+            start_date: Start date
+            end_date: End date
+
+        Returns:
+            SatelliteImagery with precipitation values (mm)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filterDate(start_date.isoformat(), end_date.isoformat())
+                .select(["total_precipitation_hourly"])
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            # Sum precipitation over period, convert m to mm
+            image = collection.sum().multiply(1000)
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["total_precipitation_hourly"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+            data = np.nan_to_num(data, nan=0.0)
+            data = np.clip(data, 0, None)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=start_date,
+                source="ERA5-Land Precipitation",
+                bands=["precipitation"],
+                resolution=11132.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "unit": "mm",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get ERA5-Land precipitation data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get ERA5-Land imagery - returns temperature by default."""
+        imagery = await self.get_temperature(geometry, start_date, end_date)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get ERA5-Land composite."""
+        return await self.get_temperature(geometry, start_date, end_date)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates (hourly from 1950)."""
+        return [start_date, end_date]
+
+    @property
+    def source_name(self) -> str:
+        return "ERA5-Land"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["temperature_2m", "total_precipitation_hourly", "u_component_of_wind_10m",
+                "v_component_of_wind_10m", "surface_pressure"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 11132.0
+
+
+class Sentinel5PAerosolClient(BaseSatelliteClient):
+    """Client for Sentinel-5P Aerosol Index data from GEE.
+
+    Provides UV Aerosol Index at ~7km resolution for smoke/dust tracking.
+    """
+
+    DATASET_ID = "COPERNICUS/S5P/OFFL/L3_AER_AI"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("Sentinel-5P Aerosol client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for S5P Aerosol", error=str(e))
+            raise
+
+    async def get_aerosol_index(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+    ) -> SatelliteImagery | None:
+        """Get UV Aerosol Index.
+
+        Args:
+            geometry: Area of interest
+            start_date: Start date
+            end_date: End date
+
+        Returns:
+            SatelliteImagery with aerosol index values
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filterDate(start_date.isoformat(), end_date.isoformat())
+                .select(["absorbing_aerosol_index"])
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            # Create mean composite
+            image = collection.mean()
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["absorbing_aerosol_index"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+            data = np.nan_to_num(data, nan=0.0)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=start_date,
+                source="Sentinel-5P Aerosol",
+                bands=["aerosol_index"],
+                resolution=7000.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "unit": "index",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get S5P Aerosol data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get Sentinel-5P Aerosol imagery."""
+        imagery = await self.get_aerosol_index(geometry, start_date, end_date)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get Aerosol composite."""
+        return await self.get_aerosol_index(geometry, start_date, end_date)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates."""
+        return [start_date, end_date]
+
+    @property
+    def source_name(self) -> str:
+        return "Sentinel-5P Aerosol"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["absorbing_aerosol_index"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 7000.0
+
+
+class USDAcroplandClient(BaseSatelliteClient):
+    """Client for USDA Cropland Data Layer (CDL) from GEE.
+
+    Provides annual crop-specific land cover at 30m resolution.
+    Covers CONUS from 2008-present.
+    """
+
+    DATASET_ID = "USDA/NASS/CDL"
+
+    # Major crop codes
+    CROP_CODES = {
+        1: "Corn",
+        5: "Soybeans",
+        24: "Winter Wheat",
+        28: "Oats",
+        36: "Alfalfa",
+        37: "Other Hay",
+        61: "Fallow/Idle",
+        176: "Grassland/Pasture",
+    }
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("USDA CDL client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for USDA CDL", error=str(e))
+            raise
+
+    async def get_cropland(
+        self,
+        geometry: Polygon,
+        year: int,
+    ) -> SatelliteImagery | None:
+        """Get cropland classification for a year.
+
+        Args:
+            geometry: Area of interest
+            year: Year (2008-present)
+
+        Returns:
+            SatelliteImagery with crop type codes
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            # Filter to specific year
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filter(ee.Filter.calendarRange(year, year, "year"))
+                .select(["cropland"])
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            image = collection.first()
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["cropland"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=date(year, 1, 1),
+                source="USDA Cropland Data Layer",
+                bands=["cropland"],
+                resolution=30.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "year": year,
+                    "crop_codes": self.CROP_CODES,
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get USDA CDL data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get USDA CDL imagery."""
+        imagery = await self.get_cropland(geometry, start_date.year)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get CDL for year."""
+        return await self.get_cropland(geometry, start_date.year)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates (annual from 2008)."""
+        return [date(y, 1, 1) for y in range(max(2008, start_date.year), end_date.year + 1)]
+
+    @property
+    def source_name(self) -> str:
+        return "USDA Cropland Data Layer"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["cropland", "cultivated", "confidence"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 30.0
+
+
+class OpenETClient(BaseSatelliteClient):
+    """Client for OpenET SSEBop evapotranspiration data from GEE.
+
+    Provides monthly evapotranspiration at 30m resolution for CONUS.
+    Useful for water stress detection and agricultural monitoring.
+    """
+
+    DATASET_ID = "OpenET/SSEBOP/CONUS/GRIDMET/MONTHLY/v2_0"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("OpenET client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for OpenET", error=str(e))
+            raise
+
+    async def get_evapotranspiration(
+        self,
+        geometry: Polygon,
+        year: int,
+        month: int,
+    ) -> SatelliteImagery | None:
+        """Get monthly evapotranspiration.
+
+        Args:
+            geometry: Area of interest
+            year: Year
+            month: Month (1-12)
+
+        Returns:
+            SatelliteImagery with ET values (mm)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            start_date = f"{year}-{month:02d}-01"
+            if month == 12:
+                end_date = f"{year + 1}-01-01"
+            else:
+                end_date = f"{year}-{month + 1:02d}-01"
+
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filterDate(start_date, end_date)
+                .select(["et"])
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            image = collection.first()
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["et"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+            data = np.nan_to_num(data, nan=0.0)
+            data = np.clip(data, 0, None)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=date(year, month, 1),
+                source="OpenET SSEBop",
+                bands=["et"],
+                resolution=30.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "year": year,
+                    "month": month,
+                    "unit": "mm",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get OpenET data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get OpenET imagery."""
+        imagery = await self.get_evapotranspiration(
+            geometry, start_date.year, start_date.month
+        )
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get ET for month."""
+        return await self.get_evapotranspiration(
+            geometry, start_date.year, start_date.month
+        )
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates."""
+        return [start_date, end_date]
+
+    @property
+    def source_name(self) -> str:
+        return "OpenET SSEBop"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["et"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 30.0
+
+
+class SMAPSoilMoistureClient(BaseSatelliteClient):
+    """Client for SMAP Level-4 soil moisture data from GEE.
+
+    Provides surface and root-zone soil moisture at 9km resolution.
+    Useful for drought detection and agricultural monitoring.
+    Uses NASA/SMAP/SPL4SMGP/008 dataset (March 2015 - present).
+    """
+
+    DATASET_ID = "NASA/SMAP/SPL4SMGP/008"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("SMAP client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for SMAP", error=str(e))
+            raise
+
+    async def get_soil_moisture(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+    ) -> SatelliteImagery | None:
+        """Get root-zone soil moisture.
+
+        Args:
+            geometry: Area of interest
+            start_date: Start date
+            end_date: End date
+
+        Returns:
+            SatelliteImagery with soil moisture (mm)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            collection = (
+                ee.ImageCollection(self.DATASET_ID)
+                .filterBounds(aoi)
+                .filterDate(start_date.isoformat(), end_date.isoformat())
+                .select(["sm_surface"])  # Surface soil moisture (0-5cm) m³/m³
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            image = collection.mean()
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["ssm"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+            data = np.nan_to_num(data, nan=0.0)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=start_date,
+                source="SMAP Soil Moisture",
+                bands=["ssm"],
+                resolution=10000.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "unit": "mm",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get SMAP data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get SMAP imagery."""
+        imagery = await self.get_soil_moisture(geometry, start_date, end_date)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get soil moisture composite."""
+        return await self.get_soil_moisture(geometry, start_date, end_date)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates."""
+        return [start_date, end_date]
+
+    @property
+    def source_name(self) -> str:
+        return "SMAP Soil Moisture"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["ssm", "susm", "smp"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 10000.0
+
+
+class GAIAImperviousClient(BaseSatelliteClient):
+    """Client for GAIA Impervious Surface data from GEE.
+
+    Provides year of urbanization per pixel from 1985-2018 at 30m resolution.
+    Excellent for urban expansion animations.
+    """
+
+    DATASET_ID = "Tsinghua/FROM-GLC/GAIA/v10"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("GAIA client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for GAIA", error=str(e))
+            raise
+
+    async def get_impervious_surface(
+        self,
+        geometry: Polygon,
+        year: int,
+    ) -> SatelliteImagery | None:
+        """Get impervious surface extent up to a given year.
+
+        Args:
+            geometry: Area of interest
+            year: Year (1985-2018) - returns all urbanization up to this year
+
+        Returns:
+            SatelliteImagery with binary impervious mask
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            # GAIA provides a single image with year of urbanization per pixel
+            image = ee.Image(self.DATASET_ID)
+
+            # Create binary mask for urbanized by target year
+            # GAIA values: year of urbanization (1985-2018), 0 = not impervious
+            urbanized = image.lte(year).And(image.gt(0))
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": urbanized,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                field_name = data_array.dtype.names[0]
+                data = data_array[field_name][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=date(year, 1, 1),
+                source="GAIA Impervious Surface",
+                bands=["impervious"],
+                resolution=30.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "year": year,
+                    "unit": "binary",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get GAIA data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get GAIA imagery."""
+        imagery = await self.get_impervious_surface(geometry, start_date.year)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get impervious surface."""
+        return await self.get_impervious_surface(geometry, start_date.year)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates (annual 1985-2018)."""
+        return [date(y, 1, 1) for y in range(max(1985, start_date.year), min(2018, end_date.year) + 1)]
+
+    @property
+    def source_name(self) -> str:
+        return "GAIA Impervious Surface"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["change_year_index"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 30.0
+
+
+class FIRMSClient(BaseSatelliteClient):
+    """Client for MODIS FIRMS active fire data from GEE.
+
+    Provides historical fire archive from 2000-present at 1km resolution.
+    Longer history than VIIRS 375m but lower resolution.
+    """
+
+    DATASET_ID = "FIRMS"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("FIRMS client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for FIRMS", error=str(e))
+            raise
+
+    async def get_active_fires(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+    ) -> SatelliteImagery | None:
+        """Get MODIS active fire detections.
+
+        Args:
+            geometry: Area of interest
+            start_date: Start date
+            end_date: End date
+
+        Returns:
+            SatelliteImagery with fire confidence values
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            # Use MODIS thermal anomalies
+            collection = (
+                ee.ImageCollection("MODIS/061/MOD14A1")
+                .filterBounds(aoi)
+                .filterDate(start_date.isoformat(), end_date.isoformat())
+                .select(["MaxFRP"])  # Maximum Fire Radiative Power
+            )
+
+            count = collection.size().getInfo()
+            if count == 0:
+                return None
+
+            # Max composite to capture all fires
+            image = collection.max()
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["MaxFRP"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+            data = np.nan_to_num(data, nan=0.0)
+            data = np.clip(data, 0, None)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=start_date,
+                source="MODIS FIRMS",
+                bands=["MaxFRP"],
+                resolution=1000.0,
+                metadata={
+                    "dataset": "MODIS/061/MOD14A1",
+                    "unit": "MW",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get FIRMS data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get FIRMS imagery."""
+        imagery = await self.get_active_fires(geometry, start_date, end_date)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get fire composite."""
+        return await self.get_active_fires(geometry, start_date, end_date)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates (from 2000)."""
+        return [start_date, end_date]
+
+    @property
+    def source_name(self) -> str:
+        return "MODIS FIRMS"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["MaxFRP", "FireMask"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 1000.0
+
+
+class GEDIClient(BaseSatelliteClient):
+    """Client for GEDI vegetation structure data from GEE.
+
+    Provides LiDAR-derived canopy height and biomass at 1km resolution.
+    Useful for forest structure baseline and carbon estimation.
+    """
+
+    DATASET_ID = "LARSE/GEDI/GRIDDEDVEG_002/V1/1KM"
+
+    def __init__(self):
+        super().__init__()
+        self._ee = None
+        self._settings = get_settings()
+
+    async def initialize(self) -> None:
+        """Initialize Earth Engine."""
+        import ee
+        import json
+
+        try:
+            if self._settings.gee_service_account_key and self._settings.gee_project_id:
+                with open(self._settings.gee_service_account_key) as f:
+                    key_data = json.load(f)
+                    service_account_email = key_data.get("client_email")
+
+                credentials = ee.ServiceAccountCredentials(
+                    service_account_email,
+                    self._settings.gee_service_account_key,
+                )
+                ee.Initialize(credentials, project=self._settings.gee_project_id)
+            else:
+                ee.Initialize()
+
+            self._ee = ee
+            self._initialized = True
+            logger.info("GEDI client initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize GEE for GEDI", error=str(e))
+            raise
+
+    async def get_canopy_height(
+        self,
+        geometry: Polygon,
+    ) -> SatelliteImagery | None:
+        """Get canopy height data.
+
+        Args:
+            geometry: Area of interest
+
+        Returns:
+            SatelliteImagery with canopy height (m)
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        ee = self._ee
+        aoi = ee.Geometry.Polygon(list(geometry.exterior.coords))
+
+        try:
+            # GEDI gridded vegetation structure
+            image = ee.Image(self.DATASET_ID).select(["rh98"])  # 98th percentile height
+
+            bounds_info = aoi.bounds().getInfo()["coordinates"][0]
+            west = min(c[0] for c in bounds_info)
+            east = max(c[0] for c in bounds_info)
+            south = min(c[1] for c in bounds_info)
+            north = max(c[1] for c in bounds_info)
+
+            request = {
+                "expression": image,
+                "fileFormat": "NPY",
+                "grid": {
+                    "dimensions": {"width": 512, "height": 512},
+                    "affineTransform": {
+                        "scaleX": (east - west) / 512,
+                        "shearX": 0,
+                        "translateX": west,
+                        "shearY": 0,
+                        "scaleY": -(north - south) / 512,
+                        "translateY": north,
+                    },
+                    "crsCode": "EPSG:4326",
+                },
+            }
+
+            loop = asyncio.get_event_loop()
+            pixels = await loop.run_in_executor(
+                None, lambda: ee.data.computePixels(request)
+            )
+
+            data_array = np.load(io.BytesIO(pixels), allow_pickle=False)
+
+            if data_array.dtype.names:
+                data = data_array["rh98"][np.newaxis, :, :]
+            else:
+                data = data_array if data_array.ndim == 3 else data_array[np.newaxis, :, :]
+
+            data = data.astype(np.float32)
+            data = np.nan_to_num(data, nan=0.0)
+            data = np.clip(data, 0, None)
+
+            return SatelliteImagery(
+                data=data,
+                bounds=(west, south, east, north),
+                crs="EPSG:4326",
+                date=date(2020, 1, 1),  # GEDI is a static dataset
+                source="GEDI Canopy Height",
+                bands=["rh98"],
+                resolution=1000.0,
+                metadata={
+                    "dataset": self.DATASET_ID,
+                    "unit": "m",
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to get GEDI data", error=str(e), exc_info=True)
+            return None
+
+    async def get_imagery(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+    ) -> list[SatelliteImagery]:
+        """Get GEDI imagery."""
+        imagery = await self.get_canopy_height(geometry)
+        return [imagery] if imagery else []
+
+    async def get_composite(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        bands: list[str] | None = None,
+        max_cloud_cover: float = 20.0,
+        composite_method: str = "median",
+    ) -> SatelliteImagery | None:
+        """Get canopy height."""
+        return await self.get_canopy_height(geometry)
+
+    async def get_available_dates(
+        self,
+        geometry: Polygon,
+        start_date: date,
+        end_date: date,
+        max_cloud_cover: float = 20.0,
+    ) -> list[date]:
+        """Get available dates (static dataset)."""
+        return [date(2020, 1, 1)]
+
+    @property
+    def source_name(self) -> str:
+        return "GEDI Vegetation Structure"
+
+    @property
+    def available_bands(self) -> list[str]:
+        return ["rh98", "rh50", "cover", "agbd"]
+
+    @property
+    def native_resolution(self) -> float:
+        return 1000.0

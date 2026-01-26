@@ -15,6 +15,19 @@ const METRIC_COLORS: Record<MetricType, string> = {
   nightlights: '#D97706',    // Amber-600
   urban_density: '#7C3AED',  // Violet-600
   parking: '#0D9488',        // Teal-600
+  land_cover: '#9333EA',     // Purple-600
+  surface_water: '#2563EB',  // Blue-600
+  active_fire: '#DC2626',    // Red-600
+  no2: '#6366F1',            // Indigo-600
+  temperature: '#EF4444',    // Red-500
+  precipitation: '#3B82F6',  // Blue-500
+  aerosol: '#92400E',        // Brown-600
+  cropland: '#16A34A',       // Green-600
+  evapotranspiration: '#0D9488', // Teal-600
+  soil_moisture: '#7C3AED',  // Violet-600
+  impervious: '#6B7280',     // Gray-500
+  fire_historical: '#EA580C', // Orange-600
+  canopy_height: '#15803D',  // Green-700
 };
 
 const METRIC_LABELS: Record<MetricType, string> = {
@@ -22,6 +35,19 @@ const METRIC_LABELS: Record<MetricType, string> = {
   nightlights: 'Nighttime Lights',
   urban_density: 'Urban Density',
   parking: 'Parking Occupancy',
+  land_cover: 'Land Cover',
+  surface_water: 'Surface Water',
+  active_fire: 'Active Fire',
+  no2: 'NO₂',
+  temperature: 'Temperature',
+  precipitation: 'Precipitation',
+  aerosol: 'Aerosol',
+  cropland: 'Cropland',
+  evapotranspiration: 'Evapotranspiration',
+  soil_moisture: 'Soil Moisture',
+  impervious: 'Impervious Surface',
+  fire_historical: 'Historical Fire',
+  canopy_height: 'Canopy Height',
 };
 
 export function TimeSeriesChart({

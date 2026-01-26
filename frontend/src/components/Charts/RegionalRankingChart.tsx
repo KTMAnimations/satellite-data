@@ -25,6 +25,19 @@ const METRIC_COLORS: Record<MetricType, string> = {
   nightlights: '#D97706',    // Amber-600
   urban_density: '#7C3AED',  // Violet-600
   parking: '#0D9488',        // Teal-600
+  land_cover: '#9333EA',     // Purple-600
+  surface_water: '#2563EB',  // Blue-600
+  active_fire: '#DC2626',    // Red-600
+  no2: '#6366F1',            // Indigo-600
+  temperature: '#EF4444',    // Red-500
+  precipitation: '#3B82F6',  // Blue-500
+  aerosol: '#92400E',        // Brown-600
+  cropland: '#16A34A',       // Green-600
+  evapotranspiration: '#0D9488', // Teal-600
+  soil_moisture: '#7C3AED',  // Violet-600
+  impervious: '#6B7280',     // Gray-500
+  fire_historical: '#EA580C', // Orange-600
+  canopy_height: '#15803D',  // Green-700
 };
 
 export function RegionalRankingChart({

@@ -14,6 +14,19 @@ const METRIC_LABELS: Record<MetricType, string> = {
   nightlights: 'Nighttime Lights',
   urban_density: 'Urban Density',
   parking: 'Parking',
+  land_cover: 'Land Cover',
+  surface_water: 'Surface Water',
+  active_fire: 'Active Fire',
+  no2: 'NO₂',
+  temperature: 'Temperature',
+  precipitation: 'Precipitation',
+  aerosol: 'Aerosol',
+  cropland: 'Cropland',
+  evapotranspiration: 'Evapotranspiration',
+  soil_moisture: 'Soil Moisture',
+  impervious: 'Impervious Surface',
+  fire_historical: 'Historical Fire',
+  canopy_height: 'Canopy Height',
 };
 
 export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBarChartProps) {

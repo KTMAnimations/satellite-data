@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { UploadSimple } from '@phosphor-icons/react';
 import { MapView } from '../components/Map/MapContainer';
 import { useStore } from '../store';
 import api from '../services/api';
@@ -18,6 +19,8 @@ export function RegionExplorer() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionGeometry, setNewRegionGeometry] = useState<GeoJSONPolygon | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: regionsData, isLoading } = useQuery({
     queryKey: ['regions', { search: searchTerm, type: filterType, category: filterCategory }],
@@ -67,6 +70,68 @@ export function RegionExplorer() {
     }
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadError(null);
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const geojson = JSON.parse(content);
+
+        // Extract geometry from GeoJSON
+        let geometry: GeoJSONPolygon | null = null;
+
+        if (geojson.type === 'FeatureCollection' && geojson.features?.length > 0) {
+          const feature = geojson.features[0];
+          if (feature.geometry?.type === 'Polygon') {
+            geometry = feature.geometry as GeoJSONPolygon;
+          } else if (feature.geometry?.type === 'MultiPolygon') {
+            // Convert first polygon of MultiPolygon
+            geometry = {
+              type: 'Polygon',
+              coordinates: feature.geometry.coordinates[0],
+            };
+          }
+        } else if (geojson.type === 'Feature' && geojson.geometry) {
+          if (geojson.geometry.type === 'Polygon') {
+            geometry = geojson.geometry as GeoJSONPolygon;
+          } else if (geojson.geometry.type === 'MultiPolygon') {
+            geometry = {
+              type: 'Polygon',
+              coordinates: geojson.geometry.coordinates[0],
+            };
+          }
+        } else if (geojson.type === 'Polygon') {
+          geometry = geojson as GeoJSONPolygon;
+        }
+
+        if (geometry) {
+          // Use filename without extension as default name
+          const defaultName = file.name.replace(/\.(geo)?json$/i, '');
+          setNewRegionName(defaultName);
+          setNewRegionGeometry(geometry);
+          setShowCreateModal(true);
+        } else {
+          setUploadError('Could not find a valid Polygon geometry in the file');
+        }
+      } catch {
+        setUploadError('Invalid GeoJSON file. Please check the format.');
+      }
+    };
+
+    reader.onerror = () => {
+      setUploadError('Error reading file');
+    };
+
+    reader.readAsText(file);
+    // Reset input so same file can be uploaded again
+    event.target.value = '';
+  };
+
   return (
     <div className="region-explorer">
       <aside className="region-sidebar">
@@ -107,6 +172,23 @@ export function RegionExplorer() {
               <option value="migration_hotspot">Migration Hotspots</option>
             </select>
           </div>
+
+          {/* GeoJSON Upload */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".json,.geojson"
+            style={{ display: 'none' }}
+          />
+          <button
+            className="btn btn-outline upload-btn"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <UploadSimple size={16} weight="bold" />
+            Upload GeoJSON
+          </button>
+          {uploadError && <div className="upload-error">{uploadError}</div>}
         </div>
 
         {/* Region List */}

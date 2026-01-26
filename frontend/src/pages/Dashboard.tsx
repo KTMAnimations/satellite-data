@@ -5,6 +5,7 @@ import {
   Virus,
   Buildings,
   GraduationCap,
+  Airplane,
   MapPin,
   Calendar,
   ChartLine,
@@ -55,12 +56,20 @@ export function Dashboard() {
       icon: GraduationCap,
       category: 'Seasonal',
     },
+    {
+      id: 'tourism',
+      title: 'Tourist Destination Patterns',
+      description: 'Tourism-driven activity fluctuations peak vs off-season',
+      regions: ['Las Vegas, NV', 'Orlando, FL'],
+      icon: Airplane,
+      category: 'Seasonal',
+    },
   ];
 
   const stats = [
     { label: 'Predefined Regions', value: regionsData?.total || 0 },
     { label: 'Data Coverage', value: '2015-Present' },
-    { label: 'Metrics Available', value: 4 },
+    { label: 'Metrics Available', value: 17 },
     { label: 'Resolution', value: '10m (Sentinel-2)' },
   ];
 

@@ -64,6 +64,23 @@
   background: white;
 }
 
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.upload-error {
+  font-size: 0.75rem;
+  color: var(--color-error, #dc2626);
+  background: #fef2f2;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid #fecaca;
+}
+
 /* Region List */
 .region-list {
   flex: 1;

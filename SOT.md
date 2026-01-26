@@ -3,8 +3,8 @@
 ## Complete Specification Document
 
 **Project Name:** SatelliteMigration
-**Last Updated:** 2025-01-25
-**Status:** Requirements Complete - Ready for Implementation
+**Last Updated:** 2026-01-26
+**Status:** Implementation ~85% Complete - Frontend verified, Backend functional
 
 ---
 
@@ -46,19 +46,28 @@ Detecting individual cars requires **5-30cm resolution**, but free satellite dat
 - Granularity: Finest possible per data source (see table below)
 - Seasonal comparisons (winter vs summer)
 
-**Temporal Resolution by Metric:**
-| Metric | Data Source | Finest Resolution | Notes |
-|--------|-------------|-------------------|-------|
-| NDVI | Sentinel-2 | 5 days | Individual cloud-free scenes |
-| Parking/NDBI | Sentinel-2 | 5 days | Individual cloud-free scenes |
-| Nightlights | VIIRS | Monthly | Dataset only provides monthly composites |
-| Urban Density | GHSL | Multi-year epochs | Static snapshots (2015, 2020, 2025) |
+**Temporal Resolution by Metric (17 total):**
+| Metric | Data Source | Resolution | Granularity | Notes |
+|--------|-------------|------------|-------------|-------|
+| NDVI | Sentinel-2 | 10m | Weekly | Vegetation health |
+| Nightlights | VIIRS Black Marble | 375m | Daily | Activity proxy |
+| Urban Density | GHSL SMOD | 10m | Monthly | Built-up fraction |
+| Parking | Sentinel-2 (NDBI) | 10m | Weekly | Occupancy proxy |
+| Land Cover | Dynamic World | 10m | Monthly | Land use classification |
+| Surface Water | JRC GSW | 30m | Monthly | Water extent |
+| Active Fire | VIIRS 375m | 375m | Daily | Fire hotspots |
+| NO2 | Sentinel-5P | 7km | Monthly | Air quality |
+| Temperature | ERA5-Land | 11km | Monthly | Weather context |
+| Precipitation | ERA5-Land | 11km | Monthly | Rainfall |
+| Aerosol | Sentinel-5P | 7km | Monthly | Smoke/dust |
+| Cropland | USDA CDL | 30m | Yearly | Crop types (US) |
+| Evapotranspiration | OpenET | 30m | Monthly | Water use (US) |
+| Soil Moisture | SMAP | 10km | Monthly | Drought indicator |
+| Impervious | GAIA | 30m | Yearly | Urban footprint |
+| Fire Historical | MODIS FIRMS | 1km | Monthly | Fire archive |
+| Canopy Height | GEDI | 1km | Static | Forest structure |
 
-**Proxy Metrics:**
-- Nighttime lights intensity (VIIRS)
-- Built-up area / urban density
-- Parking lot occupancy (large lots)
-- Vegetation change (NDVI)
+See `docs/GEE_DATASETS.md` for detailed dataset specifications.
 
 **Visualization Outputs:**
 - Interactive heatmaps (zoomable, time-slider)
@@ -1175,6 +1184,19 @@ testcontainers>=3.7.0
 - [Imagery2Flow: Predicting mobility flows from satellite imagery](https://www.nature.com/articles/s41467-025-65373-z)
 - [Traffic Patterns from Planet Imagery (COVID)](https://www.mdpi.com/2072-4292/13/2/208)
 - [Population Estimation from Satellite](https://arxiv.org/abs/1708.09086)
+
+---
+
+---
+
+## 18. Additional Documentation
+
+For detailed information on specific topics, see:
+
+- **`docs/GEE_DATASETS.md`** - Complete GEE dataset specifications, colormaps, value ranges, and implementation guide for all 17 metrics
+- **`docs/METHODOLOGY.md`** - Technical methodology for proxy metrics and analysis
+- **`docs/USER_GUIDE.md`** - End-user documentation for the platform
+- **`CHECKLIST.md`** - Shipping checklist with current implementation status
 
 ---
 

@@ -12,6 +12,8 @@ import type { LatLngBounds, Map as LeafletMap } from 'leaflet';
 import { useStore } from '../../store';
 import type { Region, GeoJSONPolygon, MetricType } from '../../types';
 import api from '../../services/api';
+import { CompositeTileLayer } from './CompositeTileLayer';
+import { FlowLayer, type FlowPoint } from './FlowLayer';
 import './MapContainer.css';
 
 
@@ -23,6 +25,8 @@ interface MapContainerProps {
   selectedMetric?: MetricType;
   tileDate?: string; // Date for temporal tile data (YYYY-MM-DD)
   selectedRegion?: Region | null; // Optional prop to override store's selectedRegion
+  flowPoints?: FlowPoint[]; // Optional migration flow visualization points
+  flowColor?: string; // Color for flow particles
 }
 
 function MapController({
@@ -44,16 +48,9 @@ function MapController({
           [Math.max(...lats), Math.max(...lngs)],
         ] as unknown as LatLngBounds;
 
-        // Fit bounds first, then ensure we're at z11 for tile visibility
-        // We only have z11 tiles, so zoom levels below that show empty tiles
-        map.fitBounds(bounds, { padding: [50, 50] });
-
-        // After fitting, ensure minimum zoom of 11 for tile overlay visibility
-        setTimeout(() => {
-          if (map.getZoom() < 11) {
-            map.setZoom(11);
-          }
-        }, 100);
+        // Fit bounds to show the region - allow any zoom level
+        // CompositeTileLayer will handle rendering z11 tiles at lower zoom levels
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 11 });
       }
     }
   }, [selectedRegion, map]);
@@ -85,6 +82,8 @@ export function MapView({
   selectedMetric,
   tileDate,
   selectedRegion: selectedRegionProp,
+  flowPoints,
+  flowColor = '#3b82f6',
 }: MapContainerProps) {
   const { mapState, selectedRegion: storeSelectedRegion } = useStore();
   const mapRef = useRef<LeafletMap | null>(null);
@@ -115,6 +114,8 @@ export function MapView({
       <LeafletMapContainer
         center={mapState.center}
         zoom={mapState.zoom}
+        minZoom={4}
+        maxZoom={11}
         className="map-container"
         ref={mapRef}
       >
@@ -123,14 +124,20 @@ export function MapView({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* US-wide metric tile overlay - pre-generated tiles for fast loading */}
+        {/* US-wide metric tile overlay - pre-generated tiles at z11 */}
+        {/* CompositeTileLayer handles rendering at lower zoom levels by compositing z11 tiles */}
+        {/* Nightlights and active_fire support daily (YYYY-MM-DD), others use monthly (YYYY-MM) */}
         {selectedMetric && tileDate && (
-          <TileLayer
-            key={`us-${selectedMetric}-${api.dateToYearMonth(tileDate)}`}
-            url={api.getUSTileUrl(selectedMetric, api.dateToYearMonth(tileDate))}
-            opacity={0.7}
+          <CompositeTileLayer
+            key={`us-${selectedMetric}-${tileDate}`}
+            baseUrl={api.getUSTileUrl(
+              selectedMetric,
+              ['nightlights', 'active_fire'].includes(selectedMetric) ? tileDate : api.dateToYearMonth(tileDate)
+            )}
+            nativeZoom={11}
+            minZoom={4}
             maxZoom={11}
-            minZoom={8}
+            opacity={0.7}
           />
         )}
 
@@ -148,6 +155,17 @@ export function MapView({
             />
           ))}
 
+        {/* Migration flow visualization */}
+        {flowPoints && flowPoints.length > 0 && (
+          <FlowLayer
+            points={flowPoints}
+            color={flowColor}
+            animated
+            showLabels
+            speed={1}
+            particleCount={5}
+          />
+        )}
 
         {/* Draw controls */}
         {showDrawControls && (

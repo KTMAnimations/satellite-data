@@ -47,6 +47,21 @@
   border-color: var(--accent-primary);
 }
 
+.preset-card.highlighted {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  animation: highlight-pulse 1s ease-out;
+}
+
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+}
+
 /* Corner brackets for preset cards */
 .preset-card::before,
 .preset-card::after {

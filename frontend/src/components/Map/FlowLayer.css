@@ -1,0 +1,59 @@
+.flow-layer-svg {
+  pointer-events: none;
+  overflow: visible;
+}
+
+.flow-path {
+  transition: stroke-opacity 0.3s ease;
+}
+
+.flow-particle {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.flow-point {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transition: r 0.3s ease, fill-opacity 0.3s ease;
+}
+
+.flow-label {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 8px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-body);
+}
+
+.flow-value {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Pulse animation for high-activity points */
+@keyframes flow-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+.flow-point.high-activity {
+  animation: flow-pulse 2s ease-in-out infinite;
+}
+
+/* Flow trail effect */
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.flow-path.animated {
+  stroke-dasharray: 10 5;
+  animation: flow-dash 1s linear infinite;
+}

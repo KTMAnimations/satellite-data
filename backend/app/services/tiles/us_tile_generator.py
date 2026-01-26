@@ -57,10 +57,20 @@ US_BOUNDS_MERCATOR = {
 }
 
 # Metrics to generate
-METRICS = ["ndvi", "nightlights", "urban_density", "parking"]
+METRICS = [
+    "ndvi", "nightlights", "urban_density", "parking",
+    # Phase 1: Core datasets
+    "land_cover", "surface_water", "active_fire",
+    # Phase 2: Air quality & weather
+    "no2", "temperature", "precipitation", "aerosol",
+    # Phase 3: Agriculture
+    "cropland", "evapotranspiration", "soil_moisture",
+    # Phase 4: Historical & specialized
+    "impervious", "fire_historical", "canopy_height",
+]
 
-# Zoom levels to generate
-ZOOM_LEVELS = [8, 9, 10]
+# Zoom levels to generate (11 provides good detail for city-level views)
+ZOOM_LEVELS = [11]
 
 
 def lon_to_tile_x(lon: float, zoom: int) -> int:
@@ -147,6 +157,75 @@ class USTileGenerator:
             (107, 174, 214), (66, 146, 198), (33, 113, 181), (8, 81, 156),
             (8, 48, 107), (3, 19, 43),
         ],
+        # Phase 1: Core datasets
+        "land_cover": [  # Built-up probability (purple gradient)
+            (247, 244, 249), (231, 225, 239), (212, 185, 218), (201, 148, 199),
+            (186, 111, 178), (170, 79, 160), (152, 49, 142), (122, 1, 119),
+            (92, 0, 89), (63, 0, 60),
+        ],
+        "surface_water": [  # Blue water gradient
+            (255, 255, 255), (240, 249, 255), (214, 234, 248), (174, 214, 241),
+            (133, 193, 233), (93, 173, 226), (52, 152, 219), (41, 128, 185),
+            (31, 97, 141), (21, 67, 96),
+        ],
+        "active_fire": [  # Fire radiative power (orange-red)
+            (255, 255, 204), (255, 237, 160), (254, 217, 118), (254, 178, 76),
+            (253, 141, 60), (252, 78, 42), (227, 26, 28), (189, 0, 38),
+            (128, 0, 38), (80, 0, 0),
+        ],
+        # Phase 2: Air quality & weather
+        "no2": [  # NO2 concentration (blue-yellow-red)
+            (49, 54, 149), (69, 117, 180), (116, 173, 209), (171, 217, 233),
+            (224, 243, 248), (254, 224, 144), (253, 174, 97), (244, 109, 67),
+            (215, 48, 39), (165, 0, 38),
+        ],
+        "temperature": [  # Temperature (blue-white-red)
+            (5, 48, 97), (33, 102, 172), (67, 147, 195), (146, 197, 222),
+            (209, 229, 240), (253, 219, 199), (244, 165, 130), (214, 96, 77),
+            (178, 24, 43), (103, 0, 31),
+        ],
+        "precipitation": [  # Precipitation (white-blue-purple)
+            (255, 255, 255), (240, 249, 232), (204, 235, 197), (168, 221, 181),
+            (123, 204, 196), (78, 179, 211), (43, 140, 190), (8, 104, 172),
+            (8, 64, 129), (37, 37, 86),
+        ],
+        "aerosol": [  # Aerosol index (white-brown-black for smoke)
+            (255, 255, 255), (253, 245, 230), (252, 226, 196), (250, 197, 152),
+            (242, 165, 117), (221, 132, 82), (186, 101, 56), (145, 72, 36),
+            (100, 45, 20), (50, 20, 5),
+        ],
+        # Phase 3: Agriculture
+        "cropland": [  # Categorical crop colors (simplified gradient)
+            (255, 255, 178), (254, 217, 118), (254, 178, 76), (253, 141, 60),
+            (240, 59, 32), (189, 0, 38), (0, 128, 0), (34, 139, 34),
+            (144, 238, 144), (255, 255, 0),
+        ],
+        "evapotranspiration": [  # ET (brown-green gradient)
+            (166, 97, 26), (191, 129, 45), (216, 179, 101), (229, 218, 169),
+            (245, 245, 220), (199, 234, 229), (128, 205, 193), (53, 151, 143),
+            (1, 102, 94), (0, 60, 48),
+        ],
+        "soil_moisture": [  # Soil moisture (brown-blue)
+            (139, 69, 19), (160, 82, 45), (188, 143, 90), (210, 180, 140),
+            (245, 222, 179), (173, 216, 230), (135, 206, 235), (70, 130, 180),
+            (65, 105, 225), (0, 0, 139),
+        ],
+        # Phase 4: Historical & specialized
+        "impervious": [  # Urban impervious (gray gradient)
+            (255, 255, 255), (240, 240, 240), (217, 217, 217), (189, 189, 189),
+            (150, 150, 150), (115, 115, 115), (82, 82, 82), (54, 54, 54),
+            (26, 26, 26), (0, 0, 0),
+        ],
+        "fire_historical": [  # Same as active_fire
+            (255, 255, 204), (255, 237, 160), (254, 217, 118), (254, 178, 76),
+            (253, 141, 60), (252, 78, 42), (227, 26, 28), (189, 0, 38),
+            (128, 0, 38), (80, 0, 0),
+        ],
+        "canopy_height": [  # Forest height (green gradient)
+            (247, 252, 245), (229, 245, 224), (199, 233, 192), (161, 217, 155),
+            (116, 196, 118), (65, 171, 93), (35, 139, 69), (0, 109, 44),
+            (0, 68, 27), (0, 40, 16),
+        ],
     }
 
     # Value ranges for normalization
@@ -155,6 +234,23 @@ class USTileGenerator:
         "nightlights": (0.0, 100.0),
         "urban_density": (0.0, 1.0),
         "parking": (0.0, 1.0),
+        # Phase 1: Core datasets
+        "land_cover": (0.0, 1.0),  # Probability 0-1
+        "surface_water": (0.0, 1.0),  # Binary mask
+        "active_fire": (0.0, 500.0),  # FRP in MW
+        # Phase 2: Air quality & weather
+        "no2": (0.0, 0.0002),  # mol/m²
+        "temperature": (-30.0, 45.0),  # Celsius
+        "precipitation": (0.0, 500.0),  # mm/month
+        "aerosol": (-2.0, 5.0),  # Aerosol index
+        # Phase 3: Agriculture
+        "cropland": (0.0, 255.0),  # Crop type codes
+        "evapotranspiration": (0.0, 300.0),  # mm/month
+        "soil_moisture": (0.0, 0.5),  # m³/m³ volumetric water content
+        # Phase 4: Historical & specialized
+        "impervious": (0.0, 1.0),  # Binary mask
+        "fire_historical": (0.0, 500.0),  # FRP in MW
+        "canopy_height": (0.0, 60.0),  # meters
     }
 
     def __init__(self, tiles_dir: str | Path | None = None):
@@ -167,24 +263,31 @@ class USTileGenerator:
     def get_tile_path(
         self,
         metric: str,
-        year_month: str,
+        date_str: str,
         z: int,
         x: int,
         y: int,
     ) -> Path:
-        """Get the file path for a pre-generated tile."""
-        return self.tiles_dir / metric / year_month / str(z) / str(x) / f"{y}.png"
+        """
+        Get the file path for a pre-generated tile.
+
+        Args:
+            metric: The metric type (nightlights, ndvi, etc.)
+            date_str: Date string in YYYY-MM or YYYY-MM-DD format
+            z, x, y: Tile coordinates
+        """
+        return self.tiles_dir / metric / date_str / str(z) / str(x) / f"{y}.png"
 
     def tile_exists(
         self,
         metric: str,
-        year_month: str,
+        date_str: str,
         z: int,
         x: int,
         y: int,
     ) -> bool:
         """Check if a tile has already been generated."""
-        return self.get_tile_path(metric, year_month, z, x, y).exists()
+        return self.get_tile_path(metric, date_str, z, x, y).exists()
 
     async def generate_month(
         self,
@@ -269,6 +372,103 @@ class USTileGenerator:
         logger.info(f"Completed {year_month}", **stats)
         return stats
 
+    async def generate_day(
+        self,
+        year: int,
+        month: int,
+        day: int,
+        metrics: list[str] | None = None,
+        zoom_levels: list[int] | None = None,
+        force: bool = False,
+    ) -> dict:
+        """
+        Generate all tiles for a specific day.
+
+        Currently only supports nightlights (VIIRS daily data).
+        Other metrics fall back to monthly data.
+
+        Args:
+            year: Year (e.g., 2023)
+            month: Month (1-12)
+            day: Day (1-31)
+            metrics: List of metrics to generate (default: nightlights only for daily)
+            zoom_levels: Zoom levels to generate (default: 8-10)
+            force: Regenerate even if tiles exist
+
+        Returns:
+            Statistics about generated tiles
+        """
+        from app.services.satellite.us_data_service import USDataService
+
+        # Only nightlights supports daily granularity
+        daily_metrics = ["nightlights"]
+        metrics = metrics or daily_metrics
+        metrics = [m for m in metrics if m in daily_metrics]
+
+        if not metrics:
+            logger.warning("No daily-capable metrics requested")
+            return {"generated": 0, "skipped": 0, "failed": 0}
+
+        zoom_levels = zoom_levels or ZOOM_LEVELS
+        date_str = f"{year}-{month:02d}-{day:02d}"
+
+        logger.info(f"Generating daily US tiles for {date_str}", metrics=metrics, zooms=zoom_levels)
+
+        data_service = USDataService()
+        await data_service.initialize()
+        stats = {"generated": 0, "skipped": 0, "failed": 0}
+
+        for metric in metrics:
+            logger.info(f"Fetching daily {metric} data for US...")
+
+            try:
+                # Fetch daily data
+                if metric == "nightlights":
+                    raster_data = await data_service.get_nightlights(year, month, day)
+                else:
+                    logger.warning(f"Daily data not supported for {metric}")
+                    continue
+
+                if raster_data is None:
+                    logger.warning(f"No data available for {metric} {date_str}")
+                    continue
+
+            except Exception as e:
+                logger.error(f"Failed to fetch daily {metric} data", error=str(e))
+                continue
+
+            # Generate tiles at each zoom level
+            for zoom in zoom_levels:
+                tiles = get_us_tiles(zoom)
+                logger.info(f"Generating {len(tiles)} daily tiles for {metric} z{zoom}")
+
+                for x, y in tiles:
+                    tile_path = self.get_tile_path(metric, date_str, zoom, x, y)
+
+                    if not force and tile_path.exists():
+                        stats["skipped"] += 1
+                        continue
+
+                    try:
+                        tile_data = self._extract_tile(raster_data, zoom, x, y, metric)
+
+                        if tile_data is not None:
+                            tile_image = self._apply_colormap(tile_data, metric)
+
+                            tile_path.parent.mkdir(parents=True, exist_ok=True)
+                            tile_image.save(tile_path, format="PNG", optimize=True)
+                            stats["generated"] += 1
+                        else:
+                            self._save_empty_tile(tile_path)
+                            stats["generated"] += 1
+
+                    except Exception as e:
+                        logger.error(f"Failed to generate daily tile {zoom}/{x}/{y}", error=str(e))
+                        stats["failed"] += 1
+
+        logger.info(f"Completed daily tiles for {date_str}", **stats)
+        return stats
+
     async def _fetch_us_data(
         self,
         data_service,
@@ -280,6 +480,7 @@ class USTileGenerator:
         # US is fetched in a 6x3 grid of 512x512 chunks = 3072x1536 pixels
         # This provides good detail for zoom 8-10 tiles
 
+        # Original metrics
         if metric == "ndvi":
             return await data_service.get_ndvi(year, month)
         elif metric == "nightlights":
@@ -288,6 +489,36 @@ class USTileGenerator:
             return await data_service.get_urban_density(year)
         elif metric == "parking":
             return await data_service.get_parking(year, month)
+        # Phase 1: Core datasets
+        elif metric == "land_cover":
+            return await data_service.get_dynamic_world(year, month, "built")
+        elif metric == "surface_water":
+            return await data_service.get_surface_water(year, month)
+        elif metric == "active_fire":
+            return await data_service.get_active_fire(year, month)
+        # Phase 2: Air quality & weather
+        elif metric == "no2":
+            return await data_service.get_no2(year, month)
+        elif metric == "temperature":
+            return await data_service.get_temperature(year, month)
+        elif metric == "precipitation":
+            return await data_service.get_precipitation(year, month)
+        elif metric == "aerosol":
+            return await data_service.get_aerosol(year, month)
+        # Phase 3: Agriculture
+        elif metric == "cropland":
+            return await data_service.get_cropland(year)
+        elif metric == "evapotranspiration":
+            return await data_service.get_evapotranspiration(year, month)
+        elif metric == "soil_moisture":
+            return await data_service.get_soil_moisture(year, month)
+        # Phase 4: Historical & specialized
+        elif metric == "impervious":
+            return await data_service.get_impervious(year)
+        elif metric == "fire_historical":
+            return await data_service.get_fire_historical(year, month)
+        elif metric == "canopy_height":
+            return await data_service.get_canopy_height()
 
         return None
 

@@ -10,6 +10,7 @@ from app.api.routes import api_router
 from app.core.config import get_settings
 from app.core.database import close_db, init_db
 from app.core.logging import get_logger, setup_logging
+from app.core.rate_limit import RateLimitMiddleware
 from app.core.redis import close_redis_client, get_redis_client
 
 settings = get_settings()
@@ -86,8 +87,10 @@ app = FastAPI(
 # CORS middleware - configurable for different environments
 cors_origins = [
     "http://localhost:5173",  # Vite dev server
+    "http://localhost:5174",  # Vite dev server (alternate port)
     "http://localhost:3000",  # React dev server
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
     "http://127.0.0.1:3000",
 ]
 
@@ -103,8 +106,26 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-Total-Count"],
+    expose_headers=["X-Request-ID", "X-Total-Count", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
     max_age=600,  # Cache preflight requests for 10 minutes
+)
+
+# Rate limiting middleware - applied after CORS
+# Anonymous: 100 req/min, Authenticated: 1000 req/min
+app.add_middleware(
+    RateLimitMiddleware,
+    anonymous_limit=100,
+    authenticated_limit=1000,
+    window_seconds=60,
+    exempt_paths=[
+        "/health",
+        "/health/live",
+        "/health/ready",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/",
+    ],
 )
 
 

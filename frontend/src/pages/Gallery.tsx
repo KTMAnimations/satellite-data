@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import type { Icon } from '@phosphor-icons/react';
 import {
   Bird,
@@ -96,6 +97,20 @@ const PRESETS = [
 ];
 
 export function Gallery() {
+  const [searchParams] = useSearchParams();
+  const highlightedPreset = searchParams.get('preset');
+  const presetRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  // Scroll to highlighted preset when navigating from Dashboard
+  useEffect(() => {
+    if (highlightedPreset && presetRefs.current[highlightedPreset]) {
+      presetRefs.current[highlightedPreset]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [highlightedPreset]);
+
   return (
     <div className="gallery">
       <header className="gallery-header">
@@ -108,7 +123,11 @@ export function Gallery() {
 
       <div className="presets-grid">
         {PRESETS.map((preset) => (
-          <article key={preset.id} className="preset-card">
+          <article
+            key={preset.id}
+            ref={(el) => (presetRefs.current[preset.id] = el)}
+            className={`preset-card ${highlightedPreset === preset.id ? 'highlighted' : ''}`}
+          >
             <div className="preset-image">
               <div className="preset-image-placeholder">
                 {(() => {

@@ -12,9 +12,28 @@ import api from '../services/api';
 import type { Region, MetricType } from '../types';
 import './AnimationStudio.css';
 
-// Parse YYYY-MM date string to local Date (avoiding UTC timezone issues)
+// Parse date string to local Date (avoiding UTC timezone issues)
+// Handles: YYYY-MM, YYYY-MM-DD, YYYY-WXX (week format)
 function parseYearMonth(dateStr: string): Date {
-  // dateStr is "YYYY-MM" or "YYYY-MM-DD" format from the API
+  // Handle week format (YYYY-WXX)
+  if (dateStr.includes('W')) {
+    const match = dateStr.match(/^(\d{4})-W(\d{2})$/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const week = parseInt(match[2], 10);
+      // Calculate the date of the first day of the given ISO week
+      // ISO week 1 is the week containing January 4th
+      const jan4 = new Date(year, 0, 4);
+      const dayOfWeek = jan4.getDay() || 7; // Sunday = 7 in ISO
+      const firstMonday = new Date(jan4);
+      firstMonday.setDate(jan4.getDate() - dayOfWeek + 1);
+      const targetDate = new Date(firstMonday);
+      targetDate.setDate(firstMonday.getDate() + (week - 1) * 7);
+      return targetDate;
+    }
+  }
+
+  // Handle YYYY-MM or YYYY-MM-DD format
   const parts = dateStr.split('-').map(Number);
   const year = parts[0];
   const month = parts[1] - 1; // Month is 0-indexed in JavaScript
@@ -22,11 +41,29 @@ function parseYearMonth(dateStr: string): Date {
   return new Date(year, month, day);
 }
 
-const METRIC_OPTIONS: { value: MetricType; label: string; description: string }[] = [
-  { value: 'nightlights', label: 'Nighttime Lights', description: 'Urban activity and population density proxy' },
-  { value: 'ndvi', label: 'NDVI', description: 'Vegetation index showing greenness' },
-  { value: 'urban_density', label: 'Urban Density', description: 'Built-up area estimation' },
-  { value: 'parking', label: 'Parking Occupancy', description: 'Parking lot fill levels' },
+const METRIC_OPTIONS: { value: MetricType; label: string; description: string; granularity: string }[] = [
+  // Original metrics
+  { value: 'nightlights', label: 'Nighttime Lights', description: 'Urban activity proxy (daily available)', granularity: 'Daily' },
+  { value: 'ndvi', label: 'NDVI', description: 'Vegetation index showing greenness', granularity: 'Weekly' },
+  { value: 'urban_density', label: 'Urban Density', description: 'Built-up area estimation', granularity: 'Monthly' },
+  { value: 'parking', label: 'Parking Occupancy', description: 'Parking lot fill levels', granularity: 'Weekly' },
+  // Phase 1: Core datasets
+  { value: 'land_cover', label: 'Land Cover', description: 'Dynamic World built-up probability', granularity: 'Monthly' },
+  { value: 'surface_water', label: 'Surface Water', description: 'JRC water extent mapping', granularity: 'Monthly' },
+  { value: 'active_fire', label: 'Active Fire', description: 'VIIRS 375m fire detections (daily)', granularity: 'Daily' },
+  // Phase 2: Air quality & weather
+  { value: 'no2', label: 'NO₂', description: 'Tropospheric nitrogen dioxide', granularity: 'Monthly' },
+  { value: 'temperature', label: 'Temperature', description: 'ERA5-Land 2m air temperature', granularity: 'Monthly' },
+  { value: 'precipitation', label: 'Precipitation', description: 'ERA5-Land total precipitation', granularity: 'Monthly' },
+  { value: 'aerosol', label: 'Aerosol', description: 'UV Aerosol Index (smoke/dust)', granularity: 'Monthly' },
+  // Phase 3: Agriculture
+  { value: 'cropland', label: 'Cropland', description: 'USDA crop type classification', granularity: 'Yearly' },
+  { value: 'evapotranspiration', label: 'Evapotranspiration', description: 'OpenET water use', granularity: 'Monthly' },
+  { value: 'soil_moisture', label: 'Soil Moisture', description: 'SMAP root-zone moisture', granularity: 'Monthly' },
+  // Phase 4: Historical & specialized
+  { value: 'impervious', label: 'Impervious Surface', description: 'GAIA urban expansion', granularity: 'Yearly' },
+  { value: 'fire_historical', label: 'Historical Fire', description: 'MODIS FIRMS archive (2000+)', granularity: 'Monthly' },
+  { value: 'canopy_height', label: 'Canopy Height', description: 'GEDI forest structure', granularity: 'Static' },
 ];
 
 const FORMAT_OPTIONS = [
@@ -35,11 +72,30 @@ const FORMAT_OPTIONS = [
 ];
 
 // Finest available granularity per metric (based on data source limitations)
+// nightlights now supports daily via NASA Black Marble VNP46A2
 const METRIC_GRANULARITY: Record<MetricType, 'daily' | 'weekly' | 'monthly'> = {
+  // Original metrics
   ndvi: 'weekly',           // Sentinel-2: 5-day revisit
   parking: 'weekly',        // Sentinel-2: 5-day revisit
-  nightlights: 'monthly',   // VIIRS: monthly composites only
+  nightlights: 'daily',     // VIIRS: daily via NASA Black Marble, monthly via NOAA composites
   urban_density: 'monthly', // GHSL: static epochs
+  // Phase 1: Core datasets
+  land_cover: 'monthly',    // Dynamic World: near real-time but monthly composites
+  surface_water: 'monthly', // JRC: monthly from 1984-2021
+  active_fire: 'daily',     // VIIRS 375m: near real-time daily
+  // Phase 2: Air quality & weather
+  no2: 'monthly',           // S5P: daily available but monthly composites for visualization
+  temperature: 'monthly',   // ERA5-Land: hourly but monthly averages
+  precipitation: 'monthly', // ERA5-Land: hourly but monthly totals
+  aerosol: 'monthly',       // S5P: daily but monthly composites
+  // Phase 3: Agriculture
+  cropland: 'monthly',      // USDA CDL: annual (use monthly for UI)
+  evapotranspiration: 'monthly', // OpenET: monthly
+  soil_moisture: 'monthly', // SMAP: 3-day revisit, monthly composites
+  // Phase 4: Historical & specialized
+  impervious: 'monthly',    // GAIA: annual snapshots 1985-2018
+  fire_historical: 'monthly', // MODIS FIRMS: daily but monthly composites
+  canopy_height: 'monthly', // GEDI: static dataset
 };
 
 export function AnimationStudio() {
@@ -132,7 +188,7 @@ export function AnimationStudio() {
     return () => clearInterval(interval);
   }, [isPlaying, availableDates, playbackSpeed]);
 
-  // Initialize current date when dates change
+  // Initialize current date when dates change or metric changes
   // Use JSON.stringify to create stable dependency (availableDates array is already memoized)
   const availableDatesKey = useMemo(
     () => availableDates.map(d => d.getTime()).join(','),
@@ -144,8 +200,11 @@ export function AnimationStudio() {
       // Find the first date that's within or after the selected date range
       const validDate = availableDates.find(d => d >= dateRange.start) || availableDates[0];
       setCurrentDate(validDate);
+    } else {
+      // Reset to date range start when no dates available (e.g., during metric switch)
+      setCurrentDate(dateRange.start);
     }
-  }, [availableDatesKey, dateRange.start]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [availableDatesKey, dateRange.start, selectedMetric]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExport = () => {
     if (!selectedRegion) return;
@@ -209,7 +268,12 @@ export function AnimationStudio() {
                 >
                   <span className={`metric-indicator metric-${option.value}`} />
                   <div className="metric-info">
-                    <span className="metric-label">{option.label}</span>
+                    <span className="metric-label">
+                      {option.label}
+                      <span className={`granularity-badge ${option.granularity.toLowerCase()}`}>
+                        {option.granularity}
+                      </span>
+                    </span>
                     <span className="metric-desc">{option.description}</span>
                   </div>
                 </button>
@@ -355,10 +419,12 @@ export function AnimationStudio() {
                 <div className="preview-header">
                   <h3>{selectedRegion.name}</h3>
                   <span className="current-date mono">
-                    {currentDate.toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                    })}
+                    {currentDate && !isNaN(currentDate.getTime())
+                      ? currentDate.toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                        })
+                      : 'Loading...'}
                   </span>
                 </div>
                 <div className="preview-map">
@@ -366,7 +432,9 @@ export function AnimationStudio() {
                     regions={[selectedRegion]}
                     selectedRegion={selectedRegion}
                     selectedMetric={selectedMetric}
-                    tileDate={currentDate.toISOString().split('T')[0]}
+                    tileDate={currentDate && !isNaN(currentDate.getTime())
+                      ? currentDate.toISOString().split('T')[0]
+                      : undefined}
                   />
                 </div>
               </>
