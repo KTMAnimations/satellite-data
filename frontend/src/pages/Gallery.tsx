@@ -1,18 +1,15 @@
 import { Link } from 'react-router-dom';
+import type { Icon } from '@phosphor-icons/react';
 import {
   Bird,
   Virus,
   Buildings,
   GraduationCap,
   AirplaneTilt,
-  Sun,
-  Lightbulb,
-  TreeEvergreen,
-  Car,
 } from '@phosphor-icons/react';
 import './Gallery.css';
 
-const PRESET_ICONS: Record<string, React.ComponentType<{ size?: number; weight?: 'duotone' | 'fill' | 'regular' }>> = {
+const PRESET_ICONS: Record<string, Icon> = {
   'snowbird': Bird,
   'covid': Virus,
   'urban-growth': Buildings,

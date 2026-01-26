@@ -40,9 +40,10 @@ interface AppState {
   setApiKey: (key: string | null) => void;
 }
 
+// Default to January 2024 - matches available tile data
 const defaultDateRange: DateRange = {
-  start: new Date(new Date().getFullYear() - 1, 0, 1),
-  end: new Date(),
+  start: new Date(2024, 0, 1),   // Jan 1, 2024
+  end: new Date(2024, 0, 31),    // Jan 31, 2024
 };
 
 export const useStore = create<AppState>()(

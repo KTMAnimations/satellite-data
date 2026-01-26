@@ -79,8 +79,14 @@ async def get_region_metrics(
             MetricDataPoint(date=date_str, value=obs.value)
         )
 
-    # Calculate seasonal summary if we have enough data
-    seasonal_summary = await calculate_seasonal_summary(db, region_id)
+    # Calculate seasonal summary within the requested time range
+    seasonal_summary = await calculate_seasonal_summary(
+        db,
+        region_id,
+        start_date=start_date,
+        end_date=end_date,
+        metrics=metrics,
+    )
 
     return MetricsResponse(
         region_id=region_id,
@@ -93,16 +99,37 @@ async def get_region_metrics(
 async def calculate_seasonal_summary(
     db: DBSession,
     region_id: str,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    metrics: list[str] | None = None,
 ) -> SeasonalSummary | None:
-    """Calculate seasonal averages for a region."""
+    """
+    Calculate seasonal averages for a region within the requested time range.
+
+    Returns None if data is not available for BOTH winter AND summer seasons.
+    A valid seasonal comparison requires data from both seasons.
+    """
     # Winter months: Dec, Jan, Feb (Northern Hemisphere)
     # Summer months: Jun, Jul, Aug
+
+    supported_metrics = {"ndvi", "nightlights", "urban_density", "parking"}
+    requested_metrics = set(metrics) if metrics else supported_metrics
+    metric_filter = sorted(supported_metrics & requested_metrics)
+    if not metric_filter:
+        return None
+
+    base_filters = [Observation.region_id == region_id]
+    if start_date:
+        base_filters.append(Observation.date >= start_date)
+    if end_date:
+        base_filters.append(Observation.date <= end_date)
+    base_filters.append(Observation.metric.in_(metric_filter))
 
     # Get winter averages
     winter_query = (
         select(Observation.metric, func.avg(Observation.value))
         .where(
-            Observation.region_id == region_id,
+            *base_filters,
             func.extract("month", Observation.date).in_([12, 1, 2]),
         )
         .group_by(Observation.metric)
@@ -114,7 +141,7 @@ async def calculate_seasonal_summary(
     summer_query = (
         select(Observation.metric, func.avg(Observation.value))
         .where(
-            Observation.region_id == region_id,
+            *base_filters,
             func.extract("month", Observation.date).in_([6, 7, 8]),
         )
         .group_by(Observation.metric)
@@ -122,31 +149,40 @@ async def calculate_seasonal_summary(
     summer_result = await db.execute(summer_query)
     summer_avgs = dict(summer_result.all())
 
-    if not winter_avgs and not summer_avgs:
+    # Require data for BOTH seasons to show a meaningful comparison
+    # Without both seasons, a seasonal comparison is misleading
+    if not winter_avgs or not summer_avgs:
         return None
 
-    # Calculate percentage change
+    # Only include metrics that have data in BOTH seasons
+    common_metrics = set(winter_avgs.keys()) & set(summer_avgs.keys())
+
+    if not common_metrics:
+        return None
+
+    # Calculate percentage change only for metrics with data in both seasons
     change_pct = {}
-    for metric in set(winter_avgs.keys()) | set(summer_avgs.keys()):
-        winter_val = winter_avgs.get(metric, 0)
-        summer_val = summer_avgs.get(metric, 0)
+    for metric in common_metrics:
+        winter_val = winter_avgs[metric]
+        summer_val = summer_avgs[metric]
         if winter_val != 0:
             change_pct[metric] = ((summer_val - winter_val) / winter_val) * 100
         else:
             change_pct[metric] = 0.0
 
+    # Only return values for metrics that exist in BOTH seasons
     return SeasonalSummary(
         winter_avg=SeasonalAverage(
-            ndvi=winter_avgs.get("ndvi"),
-            nightlights=winter_avgs.get("nightlights"),
-            urban_density=winter_avgs.get("urban_density"),
-            parking=winter_avgs.get("parking"),
+            ndvi=winter_avgs.get("ndvi") if "ndvi" in common_metrics else None,
+            nightlights=winter_avgs.get("nightlights") if "nightlights" in common_metrics else None,
+            urban_density=winter_avgs.get("urban_density") if "urban_density" in common_metrics else None,
+            parking=winter_avgs.get("parking") if "parking" in common_metrics else None,
         ),
         summer_avg=SeasonalAverage(
-            ndvi=summer_avgs.get("ndvi"),
-            nightlights=summer_avgs.get("nightlights"),
-            urban_density=summer_avgs.get("urban_density"),
-            parking=summer_avgs.get("parking"),
+            ndvi=summer_avgs.get("ndvi") if "ndvi" in common_metrics else None,
+            nightlights=summer_avgs.get("nightlights") if "nightlights" in common_metrics else None,
+            urban_density=summer_avgs.get("urban_density") if "urban_density" in common_metrics else None,
+            parking=summer_avgs.get("parking") if "parking" in common_metrics else None,
         ),
         change_pct=SeasonalAverage(
             ndvi=change_pct.get("ndvi"),

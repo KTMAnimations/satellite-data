@@ -229,7 +229,7 @@ export function AnalysisView() {
                 <MapView
                   regions={[region]}
                   selectedMetric={selectedMapMetric}
-                  tileDate={currentTimelineDate?.toISOString().split('T')[0]}
+                  tileDate={currentTimelineDate?.toISOString().split('T')[0] || dateRange.start.toISOString().split('T')[0]}
                 />
               )}
               <div className="map-legend-overlay">

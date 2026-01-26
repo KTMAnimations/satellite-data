@@ -3,6 +3,7 @@ US-Wide Tile Generator
 
 Pre-generates map tiles for the entire continental US at zoom levels 8-10.
 Tiles are stored in standard XYZ format: /{metric}/{YYYY-MM}/{z}/{x}/{y}.png
+Uses Web Mercator (EPSG:3857) projection to match XYZ tile coordinates.
 """
 
 import asyncio
@@ -23,12 +24,36 @@ logger = get_logger(__name__)
 # Tile size in pixels
 TILE_SIZE = 256
 
-# Continental US bounding box
+# Earth circumference at equator in meters (Web Mercator)
+EARTH_CIRCUMFERENCE = 40075016.686
+
+# Continental US bounding box (EPSG:4326 - lat/lon)
 US_BOUNDS = {
     "west": -125.0,
     "east": -66.0,
     "south": 24.0,
     "north": 50.0,
+}
+
+
+def lon_to_mercator_x(lon: float) -> float:
+    """Convert longitude to Web Mercator X (meters)."""
+    return lon * 20037508.34 / 180.0
+
+
+def lat_to_mercator_y(lat: float) -> float:
+    """Convert latitude to Web Mercator Y (meters)."""
+    lat_rad = math.radians(lat)
+    y = math.log(math.tan(math.pi / 4 + lat_rad / 2))
+    return y * 20037508.34 / math.pi
+
+
+# US bounds in Web Mercator (EPSG:3857)
+US_BOUNDS_MERCATOR = {
+    "west": lon_to_mercator_x(US_BOUNDS["west"]),
+    "east": lon_to_mercator_x(US_BOUNDS["east"]),
+    "south": lat_to_mercator_y(US_BOUNDS["south"]),
+    "north": lat_to_mercator_y(US_BOUNDS["north"]),
 }
 
 # Metrics to generate
@@ -51,7 +76,7 @@ def lat_to_tile_y(lat: float, zoom: int) -> int:
 
 
 def tile_bounds(z: int, x: int, y: int) -> tuple[float, float, float, float]:
-    """Get geographic bounds for a tile (west, south, east, north)."""
+    """Get geographic bounds for a tile in lat/lon (west, south, east, north)."""
     n = 2 ** z
     west = x / n * 360 - 180
     east = (x + 1) / n * 360 - 180
@@ -61,6 +86,23 @@ def tile_bounds(z: int, x: int, y: int) -> tuple[float, float, float, float]:
 
     south = math.degrees(south_rad)
     north = math.degrees(north_rad)
+
+    return (west, south, east, north)
+
+
+def tile_bounds_mercator(z: int, x: int, y: int) -> tuple[float, float, float, float]:
+    """Get tile bounds in Web Mercator meters (west, south, east, north)."""
+    n = 2 ** z
+    tile_size_meters = EARTH_CIRCUMFERENCE / n
+
+    # Web Mercator origin is at center of map
+    origin = EARTH_CIRCUMFERENCE / 2
+
+    west = x * tile_size_meters - origin
+    east = (x + 1) * tile_size_meters - origin
+    # Y increases downward in tile coordinates, but upward in Mercator
+    north = origin - y * tile_size_meters
+    south = origin - (y + 1) * tile_size_meters
 
     return (west, south, east, north)
 
@@ -257,27 +299,31 @@ class USTileGenerator:
         y: int,
         metric: str,
     ) -> np.ndarray | None:
-        """Extract a single tile from the US-wide raster."""
-        # Get tile bounds
-        tile_west, tile_south, tile_east, tile_north = tile_bounds(zoom, x, y)
+        """
+        Extract a single tile from the US-wide raster.
 
-        # Check if tile is within US bounds
-        if (tile_east < US_BOUNDS["west"] or tile_west > US_BOUNDS["east"] or
-            tile_north < US_BOUNDS["south"] or tile_south > US_BOUNDS["north"]):
+        Both the raster and tiles use Web Mercator projection (EPSG:3857).
+        """
+        # Get tile bounds in Web Mercator meters
+        tile_west, tile_south, tile_east, tile_north = tile_bounds_mercator(zoom, x, y)
+
+        # Check if tile is within US bounds (using Mercator bounds)
+        if (tile_east < US_BOUNDS_MERCATOR["west"] or tile_west > US_BOUNDS_MERCATOR["east"] or
+            tile_north < US_BOUNDS_MERCATOR["south"] or tile_south > US_BOUNDS_MERCATOR["north"]):
             return None
 
         # Calculate pixel coordinates in the US raster
         raster_height, raster_width = us_raster.shape
 
-        # US raster covers US_BOUNDS
-        us_lon_res = (US_BOUNDS["east"] - US_BOUNDS["west"]) / raster_width
-        us_lat_res = (US_BOUNDS["north"] - US_BOUNDS["south"]) / raster_height
+        # US raster covers US_BOUNDS_MERCATOR (in Web Mercator meters)
+        us_x_res = (US_BOUNDS_MERCATOR["east"] - US_BOUNDS_MERCATOR["west"]) / raster_width
+        us_y_res = (US_BOUNDS_MERCATOR["north"] - US_BOUNDS_MERCATOR["south"]) / raster_height
 
-        # Calculate source pixel coordinates
-        src_col_start = int((tile_west - US_BOUNDS["west"]) / us_lon_res)
-        src_col_end = int((tile_east - US_BOUNDS["west"]) / us_lon_res)
-        src_row_start = int((US_BOUNDS["north"] - tile_north) / us_lat_res)
-        src_row_end = int((US_BOUNDS["north"] - tile_south) / us_lat_res)
+        # Calculate source pixel coordinates (in Mercator space)
+        src_col_start = int((tile_west - US_BOUNDS_MERCATOR["west"]) / us_x_res)
+        src_col_end = int((tile_east - US_BOUNDS_MERCATOR["west"]) / us_x_res)
+        src_row_start = int((US_BOUNDS_MERCATOR["north"] - tile_north) / us_y_res)
+        src_row_end = int((US_BOUNDS_MERCATOR["north"] - tile_south) / us_y_res)
 
         # Clamp to valid range
         src_col_start = max(0, src_col_start)

@@ -8,25 +8,12 @@ import {
   FeatureGroup,
 } from 'react-leaflet';
 import { EditControl } from 'react-leaflet-draw';
-import type { LatLngBounds, LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
+import type { LatLngBounds, Map as LeafletMap } from 'leaflet';
 import { useStore } from '../../store';
 import type { Region, GeoJSONPolygon, MetricType } from '../../types';
 import api from '../../services/api';
 import './MapContainer.css';
 
-// Helper to compute bounds from GeoJSON coordinates
-function getBoundsFromGeometry(geometry: GeoJSONPolygon | undefined): LatLngBoundsExpression | undefined {
-  if (!geometry?.coordinates?.[0]) return undefined;
-
-  const coords = geometry.coordinates[0];
-  const lats = coords.map((c) => c[1]);
-  const lngs = coords.map((c) => c[0]);
-
-  return [
-    [Math.min(...lats), Math.min(...lngs)],
-    [Math.max(...lats), Math.max(...lngs)],
-  ];
-}
 
 interface MapContainerProps {
   regions?: Region[];
@@ -56,7 +43,17 @@ function MapController({
           [Math.min(...lats), Math.min(...lngs)],
           [Math.max(...lats), Math.max(...lngs)],
         ] as unknown as LatLngBounds;
+
+        // Fit bounds first, then ensure we're at z11 for tile visibility
+        // We only have z11 tiles, so zoom levels below that show empty tiles
         map.fitBounds(bounds, { padding: [50, 50] });
+
+        // After fitting, ensure minimum zoom of 11 for tile overlay visibility
+        setTimeout(() => {
+          if (map.getZoom() < 11) {
+            map.setZoom(11);
+          }
+        }, 100);
       }
     }
   }, [selectedRegion, map]);

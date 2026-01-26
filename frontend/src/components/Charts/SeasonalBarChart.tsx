@@ -19,11 +19,31 @@ const METRIC_LABELS: Record<MetricType, string> = {
 export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
+  // Prepare data - only include metrics with data in BOTH seasons
+  const metrics: MetricType[] = ['nightlights', 'ndvi', 'urban_density', 'parking'];
+  const chartData = metrics
+    .filter(
+      (m) =>
+        data.winter_avg[m] !== null &&
+        data.winter_avg[m] !== undefined &&
+        data.summer_avg[m] !== null &&
+        data.summer_avg[m] !== undefined
+    )
+    .map((metric) => ({
+      metric,
+      winter: data.winter_avg[metric] || 0,
+      summer: data.summer_avg[metric] || 0,
+      change: data.change_pct[metric] || 0,
+    }));
+
   useEffect(() => {
     if (!svgRef.current) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
+
+    // Don't render chart if no data
+    if (chartData.length === 0) return;
 
     const margin = { top: 20, right: 20, bottom: 60, left: 60 };
     const innerWidth = width - margin.left - margin.right;
@@ -32,23 +52,6 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
     const g = svg
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
-
-    // Prepare data
-    const metrics: MetricType[] = ['nightlights', 'ndvi', 'urban_density', 'parking'];
-    const chartData = metrics
-      .filter(
-        (m) =>
-          data.winter_avg[m] !== null &&
-          data.summer_avg[m] !== null
-      )
-      .map((metric) => ({
-        metric,
-        winter: data.winter_avg[metric] || 0,
-        summer: data.summer_avg[metric] || 0,
-        change: data.change_pct[metric] || 0,
-      }));
-
-    if (chartData.length === 0) return;
 
     // Scales
     const x0Scale = d3
@@ -140,7 +143,21 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
       .attr('fill', '#D97706');
 
     legend.append('text').attr('x', 86).attr('y', 10).attr('font-size', '11px').attr('fill', '#57534E').text('Summer');
-  }, [data, width, height]);
+  }, [chartData, width, height]);
+
+  // Show message when no seasonal data is available
+  if (chartData.length === 0) {
+    return (
+      <div className="chart-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height, color: '#78716C' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ margin: 0, fontSize: '14px' }}>No seasonal comparison available</p>
+          <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
+            Requires data from both winter (Dec-Feb) and summer (Jun-Aug) months
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chart-wrapper">

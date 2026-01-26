@@ -52,11 +52,11 @@ async def get_us_tile(
             detail=f"Invalid metric. Must be one of: {valid_metrics}",
         )
 
-    # Validate zoom level
-    if z < 8 or z > 10:
+    # Validate zoom level (8-11 supported)
+    if z < 8 or z > 11:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Zoom level must be between 8 and 10 for US tiles",
+            detail="Zoom level must be between 8 and 11 for US tiles",
         )
 
     # Validate year_month format

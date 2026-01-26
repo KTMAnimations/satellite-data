@@ -2,10 +2,12 @@
 US-Wide Satellite Data Service
 
 Fetches satellite data for the entire continental US for bulk tile generation.
+Uses Web Mercator (EPSG:3857) projection to match XYZ tile coordinates.
 """
 
 import asyncio
 import io
+import math
 from datetime import date
 
 import numpy as np
@@ -15,12 +17,33 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Continental US bounding box
+# Continental US bounding box (EPSG:4326 - lat/lon)
 US_BOUNDS = {
     "west": -125.0,
     "east": -66.0,
     "south": 24.0,
     "north": 50.0,
+}
+
+
+def lon_to_mercator_x(lon: float) -> float:
+    """Convert longitude to Web Mercator X (meters)."""
+    return lon * 20037508.34 / 180.0
+
+
+def lat_to_mercator_y(lat: float) -> float:
+    """Convert latitude to Web Mercator Y (meters)."""
+    lat_rad = math.radians(lat)
+    y = math.log(math.tan(math.pi / 4 + lat_rad / 2))
+    return y * 20037508.34 / math.pi
+
+
+# US bounds in Web Mercator (EPSG:3857)
+US_BOUNDS_MERCATOR = {
+    "west": lon_to_mercator_x(US_BOUNDS["west"]),
+    "east": lon_to_mercator_x(US_BOUNDS["east"]),
+    "south": lat_to_mercator_y(US_BOUNDS["south"]),
+    "north": lat_to_mercator_y(US_BOUNDS["north"]),
 }
 
 
@@ -77,7 +100,12 @@ class USDataService:
         width: int = 512,
         height: int = 512,
     ) -> np.ndarray:
-        """Fetch raster data from an Earth Engine image for a specific bounding box."""
+        """
+        Fetch raster data from an Earth Engine image for a specific bounding box.
+
+        Uses Web Mercator (EPSG:3857) projection to match XYZ tile coordinates.
+        Bounds should be provided in Web Mercator meters.
+        """
         ee = self._ee
 
         request = {
@@ -93,7 +121,7 @@ class USDataService:
                     "scaleY": -(bounds["north"] - bounds["south"]) / height,
                     "translateY": bounds["north"],
                 },
-                "crsCode": "EPSG:4326",
+                "crsCode": "EPSG:3857",  # Web Mercator to match XYZ tiles
             },
         }
 
@@ -123,11 +151,11 @@ class USDataService:
         Fetch US data by splitting into smaller chunks to avoid memory limits.
 
         Divides the US into a grid of chunks, fetches each separately,
-        and stitches them together.
+        and stitches them together. Uses Web Mercator projection.
         """
-        # Calculate chunk bounds
-        lon_step = (US_BOUNDS["east"] - US_BOUNDS["west"]) / chunks_x
-        lat_step = (US_BOUNDS["north"] - US_BOUNDS["south"]) / chunks_y
+        # Calculate chunk bounds in Web Mercator (meters)
+        x_step = (US_BOUNDS_MERCATOR["east"] - US_BOUNDS_MERCATOR["west"]) / chunks_x
+        y_step = (US_BOUNDS_MERCATOR["north"] - US_BOUNDS_MERCATOR["south"]) / chunks_y
 
         # Initialize output array
         total_width = chunk_size * chunks_x
@@ -136,11 +164,12 @@ class USDataService:
 
         for i in range(chunks_x):
             for j in range(chunks_y):
+                # Use Web Mercator bounds
                 chunk_bounds = {
-                    "west": US_BOUNDS["west"] + i * lon_step,
-                    "east": US_BOUNDS["west"] + (i + 1) * lon_step,
-                    "south": US_BOUNDS["north"] - (j + 1) * lat_step,
-                    "north": US_BOUNDS["north"] - j * lat_step,
+                    "west": US_BOUNDS_MERCATOR["west"] + i * x_step,
+                    "east": US_BOUNDS_MERCATOR["west"] + (i + 1) * x_step,
+                    "south": US_BOUNDS_MERCATOR["north"] - (j + 1) * y_step,
+                    "north": US_BOUNDS_MERCATOR["north"] - j * y_step,
                 }
 
                 try:
