@@ -1,14 +1,133 @@
+import math
 from datetime import date
 from io import BytesIO
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.dependencies import DBSession
+from app.core.logging import get_logger
 from app.models.region import Region
 
 router = APIRouter()
+logger = get_logger(__name__)
+
+
+# ============================================================================
+# US-Wide Pre-generated Tiles
+# ============================================================================
+
+@router.get("/us/{metric}/{year_month}/{z}/{x}/{y}.png")
+async def get_us_tile(
+    metric: str,
+    year_month: str,
+    z: int,
+    x: int,
+    y: int,
+) -> Response:
+    """
+    Get a pre-generated US-wide tile.
+
+    These tiles cover the entire continental US and are generated in advance
+    for fast loading. No region-specific data needed.
+
+    Args:
+        metric: One of ndvi, nightlights, urban_density, parking
+        year_month: Format YYYY-MM (e.g., 2024-01)
+        z: Zoom level (8-10)
+        x: Tile X coordinate
+        y: Tile Y coordinate
+    """
+    from pathlib import Path
+    from app.core.config import get_settings
+
+    # Validate metric
+    valid_metrics = ["ndvi", "nightlights", "urban_density", "parking"]
+    if metric not in valid_metrics:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid metric. Must be one of: {valid_metrics}",
+        )
+
+    # Validate zoom level
+    if z < 8 or z > 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Zoom level must be between 8 and 10 for US tiles",
+        )
+
+    # Validate year_month format
+    import re
+    if not re.match(r"^\d{4}-\d{2}$", year_month):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="year_month must be in format YYYY-MM",
+        )
+
+    # Look up the pre-generated tile
+    settings = get_settings()
+    tile_path = Path(settings.cache_dir) / "us_tiles" / metric / year_month / str(z) / str(x) / f"{y}.png"
+
+    if tile_path.exists():
+        return Response(
+            content=tile_path.read_bytes(),
+            media_type="image/png",
+            headers={
+                "Cache-Control": "public, max-age=604800",  # 1 week cache
+                "X-Tile-Source": "pregenerated",
+            },
+        )
+
+    # Return empty transparent tile if not found
+    from app.services.tiles.generator import create_empty_tile
+    return Response(
+        content=create_empty_tile(),
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "X-Tile-Source": "empty",
+        },
+    )
+
+
+@router.get("/us/available")
+async def get_us_available_tiles() -> dict:
+    """
+    List available pre-generated US tiles.
+
+    Returns information about which metrics and months have tiles available.
+    """
+    from pathlib import Path
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    tiles_dir = Path(settings.cache_dir) / "us_tiles"
+
+    available = {}
+
+    if tiles_dir.exists():
+        for metric_dir in tiles_dir.iterdir():
+            if metric_dir.is_dir():
+                metric = metric_dir.name
+                months = []
+                for month_dir in metric_dir.iterdir():
+                    if month_dir.is_dir():
+                        # Count tiles
+                        tile_count = sum(1 for _ in month_dir.rglob("*.png"))
+                        months.append({
+                            "year_month": month_dir.name,
+                            "tile_count": tile_count,
+                        })
+                available[metric] = sorted(months, key=lambda x: x["year_month"])
+
+    return {
+        "status": "ok",
+        "tiles_dir": str(tiles_dir),
+        "metrics": available,
+    }
 
 
 @router.get("/{region_id}/{metric}/{z}/{x}/{y}.png")
@@ -51,7 +170,7 @@ async def get_tile(
             z=z,
             x=x,
             y=y,
-            date=date,
+            tile_date=date,
         )
 
         return Response(
@@ -121,4 +240,193 @@ async def get_region_bounds(
             "lon": (min(lons) + max(lons)) / 2,
             "lat": (min(lats) + max(lats)) / 2,
         },
+    }
+
+
+def lat_lon_to_tile(lat: float, lon: float, zoom: int) -> tuple[int, int]:
+    """Convert lat/lon to tile coordinates."""
+    lat_rad = math.radians(lat)
+    n = 2 ** zoom
+    x = int((lon + 180) / 360 * n)
+    y = int((1 - math.asinh(math.tan(lat_rad)) / math.pi) / 2 * n)
+    return x, y
+
+
+class WarmTilesRequest(BaseModel):
+    """Request schema for tile warming."""
+    zoom_levels: list[int] = Field(default=[10, 11, 12], description="Zoom levels to pre-warm")
+    metrics: list[Literal["ndvi", "nightlights", "urban_density", "parking"]] = Field(
+        default=["ndvi", "nightlights", "urban_density", "parking"],
+        description="Metrics to warm",
+    )
+    dates: list[str] | None = Field(
+        default=None,
+        description="Specific dates to warm (YYYY-MM-DD). If None, warms latest data.",
+    )
+
+
+class WarmTilesResponse(BaseModel):
+    """Response for tile warming."""
+    region_id: str
+    tiles_generated: int
+    status: str
+
+
+async def _warm_tiles_background(
+    region_id: str,
+    bounds: dict,
+    zoom_levels: list[int],
+    metrics: list[str],
+    dates: list[str] | None,
+):
+    """Background task to warm tiles."""
+    from app.services.tiles.generator import TileGenerator
+
+    generator = TileGenerator()
+    tiles_generated = 0
+
+    west, south, east, north = bounds["west"], bounds["south"], bounds["east"], bounds["north"]
+
+    # Use a few representative dates if none specified
+    if dates is None:
+        dates = ["2023-01-01", "2023-06-01", "2024-01-01", "2024-06-01"]
+
+    for zoom in zoom_levels:
+        x_min, y_max = lat_lon_to_tile(north, west, zoom)
+        x_max, y_min = lat_lon_to_tile(south, east, zoom)
+
+        for metric in metrics:
+            for x in range(x_min, x_max + 1):
+                for y in range(y_min, y_max + 1):
+                    for tile_date in dates:
+                        try:
+                            await generator.generate_tile(
+                                region_id=region_id,
+                                metric=metric,
+                                z=zoom,
+                                x=x,
+                                y=y,
+                                tile_date=date.fromisoformat(tile_date),
+                            )
+                            tiles_generated += 1
+                        except Exception as e:
+                            logger.debug(f"Tile warming failed for {metric}/{zoom}/{x}/{y}: {e}")
+
+    logger.info(f"Tile warming complete for region {region_id}: {tiles_generated} tiles")
+
+
+@router.post("/{region_id}/warm")
+async def warm_tiles(
+    region_id: str,
+    request: WarmTilesRequest,
+    background_tasks: BackgroundTasks,
+    db: DBSession,
+) -> WarmTilesResponse:
+    """
+    Pre-generate tiles for a region to enable fast loading.
+
+    This endpoint generates and caches tiles at the specified zoom levels
+    for all metrics. Running this after data collection will significantly
+    improve map loading times.
+    """
+    from geoalchemy2.functions import ST_Envelope, ST_AsGeoJSON
+
+    # Get region bounds
+    result = await db.execute(
+        select(ST_AsGeoJSON(ST_Envelope(Region.geometry))).where(
+            Region.id == region_id
+        )
+    )
+    bounds_geojson = result.scalar_one_or_none()
+
+    if bounds_geojson is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Region with ID {region_id} not found",
+        )
+
+    import json
+    bounds_data = json.loads(bounds_geojson)
+    coords = bounds_data["coordinates"][0]
+    lons = [c[0] for c in coords]
+    lats = [c[1] for c in coords]
+
+    bounds = {
+        "west": min(lons),
+        "south": min(lats),
+        "east": max(lons),
+        "north": max(lats),
+    }
+
+    # Start background task
+    background_tasks.add_task(
+        _warm_tiles_background,
+        region_id,
+        bounds,
+        request.zoom_levels,
+        request.metrics,
+        request.dates,
+    )
+
+    return WarmTilesResponse(
+        region_id=region_id,
+        tiles_generated=0,  # Will be updated in background
+        status="warming_started",
+    )
+
+
+@router.post("/warm-all-presets")
+async def warm_all_preset_tiles(
+    request: WarmTilesRequest,
+    background_tasks: BackgroundTasks,
+    db: DBSession,
+) -> dict:
+    """
+    Pre-generate tiles for ALL preset regions.
+
+    This is a bulk operation that warms tiles for all predefined regions.
+    Useful for initial deployment or after bulk data collection.
+    """
+    from geoalchemy2.functions import ST_Envelope, ST_AsGeoJSON
+
+    # Get all preset regions
+    result = await db.execute(
+        select(Region.id, ST_AsGeoJSON(ST_Envelope(Region.geometry)))
+        .where(Region.type == "predefined")
+    )
+    regions = result.fetchall()
+
+    if not regions:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No preset regions found",
+        )
+
+    import json
+    for region_id, bounds_geojson in regions:
+        bounds_data = json.loads(bounds_geojson)
+        coords = bounds_data["coordinates"][0]
+        lons = [c[0] for c in coords]
+        lats = [c[1] for c in coords]
+
+        bounds = {
+            "west": min(lons),
+            "south": min(lats),
+            "east": max(lons),
+            "north": max(lats),
+        }
+
+        background_tasks.add_task(
+            _warm_tiles_background,
+            region_id,
+            bounds,
+            request.zoom_levels,
+            request.metrics,
+            request.dates,
+        )
+
+    return {
+        "message": f"Started warming tiles for {len(regions)} preset regions",
+        "regions_count": len(regions),
+        "status": "warming_started",
     }

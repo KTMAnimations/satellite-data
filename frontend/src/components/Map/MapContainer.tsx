@@ -1,9 +1,8 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer,
   GeoJSON,
-  Rectangle,
   useMap,
   useMapEvents,
   FeatureGroup,
@@ -11,7 +10,7 @@ import {
 import { EditControl } from 'react-leaflet-draw';
 import type { LatLngBounds, LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
 import { useStore } from '../../store';
-import type { Region, GeoJSONPolygon } from '../../types';
+import type { Region, GeoJSONPolygon, MetricType } from '../../types';
 import api from '../../services/api';
 import './MapContainer.css';
 
@@ -34,8 +33,8 @@ interface MapContainerProps {
   onRegionSelect?: (region: Region) => void;
   onRegionCreate?: (geometry: GeoJSONPolygon) => void;
   showDrawControls?: boolean;
-  selectedMetric?: string;
-  tileDate?: string;
+  selectedMetric?: MetricType;
+  tileDate?: string; // Date for temporal tile data (YYYY-MM-DD)
   selectedRegion?: Region | null; // Optional prop to override store's selectedRegion
 }
 
@@ -58,17 +57,6 @@ function MapController({
           [Math.max(...lats), Math.max(...lngs)],
         ] as unknown as LatLngBounds;
         map.fitBounds(bounds, { padding: [50, 50] });
-      } else if (selectedRegion.bounds) {
-        // Fallback to bounds property
-        const { minLat, maxLat, minLon, maxLon } = selectedRegion.bounds;
-        const bounds: LatLngBounds = [
-          [minLat, minLon],
-          [maxLat, maxLon],
-        ] as unknown as LatLngBounds;
-        map.fitBounds(bounds, { padding: [50, 50] });
-      } else if (selectedRegion.center) {
-        // Fallback to center
-        map.setView([selectedRegion.center.lat, selectedRegion.center.lon], 10);
       }
     }
   }, [selectedRegion, map]);
@@ -138,18 +126,16 @@ export function MapView({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Metric overlay layer - constrained to region bounds */}
-        {selectedRegion && selectedMetric && (() => {
-          const regionBounds = getBoundsFromGeometry(selectedRegion.geometry);
-          return regionBounds ? (
-            <TileLayer
-              key={`${selectedRegion.id}-${selectedMetric}-${tileDate}`}
-              url={api.getTileUrl(selectedRegion.id, selectedMetric, tileDate)}
-              opacity={0.7}
-              bounds={regionBounds}
-            />
-          ) : null;
-        })()}
+        {/* US-wide metric tile overlay - pre-generated tiles for fast loading */}
+        {selectedMetric && tileDate && (
+          <TileLayer
+            key={`us-${selectedMetric}-${api.dateToYearMonth(tileDate)}`}
+            url={api.getUSTileUrl(selectedMetric, api.dateToYearMonth(tileDate))}
+            opacity={0.7}
+            maxZoom={11}
+            minZoom={8}
+          />
+        )}
 
         {/* Region polygons - GeoJSON for regions with geometry */}
         {regions
@@ -165,26 +151,6 @@ export function MapView({
             />
           ))}
 
-        {/* Region rectangles - for demo/bounds-only regions */}
-        {regions
-          .filter((region) => !region.geometry?.coordinates && region.bounds)
-          .map((region) => {
-            const { minLat, maxLat, minLon, maxLon } = region.bounds;
-            const style = getRegionStyle(region);
-            return (
-              <Rectangle
-                key={region.id}
-                bounds={[
-                  [minLat, minLon],
-                  [maxLat, maxLon],
-                ]}
-                pathOptions={style}
-                eventHandlers={{
-                  click: () => onRegionSelect?.(region),
-                }}
-              />
-            );
-          })}
 
         {/* Draw controls */}
         {showDrawControls && (

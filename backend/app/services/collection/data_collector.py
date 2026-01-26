@@ -27,6 +27,7 @@ from app.services.features.nightlights import NightlightsExtractor
 from app.services.features.urban_density import UrbanDensityExtractor
 from app.services.features.parking import ParkingDetector
 from app.services.satellite.gee_client import GEEClient, VIIRSClient
+from app.services.collection.raster_storage import save_raster
 
 logger = get_logger(__name__)
 
@@ -270,6 +271,19 @@ class DataCollectionService:
                 # Clean metadata for JSON serialization
                 clean_metadata = clean_nan_values(result.metadata)
 
+                # Save raster to file if available
+                raster_path = None
+                if result.raster is not None and result.bounds is not None:
+                    raster_path = save_raster(
+                        raster=result.raster,
+                        bounds=result.bounds,
+                        region_id=region_id,
+                        metric=metric,
+                        obs_date=period_start,
+                    )
+                    if raster_path:
+                        logger.debug(f"Saved raster to {raster_path}")
+
                 # Store observation
                 observation = Observation(
                     id=str(uuid4()),
@@ -277,6 +291,7 @@ class DataCollectionService:
                     date=period_start,
                     metric=metric,
                     value=result.value,
+                    raster_path=raster_path,
                     extra_data=clean_metadata,
                 )
                 self.db.add(observation)
@@ -287,6 +302,7 @@ class DataCollectionService:
                     metric=metric,
                     date=str(period_start),
                     value=result.value,
+                    has_raster=raster_path is not None,
                 )
 
             except Exception as e:
@@ -352,6 +368,19 @@ class DataCollectionService:
                 # Clean metadata for JSON serialization
                 clean_metadata = clean_nan_values(result.metadata)
 
+                # Save raster to file if available
+                raster_path = None
+                if result.raster is not None and result.bounds is not None:
+                    raster_path = save_raster(
+                        raster=result.raster,
+                        bounds=result.bounds,
+                        region_id=region_id,
+                        metric="nightlights",
+                        obs_date=period_start,
+                    )
+                    if raster_path:
+                        logger.debug(f"Saved nightlights raster to {raster_path}")
+
                 # Store observation
                 observation = Observation(
                     id=str(uuid4()),
@@ -359,6 +388,7 @@ class DataCollectionService:
                     date=period_start,
                     metric="nightlights",
                     value=result.value,
+                    raster_path=raster_path,
                     extra_data=clean_metadata,
                 )
                 self.db.add(observation)

@@ -1,19 +1,26 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   DownloadSimple,
   Image,
-  Spinner,
-  CheckCircle,
-  WarningCircle,
 } from '@phosphor-icons/react';
 import { MapView } from '../components/Map/MapContainer';
 import { TimeSlider } from '../components/Charts/TimeSlider';
 import api from '../services/api';
 import type { Region, MetricType } from '../types';
 import './AnimationStudio.css';
+
+// Parse YYYY-MM date string to local Date (avoiding UTC timezone issues)
+function parseYearMonth(dateStr: string): Date {
+  // dateStr is "YYYY-MM" or "YYYY-MM-DD" format from the API
+  const parts = dateStr.split('-').map(Number);
+  const year = parts[0];
+  const month = parts[1] - 1; // Month is 0-indexed in JavaScript
+  const day = parts[2] || 1;
+  return new Date(year, month, day);
+}
 
 const METRIC_OPTIONS: { value: MetricType; label: string; description: string }[] = [
   { value: 'nightlights', label: 'Nighttime Lights', description: 'Urban activity and population density proxy' },
@@ -26,6 +33,14 @@ const FORMAT_OPTIONS = [
   { value: 'gif', label: 'GIF', description: 'Animated image, widely compatible' },
   { value: 'webm', label: 'WebM', description: 'Modern video format, smaller size' },
 ];
+
+// Finest available granularity per metric (based on data source limitations)
+const METRIC_GRANULARITY: Record<MetricType, 'daily' | 'weekly' | 'monthly'> = {
+  ndvi: 'weekly',           // Sentinel-2: 5-day revisit
+  parking: 'weekly',        // Sentinel-2: 5-day revisit
+  nightlights: 'monthly',   // VIIRS: monthly composites only
+  urban_density: 'monthly', // GHSL: static epochs
+};
 
 export function AnimationStudio() {
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
@@ -50,22 +65,26 @@ export function AnimationStudio() {
     queryFn: () => api.listRegions({ type: 'predefined', page_size: 50 }),
   });
 
-  // Fetch metrics for date generation
+  // Fetch metrics for date generation - use finest granularity per metric
+  const granularity = METRIC_GRANULARITY[selectedMetric];
   const { data: metrics } = useQuery({
-    queryKey: ['metrics', selectedRegion?.id, dateRange],
+    queryKey: ['metrics', selectedRegion?.id, selectedMetric, granularity, dateRange],
     queryFn: () =>
       api.getMetrics(selectedRegion!.id, {
         start_date: dateRange.start.toISOString().split('T')[0],
         end_date: dateRange.end.toISOString().split('T')[0],
-        granularity: 'monthly',
+        granularity,
       }),
     enabled: !!selectedRegion,
   });
 
-  // Generate date array from metrics
-  const availableDates = metrics?.metrics[selectedMetric]?.data.map(
-    (d) => new Date(d.date)
-  ) || [];
+  // Generate date array from metrics - memoized to prevent infinite loops
+  // Backend returns YYYY-MM format for monthly data
+  const availableDates = useMemo(() => {
+    const data = metrics?.metrics[selectedMetric]?.data;
+    if (!data) return [];
+    return data.map((d) => parseYearMonth(d.date));
+  }, [metrics, selectedMetric]);
 
   // Export mutation
   const exportMutation = useMutation({
@@ -114,11 +133,19 @@ export function AnimationStudio() {
   }, [isPlaying, availableDates, playbackSpeed]);
 
   // Initialize current date when dates change
+  // Use JSON.stringify to create stable dependency (availableDates array is already memoized)
+  const availableDatesKey = useMemo(
+    () => availableDates.map(d => d.getTime()).join(','),
+    [availableDates]
+  );
+
   useEffect(() => {
     if (availableDates.length > 0) {
-      setCurrentDate(availableDates[0]);
+      // Find the first date that's within or after the selected date range
+      const validDate = availableDates.find(d => d >= dateRange.start) || availableDates[0];
+      setCurrentDate(validDate);
     }
-  }, [availableDates.length]);
+  }, [availableDatesKey, dateRange.start]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExport = () => {
     if (!selectedRegion) return;

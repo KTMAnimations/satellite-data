@@ -9,6 +9,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",  # Ignore extra fields in .env
     )
 
     # Application
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
     cache_dir: str = "/data/cache"
     exports_dir: str = "/data/exports"
     regions_dir: str = "/data/regions"
+    rasters_dir: str = "/data/rasters"  # Storage for metric raster GeoTIFFs
 
     # Satellite providers - Google Earth Engine
     gee_project_id: str | None = None

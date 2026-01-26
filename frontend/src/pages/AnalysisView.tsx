@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MapView } from '../components/Map/MapContainer';
@@ -13,12 +13,30 @@ import api from '../services/api';
 import type { MetricType } from '../types';
 import './AnalysisView.css';
 
+// Parse date string to local Date (avoiding UTC timezone issues)
+// Handles both "YYYY-MM" (monthly) and "YYYY-MM-DD" (weekly/daily) formats
+function parseDate(dateStr: string): Date {
+  const parts = dateStr.split('-').map(Number);
+  const year = parts[0];
+  const month = parts[1] - 1; // Month is 0-indexed in JavaScript
+  const day = parts[2] || 1;
+  return new Date(year, month, day);
+}
+
 const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
   { value: 'nightlights', label: 'Nighttime Lights', color: '#D97706' },  // Amber-600
   { value: 'ndvi', label: 'NDVI (Vegetation)', color: '#059669' },        // Emerald-600
   { value: 'urban_density', label: 'Urban Density', color: '#7C3AED' },   // Violet-600
   { value: 'parking', label: 'Parking Occupancy', color: '#0D9488' },     // Teal-600
 ];
+
+// Finest available granularity per metric (based on data source limitations)
+const METRIC_GRANULARITY: Record<MetricType, 'daily' | 'weekly' | 'monthly'> = {
+  ndvi: 'weekly',           // Sentinel-2: 5-day revisit
+  parking: 'weekly',        // Sentinel-2: 5-day revisit
+  nightlights: 'monthly',   // VIIRS: monthly composites only
+  urban_density: 'monthly', // GHSL: static epochs
+};
 
 type ViewMode = 'charts' | 'correlation' | 'yoy';
 
@@ -39,13 +57,15 @@ export function AnalysisView() {
     enabled: !!regionId,
   });
 
+  // Use finest granularity based on selected map metric
+  const granularity = METRIC_GRANULARITY[selectedMapMetric];
   const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['metrics', regionId, dateRange],
+    queryKey: ['metrics', regionId, selectedMapMetric, granularity, dateRange],
     queryFn: () =>
       api.getMetrics(regionId!, {
         start_date: dateRange.start.toISOString().split('T')[0],
         end_date: dateRange.end.toISOString().split('T')[0],
-        granularity: 'monthly',
+        granularity,
       }),
     enabled: !!regionId,
   });
@@ -53,7 +73,7 @@ export function AnalysisView() {
   // Generate timeline dates from metrics
   const timelineDates = useMemo(() => {
     if (!metrics?.metrics[selectedMapMetric]?.data) return [];
-    return metrics.metrics[selectedMapMetric].data.map((d) => new Date(d.date));
+    return metrics.metrics[selectedMapMetric].data.map((d) => parseDate(d.date));
   }, [metrics, selectedMapMetric]);
 
   // Generate Year-over-Year data
@@ -114,12 +134,13 @@ export function AnalysisView() {
     return points;
   }, [metrics, correlationMetricX, correlationMetricY]);
 
-  // Initialize timeline date
-  useMemo(() => {
-    if (timelineDates.length > 0 && !currentTimelineDate) {
+  // Initialize and reset timeline date when dates change
+  useEffect(() => {
+    if (timelineDates.length > 0) {
+      // Always reset to first date when timeline dates change
       setCurrentTimelineDate(timelineDates[0]);
     }
-  }, [timelineDates, currentTimelineDate]);
+  }, [timelineDates]);
 
   if (!regionId) {
     return (
@@ -273,6 +294,17 @@ export function AnalysisView() {
               />
             </div>
             <div className="date-presets">
+              <button
+                className="preset-btn"
+                onClick={() =>
+                  setDateRange({
+                    start: new Date(2024, 0, 1),
+                    end: new Date(2024, 0, 31),
+                  })
+                }
+              >
+                Jan 2024
+              </button>
               <button
                 className="preset-btn"
                 onClick={() =>

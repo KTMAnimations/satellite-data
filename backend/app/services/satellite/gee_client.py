@@ -759,17 +759,20 @@ class VIIRSClient(BaseSatelliteClient):
             )
 
             # Download actual data using computePixels
+            # Use 512x512 for higher resolution nightlights visualization
+            # VIIRS native resolution is ~375m, so 512 gives better detail
+            grid_size = 512
             request = {
                 "expression": img,
                 "fileFormat": "NPY",
                 "grid": {
-                    "dimensions": {"width": 256, "height": 256},
+                    "dimensions": {"width": grid_size, "height": grid_size},
                     "affineTransform": {
-                        "scaleX": (east - west) / 256,
+                        "scaleX": (east - west) / grid_size,
                         "shearX": 0,
                         "translateX": west,
                         "shearY": 0,
-                        "scaleY": -(north - south) / 256,
+                        "scaleY": -(north - south) / grid_size,
                         "translateY": north,
                     },
                     "crsCode": "EPSG:4326",
@@ -792,8 +795,13 @@ class VIIRSClient(BaseSatelliteClient):
                 data = data.astype(np.float32)
             except Exception as e:
                 logger.error("Failed to download VIIRS image", error=str(e))
-                data = np.zeros((1, 256, 256), dtype=np.float32)
+                data = np.zeros((1, grid_size, grid_size), dtype=np.float32)
 
+            # Calculate actual resolution based on grid size and bounds
+            actual_resolution = max(
+                (east - west) * 111000 / grid_size,  # approx meters per pixel (lon)
+                (north - south) * 111000 / grid_size  # approx meters per pixel (lat)
+            )
             results.append(
                 SatelliteImagery(
                     data=data,
@@ -802,7 +810,7 @@ class VIIRSClient(BaseSatelliteClient):
                     date=img_date,
                     source="VIIRS DNB (GEE)",
                     bands=["avg_rad"],
-                    resolution=375.0,
+                    resolution=actual_resolution,
                     metadata=info["properties"],
                 )
             )

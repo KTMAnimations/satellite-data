@@ -43,8 +43,16 @@ Detecting individual cars requires **5-30cm resolution**, but free satellite dat
 
 **Temporal Analysis:**
 - Full Sentinel-2 archive (2015+)
-- Granularity: As fine as possible (aim for weekly where cloud-free, fall back to monthly)
+- Granularity: Finest possible per data source (see table below)
 - Seasonal comparisons (winter vs summer)
+
+**Temporal Resolution by Metric:**
+| Metric | Data Source | Finest Resolution | Notes |
+|--------|-------------|-------------------|-------|
+| NDVI | Sentinel-2 | 5 days | Individual cloud-free scenes |
+| Parking/NDBI | Sentinel-2 | 5 days | Individual cloud-free scenes |
+| Nightlights | VIIRS | Monthly | Dataset only provides monthly composites |
+| Urban Density | GHSL | Multi-year epochs | Static snapshots (2015, 2020, 2025) |
 
 **Proxy Metrics:**
 - Nighttime lights intensity (VIIRS)
@@ -88,13 +96,13 @@ Detecting individual cars requires **5-30cm resolution**, but free satellite dat
 ### 3.2 Data Sources (Multi-Provider Strategy)
 
 **Primary Sources:**
-| Source | Data Type | Resolution | Access Method |
-|--------|-----------|------------|---------------|
-| Sentinel-2 | Optical imagery | 10m | GEE, Copernicus, Planetary Computer |
-| VIIRS | Nighttime lights | 375m-750m | GEE, NOAA |
-| Global Human Settlement Layer | Built-up areas | 10m | GEE |
-| OpenStreetMap | Road networks, POIs | Vector | Overpass API |
-| WorldPop | Population density | 100m | Direct download |
+| Source | Data Type | Spatial Res | Temporal Res | Access Method |
+|--------|-----------|-------------|--------------|---------------|
+| Sentinel-2 | Optical imagery | 10m | 5 days | GEE, Copernicus, Planetary Computer |
+| VIIRS | Nighttime lights | 375m-750m | Monthly composite | GEE, NOAA |
+| Global Human Settlement Layer | Built-up areas | 10m | Multi-year epochs | GEE |
+| OpenStreetMap | Road networks, POIs | Vector | Continuous | Overpass API |
+| WorldPop | Population density | 100m | Annual | Direct download |
 
 **Alternative/Supplementary Platforms (to reduce GEE dependency):**
 | Platform | Access | Notes |

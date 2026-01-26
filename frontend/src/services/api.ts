@@ -160,8 +160,28 @@ class APIClient {
     return url;
   }
 
+  // US-wide pre-generated tiles (much faster, no region needed)
+  getUSTileUrl(metric: string, yearMonth: string): string {
+    // yearMonth should be in format YYYY-MM (e.g., "2024-01")
+    return `${API_BASE_URL}/tiles/us/${metric}/${yearMonth}/{z}/{x}/{y}.png`;
+  }
+
+  // Convert date (YYYY-MM-DD) to year-month (YYYY-MM)
+  dateToYearMonth(date: string): string {
+    return date.substring(0, 7);
+  }
+
   async getRegionBounds(regionId: string): Promise<RegionBounds> {
     const response = await this.client.get<RegionBounds>(`/tiles/${regionId}/bounds`);
+    return response.data;
+  }
+
+  // Check which US tiles are available
+  async getUSAvailableTiles(): Promise<{
+    status: string;
+    metrics: Record<string, Array<{ year_month: string; tile_count: number }>>;
+  }> {
+    const response = await this.client.get('/tiles/us/available');
     return response.data;
   }
 

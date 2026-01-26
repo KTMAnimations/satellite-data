@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer,
@@ -155,16 +155,12 @@ export function SplitScreenCompare({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-          {(() => {
-            const regionBounds = getBoundsFromGeometry(region.geometry);
-            return regionBounds ? (
-              <TileLayer
-                url={api.getTileUrl(region.id, metric, dateA)}
-                opacity={0.8}
-                bounds={regionBounds}
-              />
-            ) : null;
-          })()}
+          <TileLayer
+            url={api.getUSTileUrl(metric, api.dateToYearMonth(dateA))}
+            opacity={0.8}
+            maxZoom={11}
+            minZoom={8}
+          />
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
           {mapB && <SyncedMap targetMap={mapB} onMove={handleMapMove} />}
         </LeafletMapContainer>
@@ -205,16 +201,12 @@ export function SplitScreenCompare({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-          {(() => {
-            const regionBounds = getBoundsFromGeometry(region.geometry);
-            return regionBounds ? (
-              <TileLayer
-                url={api.getTileUrl(region.id, metric, dateB)}
-                opacity={0.8}
-                bounds={regionBounds}
-              />
-            ) : null;
-          })()}
+          <TileLayer
+            url={api.getUSTileUrl(metric, api.dateToYearMonth(dateB))}
+            opacity={0.8}
+            maxZoom={11}
+            minZoom={8}
+          />
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
           {mapA && <SyncedMap targetMap={mapA} onMove={handleMapMove} />}
         </LeafletMapContainer>

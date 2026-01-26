@@ -102,11 +102,27 @@ export function TimeSlider({
         .attr('stroke-width', 1);
     });
 
+    // Determine appropriate tick format based on date granularity
+    const dateSpanDays = sortedDates.length > 1
+      ? (sortedDates[sortedDates.length - 1].getTime() - sortedDates[0].getTime()) / (1000 * 60 * 60 * 24)
+      : 0;
+    const avgGapDays = sortedDates.length > 1
+      ? dateSpanDays / (sortedDates.length - 1)
+      : 30;
+
+    // Choose format based on granularity
+    const tickFormat = avgGapDays <= 14
+      ? d3.timeFormat('%b %d')   // Daily/weekly: "Jan 15"
+      : d3.timeFormat('%b %Y');  // Monthly: "Jan 2024"
+    const labelFormat = avgGapDays <= 14
+      ? d3.timeFormat('%b %d, %Y')  // Daily/weekly: "Jan 15, 2024"
+      : d3.timeFormat('%b %Y');     // Monthly: "Jan 2024"
+
     // Axis
     const xAxis = d3
       .axisBottom(xScale)
-      .ticks(5)
-      .tickFormat((d) => d3.timeFormat('%b %Y')(d as Date));
+      .ticks(Math.min(sortedDates.length, 6))
+      .tickFormat((d) => tickFormat(d as Date));
 
     g.append('g')
       .attr('class', 'axis')
@@ -136,7 +152,7 @@ export function TimeSlider({
       .attr('font-family', 'var(--font-mono)')
       .attr('font-size', '11px')
       .attr('fill', 'var(--text-primary)')
-      .text(d3.timeFormat('%b %d, %Y')(selectedDate));
+      .text(labelFormat(selectedDate));
 
     // Interactive overlay
     const overlay = g
@@ -155,12 +171,14 @@ export function TimeSlider({
       // trackRef is available for external access if needed
     }
 
-    // Drag behavior
+    // Drag behavior - get coordinates relative to SVG then subtract margin
     const drag = d3
       .drag<SVGRectElement, unknown>()
       .on('start', () => setIsDragging(true))
       .on('drag', (event) => {
-        const x = Math.max(0, Math.min(innerWidth, event.x));
+        // Get pointer relative to SVG element, then subtract left margin
+        const [svgX] = d3.pointer(event.sourceEvent, svg.node());
+        const x = Math.max(0, Math.min(innerWidth, svgX - margin.left));
         const closestDate = findClosestDate(x);
         onDateChange(closestDate);
       })
@@ -168,9 +186,10 @@ export function TimeSlider({
 
     overlay.call(drag);
 
-    // Click to jump
+    // Click to jump - get coordinates relative to SVG then subtract margin
     overlay.on('click', (event) => {
-      const [x] = d3.pointer(event);
+      const [svgX] = d3.pointer(event, svg.node());
+      const x = Math.max(0, Math.min(innerWidth, svgX - margin.left));
       const closestDate = findClosestDate(x);
       onDateChange(closestDate);
     });
