@@ -237,15 +237,33 @@ class DataCollectionService:
                     logger.debug(f"Observation already exists: {metric} {period_start}")
                     continue
 
-                # Get composite imagery for the period
-                imagery = await self.gee_client.get_composite(
-                    geometry=geometry,
-                    start_date=period_start,
-                    end_date=period_end,
-                    bands=bands,
-                    max_cloud_cover=20.0,
-                    composite_method="median",
-                )
+                # Get composite imagery for the period.
+                #
+                # Some regions/seasons (e.g., South Florida summer) often have
+                # no Sentinel-2 scenes below a strict CLOUDY_PIXEL_PERCENTAGE cut.
+                # We already apply an SCL-based cloud mask, so if the strict
+                # filter yields nothing, progressively relax the threshold to
+                # avoid missing entire months.
+                imagery = None
+                for cloud_threshold in (20.0, 40.0, 80.0, 100.0):
+                    imagery = await self.gee_client.get_composite(
+                        geometry=geometry,
+                        start_date=period_start,
+                        end_date=period_end,
+                        bands=bands,
+                        max_cloud_cover=cloud_threshold,
+                        composite_method="median",
+                    )
+                    if imagery is not None:
+                        if cloud_threshold != 20.0:
+                            logger.info(
+                                "Relaxed cloud threshold for composite",
+                                region=region_name,
+                                metric=metric,
+                                period=f"{period_start} to {period_end}",
+                                cloud_threshold=cloud_threshold,
+                            )
+                        break
 
                 if imagery is None:
                     logger.warning(

@@ -72,6 +72,9 @@ export function SmallMultiples({
     if (!containerRef.current || regions.length === 0) return;
 
     const container = d3.select(containerRef.current);
+
+    // Interrupt any ongoing transitions and clear previous content
+    container.selectAll('*').interrupt();
     container.selectAll('*').remove();
 
     // Calculate global scales for consistency
@@ -207,6 +210,15 @@ export function SmallMultiples({
         .attr('font-size', '9px')
         .text(region.data[region.data.length - 1].value.toFixed(2));
     });
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (containerRef.current) {
+        const container = d3.select(containerRef.current);
+        container.selectAll('*').interrupt();
+        container.selectAll('*').on('.', null); // Remove all event listeners
+      }
+    };
   }, [regions, metric, columns, cellWidth, cellHeight, onRegionClick]);
 
   return (

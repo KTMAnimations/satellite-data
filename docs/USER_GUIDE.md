@@ -39,7 +39,7 @@ In the **Analysis View**, you can:
 1. Select which metrics to display (e.g., NDVI, Nightlights, Urban Density)
 2. Choose a date range using the calendar or presets
 3. View time series charts showing metric trends
-4. See the metric overlay on the map
+4. See the metric overlay on the map (zoom in for best performance and detail)
 5. Export your analysis
 
 ---
@@ -249,6 +249,7 @@ At 10-meter resolution (Sentinel-2), we cannot detect individual vehicles or peo
 - Check your internet connection
 - Try refreshing the page
 - Zoom out and zoom back in
+- If the metric overlay is hidden, zoom in (overlays appear at higher zoom levels)
 
 ### Export failed
 
@@ -260,6 +261,7 @@ At 10-meter resolution (Sentinel-2), we cannot detect individual vehicles or peo
 
 - Reduce the date range
 - Select fewer metrics
+- Zoom in on the map before enabling overlays/animations
 - Use Chrome or Firefox for best performance
 
 ---

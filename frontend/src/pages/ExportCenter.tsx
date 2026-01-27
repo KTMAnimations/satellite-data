@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -90,6 +90,43 @@ export function ExportCenter() {
       }),
     onSuccess: (data) => setExports((prev) => [data, ...prev]),
   });
+
+  // Poll for export status updates
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Check if any exports are pending or processing
+    const pendingExports = exports.filter(
+      (exp) => exp.status === 'pending' || exp.status === 'processing'
+    );
+
+    if (pendingExports.length > 0) {
+      // Start polling
+      pollIntervalRef.current = setInterval(async () => {
+        const updatedExports = await Promise.all(
+          exports.map(async (exp) => {
+            if (exp.status === 'pending' || exp.status === 'processing') {
+              try {
+                const updated = await api.getExportStatus(exp.id);
+                return updated;
+              } catch {
+                return exp;
+              }
+            }
+            return exp;
+          })
+        );
+        setExports(updatedExports);
+      }, 2000); // Poll every 2 seconds
+    }
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [exports]);
 
   const handleExport = () => {
     if (!selectedRegionId) {

@@ -30,6 +30,16 @@
   min-width: 120px;
 }
 
+.map-overlay-hint {
+  background: var(--color-surface);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  max-width: 220px;
+}
+
 .legend-title {
   display: block;
   font-size: 0.75rem;

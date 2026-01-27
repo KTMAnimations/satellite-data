@@ -84,21 +84,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware - configurable for different environments
-cors_origins = [
-    "http://localhost:5173",  # Vite dev server
-    "http://localhost:5174",  # Vite dev server (alternate port)
-    "http://localhost:3000",  # React dev server
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:3000",
-]
-
-# Add production origins in non-development environments
-if settings.environment != "development":
-    # Add your production domains here
-    # cors_origins.append("https://your-domain.com")
-    pass
+# CORS middleware - configure via env `CORS_ORIGINS`
+# (comma-separated or JSON list; see `app/core/config.py`)
+cors_origins = settings.cors_origins
 
 app.add_middleware(
     CORSMiddleware,

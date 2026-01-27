@@ -38,6 +38,7 @@ class AnimationGenerator:
         frame_duration_ms: int = 500,
         width: int = 800,
         height: int = 600,
+        export_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Generate an animation for a metric over time.
@@ -93,14 +94,17 @@ class AnimationGenerator:
         output_dir = Path(self.settings.exports_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Use export_id for filename if provided (for API exports), else use region/metric naming
+        base_name = export_id if export_id else f"{region_id}_{metric}_animation"
+
         if format == "gif":
-            output_path = output_dir / f"{region_id}_{metric}_animation.gif"
+            output_path = output_dir / f"{base_name}.gif"
             self._save_gif(frames, output_path, frame_duration_ms)
         elif format == "webm":
-            output_path = output_dir / f"{region_id}_{metric}_animation.webm"
+            output_path = output_dir / f"{base_name}.webm"
             self._save_webm(frames, output_path, frame_duration_ms)
         else:  # frames
-            output_path = output_dir / f"{region_id}_{metric}_frames"
+            output_path = output_dir / f"{base_name}_frames"
             output_path.mkdir(exist_ok=True)
             self._save_frames(frames, output_path)
 
@@ -181,9 +185,10 @@ class AnimationGenerator:
 
             # Convert to image array
             fig.canvas.draw()
-            frame = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            frame = frame.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            frames.append(frame)
+            # Use buffer_rgba() which works in newer matplotlib versions
+            rgba = np.asarray(fig.canvas.buffer_rgba())
+            frame = rgba[:, :, :3]  # Remove alpha channel
+            frames.append(frame.copy())
 
             plt.close(fig)
 
@@ -221,9 +226,10 @@ class AnimationGenerator:
 
                 # Convert to array
                 fig.canvas.draw()
-                frame = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-                frame = frame.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-                frames.append(frame)
+                # Use buffer_rgba() which works in newer matplotlib versions
+                rgba = np.asarray(fig.canvas.buffer_rgba())
+                frame = rgba[:, :, :3]  # Remove alpha channel
+                frames.append(frame.copy())
 
                 plt.close(fig)
 
@@ -350,9 +356,10 @@ class FlowAnimationGenerator:
 
             # Convert to array
             fig.canvas.draw()
-            frame = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            frame = frame.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            frames.append(frame)
+            # Use buffer_rgba() which works in newer matplotlib versions
+            rgba = np.asarray(fig.canvas.buffer_rgba())
+            frame = rgba[:, :, :3]  # Remove alpha channel
+            frames.append(frame.copy())
 
             plt.close(fig)
 

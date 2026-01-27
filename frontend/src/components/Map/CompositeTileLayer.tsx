@@ -8,27 +8,38 @@ interface CompositeTileLayerProps {
   minZoom?: number; // Minimum zoom to allow (default: 4)
   maxZoom?: number; // Maximum zoom to allow (default: 11)
   opacity?: number;
+  /**
+   * Prevents extremely expensive client-side compositing at very low zooms.
+   * Example: nativeZoom=11 and z=4 would require 128×128=16,384 source tiles per displayed tile.
+   */
+  maxCompositeZoomDiff?: number; // Default: 2 (i.e., allow compositing down to z9 when nativeZoom=11)
 }
 
-// Helper to load images with caching
+// Maximum cache size - keep small to avoid memory issues
+// Reduced from 100 to 50 for better memory usage
+const MAX_CACHE_SIZE = 50;
+
+// Helper to load images with LRU-style caching
 function loadImage(
   url: string,
   cache: Map<string, HTMLImageElement>
 ): Promise<HTMLImageElement | null> {
-  // Check cache first
+  // Check cache first - move to end to mark as recently used
   if (cache.has(url)) {
-    return Promise.resolve(cache.get(url)!);
+    const img = cache.get(url)!;
+    cache.delete(url);
+    cache.set(url, img);
+    return Promise.resolve(img);
   }
 
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      // Cache the image (limit cache size)
-      if (cache.size > 500) {
-        // Remove oldest entries
-        const keysToDelete = Array.from(cache.keys()).slice(0, 100);
-        keysToDelete.forEach((k) => cache.delete(k));
+      // Evict oldest entries if at capacity (LRU eviction)
+      while (cache.size >= MAX_CACHE_SIZE) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey) cache.delete(oldestKey);
       }
       cache.set(url, img);
       resolve(img);
@@ -56,6 +67,7 @@ export function CompositeTileLayer({
   minZoom = 4,
   maxZoom = 11,
   opacity = 0.7,
+  maxCompositeZoomDiff = 2,
 }: CompositeTileLayerProps) {
   const map = useMap();
   const layerRef = useRef<L.GridLayer | null>(null);
@@ -95,8 +107,16 @@ export function CompositeTileLayer({
           })
           .catch(() => done(undefined, tile));
       } else {
-        // Below native zoom - need to composite multiple tiles
         const zoomDiff = nativeZoom - z;
+
+        // Bail out if compositing would require too many source tiles.
+        // This keeps the browser responsive when zoomed far out.
+        if (zoomDiff > maxCompositeZoomDiff) {
+          done(undefined, tile);
+          return tile;
+        }
+
+        // Below native zoom - need to composite multiple tiles
         const scale = Math.pow(2, zoomDiff);
         const tilesPerSide = scale;
 
@@ -160,6 +180,9 @@ export function CompositeTileLayer({
       maxZoom,
       opacity,
       tileSize: 256,
+      // Performance: avoid extra tile work while panning/zooming and keep fewer offscreen tiles in memory.
+      updateWhenIdle: true,
+      keepBuffer: 1,
     }) as L.GridLayer;
 
     layer.addTo(map);
@@ -170,6 +193,8 @@ export function CompositeTileLayer({
         map.removeLayer(layerRef.current);
         layerRef.current = null;
       }
+      // Clear tile cache to free memory
+      tileCacheRef.current.clear();
     };
   }, [map, baseUrl, nativeZoom, minZoom, maxZoom, opacity]);
 

@@ -58,10 +58,19 @@ export function TimeSeriesChart({
 }: TimeSeriesChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
+  // Check if there's actual data to display
+  const hasData = selectedMetrics.some((metric) => {
+    const metricData = data[metric];
+    return metricData && metricData.data && metricData.data.length > 0;
+  });
+
   useEffect(() => {
-    if (!svgRef.current || selectedMetrics.length === 0) return;
+    if (!svgRef.current || selectedMetrics.length === 0 || !hasData) return;
 
     const svg = d3.select(svgRef.current);
+
+    // Interrupt any ongoing transitions and clear previous content
+    svg.selectAll('*').interrupt();
     svg.selectAll('*').remove();
 
     const margin = { top: 20, right: 80, bottom: 40, left: 50 };
@@ -187,7 +196,33 @@ export function TimeSeriesChart({
         .attr('font-size', '11px')
         .text(METRIC_LABELS[metric]);
     });
-  }, [data, selectedMetrics, width, height]);
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (svgRef.current) {
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('*').interrupt();
+        svg.selectAll('*').on('.', null); // Remove all event listeners
+      }
+    };
+  }, [data, selectedMetrics, width, height, hasData]);
+
+  // Show message when no data is available
+  if (!hasData) {
+    return (
+      <div className="chart-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height, color: '#78716C' }}>
+        <div style={{ textAlign: 'center' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.5, marginBottom: '12px' }}>
+            <path d="M3 3v18h18" />
+            <path d="M7 16l4-4 4 4 5-6" opacity="0.3" />
+          </svg>
+          <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>No data collected for this region</p>
+          <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
+            Run data collection to populate metrics for this time period
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chart-wrapper">

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Bird,
   Virus,
@@ -18,6 +18,7 @@ import api from '../services/api';
 import './Dashboard.css';
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const { data: regionsData } = useQuery({
     queryKey: ['regions', { type: 'predefined', page_size: 100 }],
     queryFn: () => api.listRegions({ type: 'predefined', page_size: 100 }),
@@ -106,7 +107,7 @@ export function Dashboard() {
           <MapView
             regions={regionsData?.regions || []}
             onRegionSelect={(region) => {
-              window.location.href = `/regions/${region.id}`;
+              navigate(`/regions/${region.id}`);
             }}
           />
         </div>

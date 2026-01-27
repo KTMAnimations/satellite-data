@@ -53,6 +53,9 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
     if (!svgRef.current) return;
 
     const svg = d3.select(svgRef.current);
+
+    // Interrupt any ongoing transitions and clear previous content
+    svg.selectAll('*').interrupt();
     svg.selectAll('*').remove();
 
     // Don't render chart if no data
@@ -156,6 +159,15 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
       .attr('fill', '#D97706');
 
     legend.append('text').attr('x', 86).attr('y', 10).attr('font-size', '11px').attr('fill', '#57534E').text('Summer');
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (svgRef.current) {
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('*').interrupt();
+        svg.selectAll('*').on('.', null); // Remove all event listeners
+      }
+    };
   }, [chartData, width, height]);
 
   // Show message when no seasonal data is available

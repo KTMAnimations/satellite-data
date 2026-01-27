@@ -55,6 +55,9 @@ export function RegionalRankingChart({
     if (!svgRef.current || data.length === 0) return;
 
     const svg = d3.select(svgRef.current);
+
+    // Interrupt any ongoing transitions and clear previous content
+    svg.selectAll('*').interrupt();
     svg.selectAll('*').remove();
 
     const margin = { top: 40, right: 100, bottom: 20, left: 120 };
@@ -191,6 +194,15 @@ export function RegionalRankingChart({
       .attr('font-family', 'var(--font-display)')
       .attr('font-size', '16px')
       .text(title);
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (svgRef.current) {
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('*').interrupt();
+        svg.selectAll('*').on('.', null); // Remove all event listeners
+      }
+    };
   }, [data, metric, title, width, height, maxItems, onRegionClick]);
 
   return (

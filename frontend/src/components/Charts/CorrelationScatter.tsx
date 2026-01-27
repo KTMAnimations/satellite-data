@@ -90,11 +90,15 @@ export function CorrelationScatter({
   showTrendline = true,
 }: CorrelationScatterProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const hasData = data && data.length > 0;
 
   useEffect(() => {
-    if (!svgRef.current || data.length === 0) return;
+    if (!svgRef.current || !hasData) return;
 
     const svg = d3.select(svgRef.current);
+
+    // Interrupt any ongoing transitions and clear previous content
+    svg.selectAll('*').interrupt();
     svg.selectAll('*').remove();
 
     const margin = { top: 40, right: 30, bottom: 60, left: 60 };
@@ -204,16 +208,18 @@ export function CorrelationScatter({
         .text(`R² = ${r2.toFixed(3)}`);
     }
 
-    // Data points
+    // Check for reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Data points - limit staggered animation to avoid performance issues
     const points = g.selectAll('.point').data(data);
 
-    points
+    const pointSelection = points
       .enter()
       .append('circle')
       .attr('class', 'point')
       .attr('cx', (d) => xScale(d.x))
       .attr('cy', (d) => yScale(d.y))
-      .attr('r', 0)
       .attr('fill', METRIC_COLORS[yMetric])
       .attr('fill-opacity', 0.7)
       .attr('stroke', 'var(--surface-panel)')
@@ -238,11 +244,18 @@ export function CorrelationScatter({
       .on('mouseleave', function () {
         d3.select(this).attr('r', 6).attr('fill-opacity', 0.7);
         d3.select('.chart-tooltip').style('opacity', 0);
-      })
-      .transition()
-      .duration(500)
-      .delay((_, i) => i * 20)
-      .attr('r', 6);
+      });
+
+    // Apply animation only if not reduced motion, without staggered delays
+    if (prefersReducedMotion) {
+      pointSelection.attr('r', 6);
+    } else {
+      pointSelection
+        .attr('r', 0)
+        .transition()
+        .duration(300)
+        .attr('r', 6);
+    }
 
     // Title
     svg
@@ -254,7 +267,35 @@ export function CorrelationScatter({
       .attr('font-family', 'var(--font-display)')
       .attr('font-size', '16px')
       .text(`${METRIC_LABELS[xMetric]} vs ${METRIC_LABELS[yMetric]}`);
-  }, [data, xMetric, yMetric, width, height, showTrendline]);
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (svgRef.current) {
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('*').interrupt();
+        svg.selectAll('*').on('.', null); // Remove all event listeners
+      }
+    };
+  }, [data, xMetric, yMetric, width, height, showTrendline, hasData]);
+
+  // Show message when no data is available
+  if (!hasData) {
+    return (
+      <div className="chart-wrapper correlation-chart" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height, color: '#78716C' }}>
+        <div style={{ textAlign: 'center' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.5, marginBottom: '12px' }}>
+            <circle cx="7.5" cy="7.5" r="2.5" />
+            <circle cx="16.5" cy="16.5" r="2.5" />
+            <path d="M7.5 16.5L16.5 7.5" />
+          </svg>
+          <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>No correlation data available</p>
+          <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
+            Requires collected data for both selected metrics
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chart-wrapper correlation-chart">

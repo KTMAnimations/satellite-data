@@ -36,6 +36,22 @@ npm install
 npm run dev
 ```
 
+## GitHub Pages (Frontend Only)
+
+GitHub Pages can host the **static frontend** (`frontend/`), but it **cannot** run the FastAPI backend (`backend/`) or workers.
+
+This repo includes a Pages deploy workflow at `.github/workflows/deploy-pages.yml` that builds and publishes `frontend/dist`.
+
+Required config:
+
+- **Backend must be hosted elsewhere** (Docker, a VM, etc) and must allow your Pages origin via `CORS_ORIGINS`.
+- In GitHub repo settings, set a repository variable `VITE_API_URL` to your API base (example: `https://api.example.com/api/v1`).
+
+Notes:
+
+- The workflow sets `VITE_ROUTER_MODE=hash` to avoid SPA refresh 404s on GitHub Pages (`/#/regions`, etc).
+- If you deploy somewhere that supports SPA rewrites, set `VITE_ROUTER_MODE=browser` (or unset it) for clean URLs.
+
 ## Architecture
 
 ```

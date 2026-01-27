@@ -59,6 +59,9 @@ export function TimeSlider({
     if (!svgRef.current) return;
 
     const svg = d3.select(svgRef.current);
+
+    // Interrupt any ongoing transitions and clear previous content
+    svg.selectAll('*').interrupt();
     svg.selectAll('*').remove();
 
     const g = svg
@@ -193,6 +196,15 @@ export function TimeSlider({
       const closestDate = findClosestDate(x);
       onDateChange(closestDate);
     });
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (svgRef.current) {
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('*').interrupt();
+        svg.selectAll('*').on('.', null); // Remove all event listeners
+      }
+    };
   }, [dates, selectedDate, width, innerWidth, xScale, findClosestDate, onDateChange]);
 
   // Playback effect

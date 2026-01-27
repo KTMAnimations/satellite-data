@@ -59,7 +59,7 @@ export function FlowLayer({
   connections: explicitConnections,
   animated = true,
   speed = 1,
-  particleCount = 5,
+  particleCount = 3, // Reduced from 5 for better performance
   color = '#3B82F6',
   showLabels = true,
   minIntensity = 0.1,
@@ -67,6 +67,15 @@ export function FlowLayer({
   const map = useMap();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const animationRef = useRef<number | null>(null);
+  const isMountedRef = useRef<boolean>(true);
+
+  // Check for reduced motion preference
+  const prefersReducedMotion = typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false;
+
+  // Disable animation if user prefers reduced motion
+  const shouldAnimate = animated && !prefersReducedMotion;
 
   // Infer connections from point values if not provided
   const connections = useMemo(() => {
@@ -102,6 +111,9 @@ export function FlowLayer({
   // Create or update SVG overlay
   useEffect(() => {
     if (!map || connections.length === 0) return;
+
+    // Reset mounted flag when effect runs
+    isMountedRef.current = true;
 
     // Create SVG pane if it doesn't exist
     let pane = map.getPane('flowPane');
@@ -193,8 +205,8 @@ export function FlowLayer({
         .attr('marker-end', 'url(#flow-arrow)')
         .attr('class', 'flow-path');
 
-      // Add animated particles if enabled
-      if (animated) {
+      // Add animated particles if enabled (respects reduced motion preference)
+      if (shouldAnimate) {
         const pathLength = (path.node() as SVGPathElement).getTotalLength();
 
         for (let p = 0; p < particleCount; p++) {
@@ -210,6 +222,9 @@ export function FlowLayer({
           const delay = (duration / particleCount) * p;
 
           const animate = () => {
+            // Stop animation if component unmounted
+            if (!isMountedRef.current) return;
+
             particle
               .attr('opacity', 0)
               .transition()
@@ -226,7 +241,10 @@ export function FlowLayer({
                 };
               })
               .attr('opacity', 0.2)
-              .on('end', animate);
+              .on('end', () => {
+                // Only continue if still mounted
+                if (isMountedRef.current) animate();
+              });
           };
 
           animate();
@@ -340,6 +358,9 @@ export function FlowLayer({
     map.on('zoom', updatePosition);
 
     return () => {
+      // Stop all animations first
+      isMountedRef.current = false;
+
       map.off('move', updatePosition);
       map.off('zoom', updatePosition);
 
@@ -347,12 +368,17 @@ export function FlowLayer({
         cancelAnimationFrame(animationRef.current);
       }
 
+      // Interrupt all D3 transitions to prevent memory leaks
+      if (svgRef.current) {
+        d3.select(svgRef.current).selectAll('*').interrupt();
+      }
+
       if (svgRef.current && svgRef.current.parentNode) {
         svgRef.current.parentNode.removeChild(svgRef.current);
         svgRef.current = null;
       }
     };
-  }, [map, connections, points, animated, speed, particleCount, color, showLabels]);
+  }, [map, connections, points, shouldAnimate, speed, particleCount, color, showLabels]);
 
   return null;
 }

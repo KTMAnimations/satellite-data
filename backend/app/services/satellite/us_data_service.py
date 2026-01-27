@@ -154,7 +154,9 @@ class USDataService:
         and blends them together to eliminate seams. Uses Web Mercator projection.
         """
         # Overlap size in pixels (for blending adjacent chunks)
-        overlap = 32
+        # Using 128 pixels provides a wider blend zone (256 total overlap)
+        # to better handle discontinuities in satellite data between chunks
+        overlap = 128
 
         # Calculate chunk bounds in Web Mercator (meters)
         x_step = (US_BOUNDS_MERCATOR["east"] - US_BOUNDS_MERCATOR["west"]) / chunks_x
@@ -215,27 +217,39 @@ class USDataService:
                     chunk_x_end = chunk_x_start + (x_end_clamped - x_start_clamped)
 
                     # Create blend weight (feather edges in overlap regions)
+                    # The total overlap region between adjacent chunks is 2*overlap pixels
+                    # (each chunk extends 'overlap' pixels into the neighbor's territory)
+                    # We need to feather across this full region for smooth blending
                     chunk_weight = np.ones_like(chunk_data)
+                    full_overlap = 2 * overlap  # Total overlap region size
 
                     # Feather left edge if there's overlap
+                    # This chunk's left edge overlaps with the previous chunk's right edge
                     if i > 0 and overlap > 0:
-                        for k in range(min(overlap, chunk_weight.shape[1])):
-                            chunk_weight[:, k] *= k / overlap
+                        feather_width = min(full_overlap, chunk_weight.shape[1])
+                        for k in range(feather_width):
+                            chunk_weight[:, k] *= k / full_overlap
 
                     # Feather right edge if there's overlap
+                    # This chunk's right edge overlaps with the next chunk's left edge
                     if i < chunks_x - 1 and overlap > 0:
-                        for k in range(min(overlap, chunk_weight.shape[1])):
-                            chunk_weight[:, -(k+1)] *= k / overlap
+                        feather_width = min(full_overlap, chunk_weight.shape[1])
+                        for k in range(feather_width):
+                            chunk_weight[:, -(k+1)] *= k / full_overlap
 
                     # Feather top edge if there's overlap
+                    # This chunk's top edge overlaps with the previous chunk's bottom edge
                     if j > 0 and overlap > 0:
-                        for k in range(min(overlap, chunk_weight.shape[0])):
-                            chunk_weight[k, :] *= k / overlap
+                        feather_height = min(full_overlap, chunk_weight.shape[0])
+                        for k in range(feather_height):
+                            chunk_weight[k, :] *= k / full_overlap
 
                     # Feather bottom edge if there's overlap
+                    # This chunk's bottom edge overlaps with the next chunk's top edge
                     if j < chunks_y - 1 and overlap > 0:
-                        for k in range(min(overlap, chunk_weight.shape[0])):
-                            chunk_weight[-(k+1), :] *= k / overlap
+                        feather_height = min(full_overlap, chunk_weight.shape[0])
+                        for k in range(feather_height):
+                            chunk_weight[-(k+1), :] *= k / full_overlap
 
                     # Extract the region that fits in the result
                     chunk_region = chunk_data[chunk_y_start:chunk_y_end, chunk_x_start:chunk_x_end]

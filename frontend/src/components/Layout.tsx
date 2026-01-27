@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   SquaresFour,
@@ -75,7 +76,9 @@ export function Layout() {
       </header>
 
       <main className="main-content">
-        <Outlet />
+        <Suspense fallback={<div className="loading">Loading...</div>}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

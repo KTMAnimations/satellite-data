@@ -201,47 +201,60 @@ export function CompareView() {
           {comparison && (
             <section className="control-section results-section">
               <h4>Comparison Results</h4>
-              <div className="results-card">
-                <div className="result-metric">
-                  <span className="metric-label">
-                    {METRIC_OPTIONS.find((o) => o.value === selectedMetric)?.label}
-                  </span>
+              {comparison.period_a.observation_count === 0 && comparison.period_b.observation_count === 0 ? (
+                <div className="results-card" style={{ textAlign: 'center', padding: '24px', color: '#78716C' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.5, marginBottom: '8px' }}>
+                    <rect x="3" y="3" width="7" height="18" rx="1" />
+                    <rect x="14" y="3" width="7" height="18" rx="1" />
+                  </svg>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>No data available</p>
+                  <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
+                    Run data collection for this region to enable comparison
+                  </p>
                 </div>
-
-                <div className="result-values">
-                  <div className="value-item">
-                    <span className="label">Period A Avg</span>
-                    <span className="value mono">
-                      {comparison.period_a.averages[selectedMetric]?.toFixed(4) || 'N/A'}
+              ) : (
+                <div className="results-card">
+                  <div className="result-metric">
+                    <span className="metric-label">
+                      {METRIC_OPTIONS.find((o) => o.value === selectedMetric)?.label}
                     </span>
                   </div>
-                  <div className="value-item">
-                    <span className="label">Period B Avg</span>
-                    <span className="value mono">
-                      {comparison.period_b.averages[selectedMetric]?.toFixed(4) || 'N/A'}
+
+                  <div className="result-values">
+                    <div className="value-item">
+                      <span className="label">Period A Avg</span>
+                      <span className="value mono">
+                        {comparison.period_a.averages[selectedMetric]?.toFixed(4) || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="value-item">
+                      <span className="label">Period B Avg</span>
+                      <span className="value mono">
+                        {comparison.period_b.averages[selectedMetric]?.toFixed(4) || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {changePercent !== null && (
+                    <div className={`change-indicator ${changePercent >= 0 ? 'positive' : 'negative'}`}>
+                      <span className="change-value">
+                        {changePercent >= 0 ? '+' : ''}
+                        {changePercent.toFixed(1)}%
+                      </span>
+                      <span className="change-label">Change</span>
+                    </div>
+                  )}
+
+                  <div className="observation-counts">
+                    <span>
+                      Period A: {comparison.period_a.observation_count} observations
+                    </span>
+                    <span>
+                      Period B: {comparison.period_b.observation_count} observations
                     </span>
                   </div>
                 </div>
-
-                {changePercent !== null && (
-                  <div className={`change-indicator ${changePercent >= 0 ? 'positive' : 'negative'}`}>
-                    <span className="change-value">
-                      {changePercent >= 0 ? '+' : ''}
-                      {changePercent.toFixed(1)}%
-                    </span>
-                    <span className="change-label">Change</span>
-                  </div>
-                )}
-
-                <div className="observation-counts">
-                  <span>
-                    Period A: {comparison.period_a.observation_count} observations
-                  </span>
-                  <span>
-                    Period B: {comparison.period_b.observation_count} observations
-                  </span>
-                </div>
-              </div>
+              )}
             </section>
           )}
         </aside>

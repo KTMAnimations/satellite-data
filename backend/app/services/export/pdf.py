@@ -52,15 +52,10 @@ class PDFReportGenerator:
                 spaceAfter=10,
             )
         )
-        self.styles.add(
-            ParagraphStyle(
-                name="BodyText",
-                parent=self.styles["Normal"],
-                fontSize=11,
-                spaceBefore=6,
-                spaceAfter=6,
-            )
-        )
+        # Modify existing BodyText style instead of adding new one
+        self.styles["BodyText"].fontSize = 11
+        self.styles["BodyText"].spaceBefore = 6
+        self.styles["BodyText"].spaceAfter = 6
 
     async def generate(
         self,

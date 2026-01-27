@@ -116,7 +116,7 @@ export function AnimationStudio() {
   const previewRef = useRef<HTMLDivElement>(null);
 
   // Fetch regions
-  const { data: regionsData } = useQuery({
+  const { data: regionsData, isLoading: regionsLoading } = useQuery({
     queryKey: ['regions', 'predefined'],
     queryFn: () => api.listRegions({ type: 'predefined', page_size: 50 }),
   });
@@ -239,21 +239,25 @@ export function AnimationStudio() {
           {/* Region Selection */}
           <section className="control-section">
             <h4>Region</h4>
-            <select
-              value={selectedRegion?.id || ''}
-              onChange={(e) => {
-                const region = regionsData?.regions.find((r) => r.id === e.target.value);
-                setSelectedRegion(region || null);
-              }}
-              className="region-select"
-            >
-              <option value="">Select a region...</option>
-              {regionsData?.regions.map((region) => (
-                <option key={region.id} value={region.id}>
-                  {region.name}
-                </option>
-              ))}
-            </select>
+            <div className="region-select-wrapper">
+              <select
+                value={selectedRegion?.id || ''}
+                onChange={(e) => {
+                  const region = regionsData?.regions.find((r) => r.id === e.target.value);
+                  setSelectedRegion(region || null);
+                }}
+                className="region-select"
+                disabled={regionsLoading}
+              >
+                <option value="">{regionsLoading ? 'Loading regions...' : 'Select a region...'}</option>
+                {regionsData?.regions.map((region) => (
+                  <option key={region.id} value={region.id}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
+              {regionsLoading && <span className="select-spinner" />}
+            </div>
           </section>
 
           {/* Metric Selection */}

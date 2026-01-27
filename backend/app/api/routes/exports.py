@@ -245,6 +245,7 @@ async def generate_animation(export_id: str, request: AnimationRequest) -> None:
             frame_duration_ms=request.frame_duration_ms,
             width=request.width,
             height=request.height,
+            export_id=export_id,
         )
 
         await redis_client.update_status(

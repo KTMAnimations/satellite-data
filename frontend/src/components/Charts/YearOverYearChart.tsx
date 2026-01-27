@@ -63,13 +63,18 @@ export function YearOverYearChart({
 }: YearOverYearChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
-  useEffect(() => {
-    if (!svgRef.current) return;
+  const metricData = data[selectedMetric];
+  const hasData = metricData && metricData.length > 0;
 
-    const metricData = data[selectedMetric];
+  useEffect(() => {
+    if (!svgRef.current || !hasData) return;
+
     if (!metricData || metricData.length === 0) return;
 
     const svg = d3.select(svgRef.current);
+
+    // Interrupt any ongoing transitions and clear previous content
+    svg.selectAll('*').interrupt();
     svg.selectAll('*').remove();
 
     const margin = { top: 30, right: 30, bottom: 40, left: 60 };
@@ -120,25 +125,34 @@ export function YearOverYearChart({
       .attr('transform', `translate(0,${innerHeight})`)
       .call(d3.axisBottom(xScale).ticks(5).tickFormat(d3.format('.2f')));
 
-    // Bars
+    // Check for reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Bars - render immediately without staggered animations for better performance
     const bars = g.selectAll('.bar').data(sortedData);
 
-    bars
+    const barSelection = bars
       .enter()
       .append('rect')
       .attr('class', 'bar')
       .attr('y', (d) => yScale(String(d.year)) || 0)
       .attr('height', yScale.bandwidth())
       .attr('x', 0)
-      .attr('width', 0)
       .attr('fill', METRIC_COLORS[selectedMetric])
-      .attr('rx', 4)
-      .transition()
-      .duration(600)
-      .delay((_, i) => i * 100)
-      .attr('width', (d) => xScale(d.value));
+      .attr('rx', 4);
 
-    // Values at end of bars
+    // Apply animation only if not reduced motion, with shorter duration
+    if (prefersReducedMotion) {
+      barSelection.attr('width', (d) => xScale(d.value));
+    } else {
+      barSelection
+        .attr('width', 0)
+        .transition()
+        .duration(300)
+        .attr('width', (d) => xScale(d.value));
+    }
+
+    // Values at end of bars - no staggered animation
     g.selectAll('.bar-value')
       .data(sortedData)
       .enter()
@@ -150,14 +164,9 @@ export function YearOverYearChart({
       .attr('fill', 'var(--text-secondary)')
       .attr('font-family', 'var(--font-mono)')
       .attr('font-size', '11px')
-      .text((d) => d.value.toFixed(3))
-      .style('opacity', 0)
-      .transition()
-      .duration(400)
-      .delay((_, i) => i * 100 + 300)
-      .style('opacity', 1);
+      .text((d) => d.value.toFixed(3));
 
-    // Year-over-year change indicators
+    // Year-over-year change indicators - no animation
     sortedData.forEach((d, i) => {
       if (i === 0) return;
       const prevValue = sortedData[i - 1].value;
@@ -173,12 +182,7 @@ export function YearOverYearChart({
         .attr('fill', isPositive ? 'var(--metric-quaternary)' : 'var(--metric-alert)')
         .attr('font-family', 'var(--font-mono)')
         .attr('font-size', '10px')
-        .text(`${isPositive ? '+' : ''}${change.toFixed(1)}%`)
-        .style('opacity', 0)
-        .transition()
-        .duration(400)
-        .delay(i * 100 + 500)
-        .style('opacity', 1);
+        .text(`${isPositive ? '+' : ''}${change.toFixed(1)}%`);
     });
 
     // Title
@@ -192,7 +196,34 @@ export function YearOverYearChart({
       .attr('font-size', '14px')
       .attr('font-weight', '500')
       .text(`${METRIC_LABELS[selectedMetric]} - Year over Year`);
-  }, [data, selectedMetric, width, height]);
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (svgRef.current) {
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('*').interrupt();
+        svg.selectAll('*').on('.', null); // Remove all event listeners
+      }
+    };
+  }, [data, selectedMetric, width, height, hasData, metricData]);
+
+  // Show message when no data is available
+  if (!hasData) {
+    return (
+      <div className="chart-wrapper yoy-chart" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height, color: '#78716C' }}>
+        <div style={{ textAlign: 'center' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.5, marginBottom: '12px' }}>
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M3 9h18M9 21V9" />
+          </svg>
+          <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>No year-over-year data available</p>
+          <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
+            Data collection required for multiple years
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chart-wrapper yoy-chart">

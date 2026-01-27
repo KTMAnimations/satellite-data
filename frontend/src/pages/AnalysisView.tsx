@@ -23,6 +23,19 @@ function parseDate(dateStr: string): Date {
   return new Date(year, month, day);
 }
 
+// Safely format a Date to ISO date string (YYYY-MM-DD)
+// Returns null if the date is invalid
+function safeFormatDate(date: Date | null | undefined): string | null {
+  if (!date) return null;
+  try {
+    // Check if date is valid
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString().split('T')[0];
+  } catch {
+    return null;
+  }
+}
+
 const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
   { value: 'nightlights', label: 'Nighttime Lights', color: '#D97706' },  // Amber-600
   { value: 'ndvi', label: 'NDVI (Vegetation)', color: '#059669' },        // Emerald-600
@@ -104,7 +117,7 @@ export function AnalysisView() {
 
   // Generate Year-over-Year data
   const yoyData = useMemo((): Record<MetricType, { year: number; value: number }[]> => {
-    if (!metrics) return {
+    if (!metrics || viewMode !== 'yoy') return {
       nightlights: [],
       ndvi: [],
       urban_density: [],
@@ -160,31 +173,28 @@ export function AnalysisView() {
     });
 
     return result;
-  }, [metrics]);
+  }, [metrics, viewMode]);
 
   // Generate correlation data
   const correlationData = useMemo(() => {
-    if (!metrics) return [];
+    if (!metrics || viewMode !== 'correlation') return [];
 
     const metricXData = metrics.metrics[correlationMetricX]?.data || [];
     const metricYData = metrics.metrics[correlationMetricY]?.data || [];
 
-    // Match by date
-    const points: { x: number; y: number; date: string }[] = [];
-
-    metricXData.forEach((xPoint) => {
-      const yPoint = metricYData.find((y) => y.date === xPoint.date);
-      if (yPoint) {
-        points.push({
-          x: xPoint.value,
-          y: yPoint.value,
-          date: xPoint.date,
-        });
-      }
+    // Match by date in O(n) instead of O(n²)
+    const yByDate = new Map(metricYData.map((p) => [p.date, p.value]));
+    return metricXData.flatMap((xPoint) => {
+      const yValue = yByDate.get(xPoint.date);
+      if (yValue === undefined) return [];
+      return [{ x: xPoint.value, y: yValue, date: xPoint.date }];
     });
+  }, [metrics, correlationMetricX, correlationMetricY, viewMode]);
 
-    return points;
-  }, [metrics, correlationMetricX, correlationMetricY]);
+  // Reset timeline date when metric changes to prevent stale dates
+  useEffect(() => {
+    setCurrentTimelineDate(null);
+  }, [selectedMapMetric]);
 
   // Initialize and reset timeline date when dates change
   useEffect(() => {
@@ -281,7 +291,7 @@ export function AnalysisView() {
                 <MapView
                   regions={[region]}
                   selectedMetric={selectedMapMetric}
-                  tileDate={currentTimelineDate?.toISOString().split('T')[0] || dateRange.start.toISOString().split('T')[0]}
+                  tileDate={safeFormatDate(currentTimelineDate) || safeFormatDate(dateRange.start) || new Date().toISOString().split('T')[0]}
                 />
               )}
               <div className="map-legend-overlay">
@@ -290,7 +300,7 @@ export function AnalysisView() {
             </div>
 
             {/* Timeline Slider */}
-            {timelineDates.length > 0 && currentTimelineDate && (
+            {timelineDates.length > 0 && currentTimelineDate && !isNaN(currentTimelineDate.getTime()) && (
               <div className="timeline-section">
                 <TimeSlider
                   dates={timelineDates}
@@ -509,6 +519,18 @@ export function AnalysisView() {
                           </div>
                         );
                       })}
+                      {/* Show message if no stats available */}
+                      {selectedMetrics.every((metric) => {
+                        const metricData = metrics.metrics[metric];
+                        return !metricData || metricData.data.length === 0;
+                      }) && (
+                        <div className="no-stats-message" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px', color: '#78716C' }}>
+                          <p style={{ margin: 0, fontSize: '14px' }}>No statistics available</p>
+                          <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
+                            Data collection required for the selected metrics and time period
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

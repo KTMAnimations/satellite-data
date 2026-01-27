@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Suspense, lazy, useEffect, useRef } from 'react';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer,
@@ -7,15 +7,22 @@ import {
   useMapEvents,
   FeatureGroup,
 } from 'react-leaflet';
-import { EditControl } from 'react-leaflet-draw';
 import type { LatLngBounds, Map as LeafletMap } from 'leaflet';
+import { shallow } from 'zustand/shallow';
 import { useStore } from '../../store';
 import type { Region, GeoJSONPolygon, MetricType } from '../../types';
 import api from '../../services/api';
 import { CompositeTileLayer } from './CompositeTileLayer';
-import { FlowLayer, type FlowPoint } from './FlowLayer';
+import type { FlowPoint } from './FlowLayer';
 import './MapContainer.css';
 
+const METRIC_OVERLAY_MIN_ZOOM = 9;
+const LazyFlowLayer = lazy(async () => ({
+  default: (await import('./FlowLayer')).FlowLayer,
+}));
+const LazyEditControl = lazy(async () => ({
+  default: (await import('react-leaflet-draw')).EditControl,
+}));
 
 interface MapContainerProps {
   regions?: Region[];
@@ -30,17 +37,17 @@ interface MapContainerProps {
 }
 
 function MapController({
-  selectedRegion,
+  focusRegion,
 }: {
-  selectedRegion: Region | null;
+  focusRegion: Region | null;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (selectedRegion) {
+    if (focusRegion) {
       // Use geometry if available, otherwise use bounds
-      if (selectedRegion.geometry?.coordinates?.[0]) {
-        const coords = selectedRegion.geometry.coordinates[0];
+      if (focusRegion.geometry?.coordinates?.[0]) {
+        const coords = focusRegion.geometry.coordinates[0];
         const lats = coords.map((c) => c[1]);
         const lngs = coords.map((c) => c[0]);
         const bounds: LatLngBounds = [
@@ -53,13 +60,14 @@ function MapController({
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 11 });
       }
     }
-  }, [selectedRegion, map]);
+  }, [focusRegion, map]);
 
   return null;
 }
 
 function MapEvents() {
-  const { setMapCenter, setMapZoom } = useStore();
+  const setMapCenter = useStore((state) => state.setMapCenter);
+  const setMapZoom = useStore((state) => state.setMapZoom);
 
   useMapEvents({
     moveend: (e) => {
@@ -85,11 +93,19 @@ export function MapView({
   flowPoints,
   flowColor = '#3b82f6',
 }: MapContainerProps) {
-  const { mapState, selectedRegion: storeSelectedRegion } = useStore();
+  const { mapState, storeSelectedRegion } = useStore(
+    (state) => ({
+      mapState: state.mapState,
+      storeSelectedRegion: state.selectedRegion,
+    }),
+    shallow
+  );
   const mapRef = useRef<LeafletMap | null>(null);
 
   // Use prop if provided, otherwise fall back to store
   const selectedRegion = selectedRegionProp !== undefined ? selectedRegionProp : storeSelectedRegion;
+  const focusRegion = selectedRegion ?? (regions.length === 1 ? regions[0] : null);
+  const showMetricOverlay = Boolean(selectedMetric && tileDate && mapState.zoom >= METRIC_OVERLAY_MIN_ZOOM);
 
   const handleCreated = (e: unknown) => {
     if (onRegionCreate) {
@@ -127,7 +143,7 @@ export function MapView({
         {/* US-wide metric tile overlay - pre-generated tiles at z11 */}
         {/* CompositeTileLayer handles rendering at lower zoom levels by compositing z11 tiles */}
         {/* Nightlights and active_fire support daily (YYYY-MM-DD), others use monthly (YYYY-MM) */}
-        {selectedMetric && tileDate && (
+        {showMetricOverlay && selectedMetric && tileDate && (
           <CompositeTileLayer
             key={`us-${selectedMetric}-${tileDate}`}
             baseUrl={api.getUSTileUrl(
@@ -135,7 +151,7 @@ export function MapView({
               ['nightlights', 'active_fire'].includes(selectedMetric) ? tileDate : api.dateToYearMonth(tileDate)
             )}
             nativeZoom={11}
-            minZoom={4}
+            minZoom={METRIC_OVERLAY_MIN_ZOOM}
             maxZoom={11}
             opacity={0.7}
           />
@@ -157,51 +173,60 @@ export function MapView({
 
         {/* Migration flow visualization */}
         {flowPoints && flowPoints.length > 0 && (
-          <FlowLayer
-            points={flowPoints}
-            color={flowColor}
-            animated
-            showLabels
-            speed={1}
-            particleCount={5}
-          />
+          <Suspense fallback={null}>
+            <LazyFlowLayer
+              points={flowPoints}
+              color={flowColor}
+              animated
+              showLabels
+              speed={1}
+              particleCount={5}
+            />
+          </Suspense>
         )}
 
         {/* Draw controls */}
         {showDrawControls && (
           <FeatureGroup>
-            <EditControl
-              position="topright"
-              onCreated={handleCreated}
-              draw={{
-                rectangle: false,
-                circle: false,
-                circlemarker: false,
-                marker: false,
-                polyline: false,
-                polygon: {
-                  allowIntersection: false,
-                  shapeOptions: {
-                    color: '#2563eb',
-                    fillColor: '#2563eb',
-                    fillOpacity: 0.2,
+            <Suspense fallback={null}>
+              <LazyEditControl
+                position="topright"
+                onCreated={handleCreated}
+                draw={{
+                  rectangle: false,
+                  circle: false,
+                  circlemarker: false,
+                  marker: false,
+                  polyline: false,
+                  polygon: {
+                    allowIntersection: false,
+                    shapeOptions: {
+                      color: '#2563eb',
+                      fillColor: '#2563eb',
+                      fillOpacity: 0.2,
+                    },
                   },
-                },
-              }}
-              edit={{
-                edit: false,
-                remove: false,
-              }}
-            />
+                }}
+                edit={{
+                  edit: false,
+                  remove: false,
+                }}
+              />
+            </Suspense>
           </FeatureGroup>
         )}
 
-        <MapController selectedRegion={selectedRegion} />
+        <MapController focusRegion={focusRegion} />
         <MapEvents />
       </LeafletMapContainer>
 
       {/* Map controls overlay */}
       <div className="map-controls">
+        {!showMetricOverlay && selectedMetric && (
+          <div className="map-overlay-hint">
+            Zoom in to see overlay (z≥{METRIC_OVERLAY_MIN_ZOOM})
+          </div>
+        )}
         {selectedMetric && (
           <div className="map-legend">
             <span className="legend-title">{selectedMetric}</span>

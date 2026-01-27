@@ -1,12 +1,26 @@
+import { lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { RegionExplorer } from './pages/RegionExplorer';
-import { AnalysisView } from './pages/AnalysisView';
-import { ExportCenter } from './pages/ExportCenter';
-import { Gallery } from './pages/Gallery';
-import { AnimationStudio } from './pages/AnimationStudio';
-import { CompareView } from './pages/CompareView';
+
+const RegionExplorer = lazy(async () => ({
+  default: (await import('./pages/RegionExplorer')).RegionExplorer,
+}));
+const AnalysisView = lazy(async () => ({
+  default: (await import('./pages/AnalysisView')).AnalysisView,
+}));
+const CompareView = lazy(async () => ({
+  default: (await import('./pages/CompareView')).CompareView,
+}));
+const ExportCenter = lazy(async () => ({
+  default: (await import('./pages/ExportCenter')).ExportCenter,
+}));
+const Gallery = lazy(async () => ({
+  default: (await import('./pages/Gallery')).Gallery,
+}));
+const AnimationStudio = lazy(async () => ({
+  default: (await import('./pages/AnimationStudio')).AnimationStudio,
+}));
 
 function App() {
   return (
