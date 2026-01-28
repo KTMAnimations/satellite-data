@@ -35,6 +35,10 @@ uvicorn app.main:app --reload --port 8000
 ```bash
 cd frontend
 npm install
+
+# ensure API requests go through the Vite dev proxy (avoids CORS issues):
+# echo "VITE_API_URL=/api/v1" > .env
+
 npm run dev
 ```
 
