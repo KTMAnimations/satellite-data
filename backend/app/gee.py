@@ -487,7 +487,16 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "canopy_height":
-        return ee.Image("LARSE/GEDI/GRIDDEDVEG_002/V1/1KM").select(["rh98"]).rename([band]).clip(geom)
+        # GEDI gridded vegetation structure: use RH98 (proxy for canopy height).
+        # The EE asset is an ImageCollection with multiple variables; select the
+        # global RH98 composite and use the median height statistic.
+        rh98 = (
+            ee.ImageCollection("LARSE/GEDI/GRIDDEDVEG_002/V1/1KM")
+            .filter(ee.Filter.stringContains("system:index", "rh-98-a0_vf_20190417_20230316"))
+        )
+        has_images = rh98.size().gt(0)
+        image = ee.Image(rh98.first()).select(["median"]).rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     raise ValueError(f"Unsupported metric: {metric}")
 
@@ -565,7 +574,6 @@ def compute_time_series(
     geom = geojson_to_ee_geometry(geometry_geojson)
 
     date_strings = [d.isoformat() for d in starts]
-    ee_dates = ee.List(date_strings)
 
     fmt = "YYYY-MM" if granularity == "monthly" else "YYYY-MM-dd"
 
@@ -587,20 +595,30 @@ def compute_time_series(
         value = reduced.get(metric)
         return ee.Feature(None, {"date": d0.format(fmt), "value": value})
 
-    fc = ee.FeatureCollection(ee_dates.map(per_bucket))
-    info = fc.getInfo()
+    def _parse_features(info: dict[str, Any]) -> list[tuple[str, float]]:
+        out: list[tuple[str, float]] = []
+        for feat in info.get("features", []):
+            props = feat.get("properties", {})
+            d = props.get("date")
+            v = props.get("value")
+            if d is None or v is None:
+                continue
+            try:
+                out.append((str(d), float(v)))
+            except Exception:
+                continue
+        return out
 
+    # Earth Engine limits the number of concurrent aggregations a single request can
+    # trigger. Mapping reduceRegion over long date lists can exceed that limit (e.g.
+    # NDVI monthly over 2+ years). Chunk the date list to keep requests reliable.
+    chunk_size = 20
     out: list[tuple[str, float]] = []
-    for feat in info.get("features", []):
-        props = feat.get("properties", {})
-        d = props.get("date")
-        v = props.get("value")
-        if d is None or v is None:
-            continue
-        try:
-            out.append((str(d), float(v)))
-        except Exception:
-            continue
+    for i in range(0, len(date_strings), chunk_size):
+        ee_dates = ee.List(date_strings[i : i + chunk_size])
+        fc = ee.FeatureCollection(ee_dates.map(per_bucket))
+        info = fc.getInfo()
+        out.extend(_parse_features(info))
 
     out.sort(key=lambda x: x[0])
     return out
