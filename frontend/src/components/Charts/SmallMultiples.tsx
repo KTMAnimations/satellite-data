@@ -69,9 +69,10 @@ export function SmallMultiples({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current || regions.length === 0) return;
+    const containerElement = containerRef.current;
+    if (!containerElement || regions.length === 0) return;
 
-    const container = d3.select(containerRef.current);
+    const container = d3.select(containerElement);
 
     // Interrupt any ongoing transitions and clear previous content
     container.selectAll('*').interrupt();
@@ -213,11 +214,8 @@ export function SmallMultiples({
 
     // Cleanup function to prevent memory leaks
     return () => {
-      if (containerRef.current) {
-        const container = d3.select(containerRef.current);
-        container.selectAll('*').interrupt();
-        container.selectAll('*').on('.', null); // Remove all event listeners
-      }
+      container.selectAll('*').interrupt();
+      container.selectAll('*').on('.', null); // Remove all event listeners
     };
   }, [regions, metric, columns, cellWidth, cellHeight, onRegionClick]);
 

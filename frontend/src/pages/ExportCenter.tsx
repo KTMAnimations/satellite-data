@@ -92,7 +92,7 @@ export function ExportCenter() {
   });
 
   // Poll for export status updates
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     // Check if any exports are pending or processing

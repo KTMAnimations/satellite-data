@@ -1,21 +1,31 @@
 import { test, expect } from '@playwright/test';
 
+async function ensureNavVisible(page: import('@playwright/test').Page) {
+  const nav = page.locator('.header-nav');
+  if (await nav.isVisible()) return;
+
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  if (await toggle.isVisible()) {
+    await toggle.click();
+    await expect(nav).toBeVisible();
+  }
+}
+
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });
 
   test('has main navigation links', async ({ page }) => {
-    // Check navigation exists
-    const nav = page.locator('nav, .nav, .navigation');
-    await expect(nav.first()).toBeVisible();
+    await ensureNavVisible(page);
+    await expect(page.locator('.header-nav')).toBeVisible();
   });
 
   test('can navigate to all main views', async ({ page }) => {
     const routes = [
       { path: '/regions', title: 'Region' },
-      { path: '/animation', title: 'Animation' },
-      { path: '/export', title: 'Export' },
+      { path: '/animations', title: 'Animation' },
+      { path: '/exports', title: 'Export' },
       { path: '/gallery', title: 'Gallery' },
     ];
 
@@ -31,9 +41,8 @@ test.describe('Navigation', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
 
-    // Check for mobile menu or responsive nav
-    const nav = page.locator('nav, .nav, .mobile-nav');
-    await expect(nav.first()).toBeVisible();
+    await ensureNavVisible(page);
+    await expect(page.locator('.header-nav')).toBeVisible();
   });
 
   test('logo/brand links to home', async ({ page }) => {
@@ -57,18 +66,18 @@ test.describe('Navigation', () => {
   test('maintains navigation state on back/forward', async ({ page }) => {
     // Navigate through pages
     await page.goto('/regions');
-    await page.goto('/animation');
-    await page.goto('/export');
+    await page.goto('/animations');
+    await page.goto('/exports');
 
     // Go back
     await page.goBack();
-    await expect(page).toHaveURL('/animation');
+    await expect(page).toHaveURL('/animations');
 
     await page.goBack();
     await expect(page).toHaveURL('/regions');
 
     // Go forward
     await page.goForward();
-    await expect(page).toHaveURL('/animation');
+    await expect(page).toHaveURL('/animations');
   });
 });

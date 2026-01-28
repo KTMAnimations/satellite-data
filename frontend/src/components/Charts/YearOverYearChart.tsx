@@ -67,11 +67,12 @@ export function YearOverYearChart({
   const hasData = metricData && metricData.length > 0;
 
   useEffect(() => {
-    if (!svgRef.current || !hasData) return;
+    const svgElement = svgRef.current;
+    if (!svgElement || !hasData) return;
 
     if (!metricData || metricData.length === 0) return;
 
-    const svg = d3.select(svgRef.current);
+    const svg = d3.select(svgElement);
 
     // Interrupt any ongoing transitions and clear previous content
     svg.selectAll('*').interrupt();
@@ -199,11 +200,8 @@ export function YearOverYearChart({
 
     // Cleanup function to prevent memory leaks
     return () => {
-      if (svgRef.current) {
-        const svg = d3.select(svgRef.current);
-        svg.selectAll('*').interrupt();
-        svg.selectAll('*').on('.', null); // Remove all event listeners
-      }
+      svg.selectAll('*').interrupt();
+      svg.selectAll('*').on('.', null); // Remove all event listeners
     };
   }, [data, selectedMetric, width, height, hasData, metricData]);
 

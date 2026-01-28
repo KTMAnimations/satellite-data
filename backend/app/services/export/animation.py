@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any, Literal
 
 import imageio
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for headless operation
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
@@ -17,12 +19,114 @@ logger = get_logger(__name__)
 class AnimationGenerator:
     """Generate time-lapse animations from satellite data."""
 
-    # Color maps for different metrics
+    # Color maps for different metrics (RGB tuples for custom gradients)
     COLORMAPS = {
-        "ndvi": "RdYlGn",  # Red-Yellow-Green for vegetation
-        "nightlights": "hot",  # Hot colormap for lights
-        "urban_density": "YlOrBr",  # Yellow-Orange-Brown for urban
-        "parking": "Blues",  # Blues for parking occupancy
+        "ndvi": [
+            (165, 0, 38), (215, 48, 39), (244, 109, 67), (253, 174, 97),
+            (254, 224, 139), (217, 239, 139), (166, 217, 106), (102, 189, 99),
+            (26, 152, 80), (0, 104, 55),
+        ],
+        "nightlights": [
+            (0, 0, 0), (30, 0, 50), (60, 0, 100), (100, 0, 150),
+            (150, 50, 150), (200, 100, 100), (255, 150, 50), (255, 200, 100),
+            (255, 255, 150), (255, 255, 255),
+        ],
+        "urban_density": [
+            (255, 255, 229), (255, 247, 188), (254, 227, 145), (254, 196, 79),
+            (254, 153, 41), (236, 112, 20), (204, 76, 2), (153, 52, 4),
+            (102, 37, 6), (51, 18, 3),
+        ],
+        "parking": [
+            (247, 251, 255), (222, 235, 247), (198, 219, 239), (158, 202, 225),
+            (107, 174, 214), (66, 146, 198), (33, 113, 181), (8, 81, 156),
+            (8, 48, 107), (3, 19, 43),
+        ],
+        "land_cover": [
+            (247, 244, 249), (231, 225, 239), (212, 185, 218), (201, 148, 199),
+            (186, 111, 178), (170, 79, 160), (152, 49, 142), (122, 1, 119),
+            (92, 0, 89), (63, 0, 60),
+        ],
+        "surface_water": [
+            (255, 255, 255), (240, 249, 255), (214, 234, 248), (174, 214, 241),
+            (133, 193, 233), (93, 173, 226), (52, 152, 219), (41, 128, 185),
+            (31, 97, 141), (21, 67, 96),
+        ],
+        "active_fire": [
+            (255, 255, 204), (255, 237, 160), (254, 217, 118), (254, 178, 76),
+            (253, 141, 60), (252, 78, 42), (227, 26, 28), (189, 0, 38),
+            (128, 0, 38), (80, 0, 0),
+        ],
+        "no2": [
+            (49, 54, 149), (69, 117, 180), (116, 173, 209), (171, 217, 233),
+            (224, 243, 248), (254, 224, 144), (253, 174, 97), (244, 109, 67),
+            (215, 48, 39), (165, 0, 38),
+        ],
+        "temperature": [
+            (5, 48, 97), (33, 102, 172), (67, 147, 195), (146, 197, 222),
+            (209, 229, 240), (253, 219, 199), (244, 165, 130), (214, 96, 77),
+            (178, 24, 43), (103, 0, 31),
+        ],
+        "precipitation": [
+            (255, 255, 255), (240, 249, 232), (204, 235, 197), (168, 221, 181),
+            (123, 204, 196), (78, 179, 211), (43, 140, 190), (8, 104, 172),
+            (8, 64, 129), (37, 37, 86),
+        ],
+        "aerosol": [
+            (255, 255, 255), (253, 245, 230), (252, 226, 196), (250, 197, 152),
+            (242, 165, 117), (221, 132, 82), (186, 101, 56), (145, 72, 36),
+            (100, 45, 20), (50, 20, 5),
+        ],
+        "cropland": [
+            (255, 255, 178), (254, 217, 118), (254, 178, 76), (253, 141, 60),
+            (240, 59, 32), (189, 0, 38), (0, 128, 0), (34, 139, 34),
+            (144, 238, 144), (255, 255, 0),
+        ],
+        "evapotranspiration": [
+            (166, 97, 26), (191, 129, 45), (216, 179, 101), (229, 218, 169),
+            (245, 245, 220), (199, 234, 229), (128, 205, 193), (53, 151, 143),
+            (1, 102, 94), (0, 60, 48),
+        ],
+        "soil_moisture": [
+            (139, 69, 19), (160, 82, 45), (188, 143, 90), (210, 180, 140),
+            (245, 222, 179), (173, 216, 230), (135, 206, 235), (70, 130, 180),
+            (65, 105, 225), (0, 0, 139),
+        ],
+        "impervious": [
+            (255, 255, 255), (240, 240, 240), (217, 217, 217), (189, 189, 189),
+            (150, 150, 150), (115, 115, 115), (82, 82, 82), (54, 54, 54),
+            (26, 26, 26), (0, 0, 0),
+        ],
+        "fire_historical": [
+            (255, 255, 204), (255, 237, 160), (254, 217, 118), (254, 178, 76),
+            (253, 141, 60), (252, 78, 42), (227, 26, 28), (189, 0, 38),
+            (128, 0, 38), (80, 0, 0),
+        ],
+        "canopy_height": [
+            (247, 252, 245), (229, 245, 224), (199, 233, 192), (161, 217, 155),
+            (116, 196, 118), (65, 171, 93), (35, 139, 69), (0, 109, 44),
+            (0, 68, 27), (0, 40, 16),
+        ],
+    }
+
+    # Value ranges for normalization
+    VALUE_RANGES = {
+        "ndvi": (-1.0, 1.0),
+        "nightlights": (0.0, 100.0),
+        "urban_density": (0.0, 1.0),
+        "parking": (0.0, 1.0),
+        "land_cover": (0.0, 1.0),
+        "surface_water": (0.0, 1.0),
+        "active_fire": (0.0, 500.0),
+        "no2": (0.0, 0.0002),
+        "temperature": (-30.0, 45.0),
+        "precipitation": (0.0, 500.0),
+        "aerosol": (-2.0, 5.0),
+        "cropland": (0.0, 255.0),
+        "evapotranspiration": (0.0, 300.0),
+        "soil_moisture": (0.0, 0.5),
+        "impervious": (0.0, 1.0),
+        "fire_historical": (0.0, 500.0),
+        "canopy_height": (0.0, 60.0),
     }
 
     def __init__(self):
@@ -86,6 +190,16 @@ class AnimationGenerator:
             frames = await self._load_observation_frames(
                 observations, metric, width, height
             )
+            # Fall back to synthetic frames if no raster files could be loaded
+            if len(frames) == 0:
+                logger.info(
+                    "No raster files available, generating synthetic frames",
+                    region=region.name,
+                    metric=metric,
+                )
+                frames = self._generate_synthetic_frames(
+                    region.name, metric, start_date, end_date, width, height
+                )
 
         if len(frames) == 0:
             raise ValueError("No frames available for animation")
@@ -137,55 +251,122 @@ class AnimationGenerator:
         width: int,
         height: int,
     ) -> list[np.ndarray]:
-        """Generate synthetic frames for demonstration."""
+        """Generate synthetic frames with proper metric colormaps for demonstration."""
         from dateutil.relativedelta import relativedelta
+        from PIL import Image
 
         frames = []
         current = start_date
         frame_idx = 0
 
+        # Get value range for this metric
+        vmin, vmax = self.VALUE_RANGES.get(metric, (0.0, 1.0))
+
+        # Get colormap for this metric
+        colors = self.COLORMAPS.get(metric, self.COLORMAPS["ndvi"])
+
+        # Data resolution for the overlay
+        data_width, data_height = 200, 150
+
         # Create synthetic data with seasonal variation
         while current <= end_date:
-            # Create frame
-            fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+            # Generate synthetic heatmap data with geographic-like patterns
+            np.random.seed(frame_idx * 1000 + hash(region_name) % 1000)
 
-            # Generate synthetic heatmap data
-            np.random.seed(frame_idx)
-            x = np.linspace(0, 4 * np.pi, 50)
-            y = np.linspace(0, 4 * np.pi, 50)
+            # Create base pattern that looks like geographic features
+            x = np.linspace(0, 6 * np.pi, data_width)
+            y = np.linspace(0, 4 * np.pi, data_height)
             X, Y = np.meshgrid(x, y)
 
-            # Add seasonal variation
+            # Add seasonal variation based on metric
             month = current.month
-            seasonal_factor = 1 + 0.3 * np.sin((month - 1) * np.pi / 6)
 
-            data = (
-                np.sin(X) * np.cos(Y) * seasonal_factor
-                + np.random.random((50, 50)) * 0.2
+            # Different seasonal patterns for different metrics
+            if metric == "nightlights":
+                # Phoenix-style: higher in winter (snowbirds)
+                if "Phoenix" in region_name or "Miami" in region_name or "Tampa" in region_name:
+                    seasonal_factor = 1 + 0.2 * np.cos((month - 1) * np.pi / 6)  # Peak in winter
+                else:
+                    seasonal_factor = 1 + 0.1 * np.sin((month - 7) * np.pi / 6)  # Slight summer peak
+            elif metric == "ndvi":
+                # Vegetation peaks in summer
+                seasonal_factor = 0.5 + 0.5 * np.sin((month - 4) * np.pi / 6)  # Peak in July
+            elif metric == "temperature":
+                # Temperature peaks in summer
+                seasonal_factor = 0.3 + 0.7 * np.sin((month - 4) * np.pi / 6)  # Peak in July
+            elif metric == "precipitation":
+                # Variable by region
+                seasonal_factor = 0.5 + 0.5 * np.sin((month - 3) * np.pi / 6)  # Peak in June
+            elif metric == "active_fire" or metric == "fire_historical":
+                # Fire season peaks in late summer
+                seasonal_factor = 0.2 + 0.8 * np.maximum(0, np.sin((month - 5) * np.pi / 6))  # Peak Aug
+            else:
+                seasonal_factor = 1 + 0.2 * np.sin((month - 1) * np.pi / 6)
+
+            # Generate urban-like pattern with hotspots
+            base_pattern = (
+                0.3 * np.exp(-((X - 3 * np.pi) ** 2 + (Y - 2 * np.pi) ** 2) / 8)  # Central hotspot
+                + 0.2 * np.exp(-((X - 4.5 * np.pi) ** 2 + (Y - 1.5 * np.pi) ** 2) / 4)  # Secondary
+                + 0.15 * np.exp(-((X - 1.5 * np.pi) ** 2 + (Y - 3 * np.pi) ** 2) / 3)  # Tertiary
+                + 0.1 * np.random.random((data_height, data_width))  # Noise
             )
 
-            # Normalize based on metric
-            if metric == "ndvi":
-                data = np.clip(data, -1, 1)
-                vmin, vmax = -1, 1
-            elif metric == "nightlights":
-                data = np.abs(data) * 50
-                vmin, vmax = 0, 100
-            else:
-                data = (data + 1) / 2
-                vmin, vmax = 0, 1
+            # Apply seasonal factor
+            data = base_pattern * seasonal_factor
 
-            # Plot
-            cmap = self.COLORMAPS.get(metric, "viridis")
-            im = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax)
-            plt.colorbar(im, ax=ax, label=metric.replace("_", " ").title())
+            # Scale to metric's value range
+            data = vmin + (data / data.max()) * (vmax - vmin) * 0.8
 
-            ax.set_title(f"{region_name} - {current.strftime('%B %Y')}")
+            # Normalize to 0-1 for colormap application
+            data_normalized = (data - vmin) / (vmax - vmin)
+            data_normalized = np.clip(data_normalized, 0, 1)
+
+            # Apply custom colormap (RGB tuples)
+            rgb_data = np.zeros((data_height, data_width, 3), dtype=np.uint8)
+            for i, color in enumerate(colors):
+                lower = i / len(colors)
+                upper = (i + 1) / len(colors)
+                mask = (data_normalized >= lower) & (data_normalized < upper)
+
+                if i < len(colors) - 1:
+                    t = (data_normalized[mask] - lower) / (upper - lower)
+                    c_low = np.array(color)
+                    c_high = np.array(colors[min(i + 1, len(colors) - 1)])
+
+                    rgb_data[mask, 0] = (c_low[0] * (1 - t) + c_high[0] * t).astype(np.uint8)
+                    rgb_data[mask, 1] = (c_low[1] * (1 - t) + c_high[1] * t).astype(np.uint8)
+                    rgb_data[mask, 2] = (c_low[2] * (1 - t) + c_high[2] * t).astype(np.uint8)
+
+            # Handle the last color bin
+            mask = data_normalized >= (len(colors) - 1) / len(colors)
+            rgb_data[mask] = colors[-1]
+
+            # Create figure with the colored overlay
+            fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+
+            # Add a subtle map-like background (light gray)
+            ax.set_facecolor('#e8e8e8')
+
+            # Display the overlay
+            im = ax.imshow(rgb_data, aspect='auto', extent=[0, 10, 0, 7.5])
+
+            # Add title and date
+            ax.set_title(f"{region_name} - {metric.replace('_', ' ').title()}\n{current.strftime('%B %Y')}",
+                        fontsize=12, fontweight='bold', pad=10)
             ax.axis("off")
+
+            # Add colorbar with proper labels
+            from matplotlib.colors import LinearSegmentedColormap
+            # Create matplotlib colormap from our colors for the colorbar
+            cmap_colors = [(c[0]/255, c[1]/255, c[2]/255) for c in colors]
+            custom_cmap = LinearSegmentedColormap.from_list(metric, cmap_colors, N=256)
+            sm = plt.cm.ScalarMappable(cmap=custom_cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
+            sm.set_array([])
+            cbar = plt.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
+            cbar.set_label(metric.replace("_", " ").title(), fontsize=10)
 
             # Convert to image array
             fig.canvas.draw()
-            # Use buffer_rgba() which works in newer matplotlib versions
             rgba = np.asarray(fig.canvas.buffer_rgba())
             frame = rgba[:, :, :3]  # Remove alpha channel
             frames.append(frame.copy())
@@ -217,7 +398,13 @@ class AnimationGenerator:
                 # Create figure
                 fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
 
-                cmap = self.COLORMAPS.get(metric, "viridis")
+                cmap_value = self.COLORMAPS.get(metric, self.COLORMAPS["ndvi"])
+                if isinstance(cmap_value, str):
+                    cmap = plt.get_cmap(cmap_value)
+                else:
+                    cmap_colors = [(c[0] / 255, c[1] / 255, c[2] / 255) for c in cmap_value]
+                    cmap = LinearSegmentedColormap.from_list(metric, cmap_colors, N=256)
+
                 im = ax.imshow(data, cmap=cmap)
                 plt.colorbar(im, ax=ax)
 

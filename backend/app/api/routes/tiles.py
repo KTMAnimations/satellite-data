@@ -27,6 +27,11 @@ async def get_us_tile(
     z: int,
     x: int,
     y: int,
+    v: int = Query(2, ge=1, le=20, description="Tile cache version (frontend cache-buster)"),
+    g: Literal["daily", "monthly"] | None = Query(
+        None,
+        description="Requested granularity override (daily|monthly). If omitted, inferred from date_str.",
+    ),
 ) -> Response:
     """
     Get a pre-generated US-wide tile.
@@ -42,8 +47,8 @@ async def get_us_tile(
         y: Tile Y coordinate
 
     Note:
-        Daily granularity (YYYY-MM-DD) is only supported for nightlights metric
-        using NASA Black Marble VNP46A2 data. Other metrics use monthly composites.
+        Daily granularity (YYYY-MM-DD) is supported for nightlights and active_fire.
+        Other metrics use monthly composites.
     """
     from pathlib import Path
     from app.core.config import get_settings
@@ -75,41 +80,43 @@ async def get_us_tile(
         )
 
     # Validate date format: YYYY-MM (monthly) or YYYY-MM-DD (daily)
-    is_daily = False
-    if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-        is_daily = True
-        # Daily granularity only supported for nightlights
-        if metric != "nightlights":
-            # For non-nightlights metrics, fall back to monthly
-            date_str = date_str[:7]  # Convert YYYY-MM-DD to YYYY-MM
-            is_daily = False
-    elif not re.match(r"^\d{4}-\d{2}$", date_str):
+    if not re.match(r"^\d{4}-\d{2}(-\d{2})?$", date_str):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="date must be in format YYYY-MM (monthly) or YYYY-MM-DD (daily for nightlights)",
+            detail="date must be in format YYYY-MM (monthly) or YYYY-MM-DD (daily for nightlights/active_fire)",
         )
+
+    from app.services.tiles.us_tile_on_demand import resolve_us_tile_request
+
+    try:
+        resolved = resolve_us_tile_request(metric=metric, date_str=date_str, requested_granularity=g)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     # Look up the pre-generated tile
     settings = get_settings()
-    tile_path = Path(settings.cache_dir) / "us_tiles" / metric / date_str / str(z) / str(x) / f"{y}.png"
+    tiles_dir_name = "us_tiles" if v <= 2 else f"us_tiles_v{v}"
+    tile_path = Path(settings.cache_dir) / tiles_dir_name / metric / resolved.date_bucket / str(z) / str(x) / f"{y}.png"
 
     if tile_path.exists():
         # Shorter cache for daily tiles as they may be updated more frequently
-        cache_duration = 86400 if is_daily else 604800  # 1 day vs 1 week
+        cache_duration = 86400 if resolved.granularity == "daily" else 604800  # 1 day vs 1 week
         return Response(
             content=tile_path.read_bytes(),
             media_type="image/png",
             headers={
                 "Cache-Control": f"public, max-age={cache_duration}",
                 "X-Tile-Source": "pregenerated",
-                "X-Tile-Granularity": "daily" if is_daily else "monthly",
+                "X-Tile-Granularity": resolved.granularity,
+                "X-Tile-Cache-Version": str(v),
             },
         )
 
-    # If daily tile not found, try falling back to monthly
-    if is_daily:
-        monthly_date = date_str[:7]
-        monthly_path = Path(settings.cache_dir) / "us_tiles" / metric / monthly_date / str(z) / str(x) / f"{y}.png"
+    # Backwards-compatible fallback: if a daily tile is requested but the monthly tile exists,
+    # serve the monthly one to avoid returning an empty tile.
+    if resolved.granularity == "daily":
+        monthly_bucket = resolved.date_bucket[:7]
+        monthly_path = Path(settings.cache_dir) / tiles_dir_name / metric / monthly_bucket / str(z) / str(x) / f"{y}.png"
         if monthly_path.exists():
             return Response(
                 content=monthly_path.read_bytes(),
@@ -118,17 +125,94 @@ async def get_us_tile(
                     "Cache-Control": "public, max-age=604800",
                     "X-Tile-Source": "pregenerated",
                     "X-Tile-Granularity": "monthly-fallback",
+                    "X-Tile-Cache-Version": str(v),
                 },
             )
 
-    # Return empty transparent tile if not found
-    from app.services.tiles.generator import create_empty_tile
+    # Generate *real* tile on-demand (cached to disk).
+    from app.services.tiles.us_tile_on_demand import generate_us_tile_png
+
+    try:
+        tile_data = await generate_us_tile_png(metric=metric, resolved=resolved, z=z, x=x, y=y)
+    except Exception as e:
+        # Try a monthly fallback if daily generation fails.
+        if resolved.granularity == "daily":
+            try:
+                from app.services.tiles.us_tile_on_demand import ResolvedTileRequest
+
+                monthly_resolved = ResolvedTileRequest(metric=metric, date_bucket=resolved.date_bucket[:7], granularity="monthly")
+                tile_data = await generate_us_tile_png(metric=metric, resolved=monthly_resolved, z=z, x=x, y=y)
+
+                monthly_fallback_path = (
+                    Path(settings.cache_dir)
+                    / tiles_dir_name
+                    / metric
+                    / monthly_resolved.date_bucket
+                    / str(z)
+                    / str(x)
+                    / f"{y}.png"
+                )
+                monthly_fallback_path.parent.mkdir(parents=True, exist_ok=True)
+                monthly_fallback_path.write_bytes(tile_data)
+
+                return Response(
+                    content=tile_data,
+                    media_type="image/png",
+                    headers={
+                        "Cache-Control": "public, max-age=604800",
+                        "X-Tile-Source": "on-demand",
+                        "X-Tile-Granularity": "monthly-fallback",
+                        "X-Tile-Cache-Version": str(v),
+                    },
+                )
+            except Exception as e2:
+                logger.error(
+                    "Monthly fallback also failed for US tile",
+                    metric=metric,
+                    date_bucket=resolved.date_bucket,
+                    z=z,
+                    x=x,
+                    y=y,
+                    error=str(e2),
+                )
+
+        logger.error(
+            "Failed to generate US tile on-demand",
+            metric=metric,
+            date_bucket=resolved.date_bucket,
+            granularity=resolved.granularity,
+            z=z,
+            x=x,
+            y=y,
+            error=str(e),
+        )
+        # Accuracy > filler: return empty tile instead of synthetic noise.
+        from app.services.tiles.generator import create_empty_tile
+
+        tile_data = create_empty_tile()
+        return Response(
+            content=tile_data,
+            media_type="image/png",
+            headers={
+                "Cache-Control": "public, max-age=300",
+                "X-Tile-Source": "empty-error",
+                "X-Tile-Granularity": resolved.granularity,
+                "X-Tile-Cache-Version": str(v),
+            },
+        )
+
+    # Cache the generated tile for future requests (including empty tiles).
+    tile_path.parent.mkdir(parents=True, exist_ok=True)
+    tile_path.write_bytes(tile_data)
+
     return Response(
-        content=create_empty_tile(),
+        content=tile_data,
         media_type="image/png",
         headers={
-            "Cache-Control": "public, max-age=3600",
-            "X-Tile-Source": "empty",
+            "Cache-Control": "public, max-age=604800" if resolved.granularity == "monthly" else "public, max-age=86400",
+            "X-Tile-Source": "on-demand",
+            "X-Tile-Granularity": resolved.granularity,
+            "X-Tile-Cache-Version": str(v),
         },
     )
 

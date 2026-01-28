@@ -21,12 +21,10 @@ test.describe('Compare View', () => {
   });
 
   test('has period A and period B date inputs', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
-    // Check for date inputs
     const dateInputs = page.locator('input[type="date"]');
-    const count = await dateInputs.count();
-    expect(count).toBeGreaterThanOrEqual(4); // 2 for each period
+    await expect
+      .poll(async () => dateInputs.count(), { timeout: 15000 })
+      .toBeGreaterThanOrEqual(4); // 2 for each period
   });
 
   test('shows split-screen map comparison', async ({ page }) => {

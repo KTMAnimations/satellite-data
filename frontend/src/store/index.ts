@@ -40,10 +40,10 @@ interface AppState {
   setApiKey: (key: string | null) => void;
 }
 
-// Default to January 2024 - matches available tile data
+// Default to last 2 years of data for meaningful analysis
 const defaultDateRange: DateRange = {
-  start: new Date(2024, 0, 1),   // Jan 1, 2024
-  end: new Date(2024, 0, 31),    // Jan 31, 2024
+  start: new Date(2023, 0, 1),   // Jan 1, 2023
+  end: new Date(),               // Today
 };
 
 export const useStore = create<AppState>()(
@@ -87,7 +87,8 @@ export const useStore = create<AppState>()(
       setComparisonPeriodB: (range) => set({ comparisonPeriodB: range }),
 
       // UI state
-      sidebarOpen: true,
+      // Closed by default (especially important on mobile where the nav is an overlay).
+      sidebarOpen: false,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       activeTab: 'regions',
       setActiveTab: (tab) => set({ activeTab: tab }),

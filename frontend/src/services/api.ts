@@ -162,9 +162,11 @@ class APIClient {
 
   // US-wide pre-generated tiles (much faster, no region needed)
   // Supports both monthly (YYYY-MM) and daily (YYYY-MM-DD) formats
-  // Daily granularity only available for nightlights metric
+  // Daily granularity only available for nightlights and active_fire metrics
+  // Version parameter busts browser cache when tile generation changes
   getUSTileUrl(metric: string, dateStr: string): string {
-    return `${API_BASE_URL}/tiles/us/${metric}/${dateStr}/{z}/{x}/{y}.png`;
+    const TILE_VERSION = 4; // Increment when tile generation/caching changes
+    return `${API_BASE_URL}/tiles/us/${metric}/${dateStr}/{z}/{x}/{y}.png?v=${TILE_VERSION}`;
   }
 
   // Convert date (YYYY-MM-DD) to year-month (YYYY-MM)

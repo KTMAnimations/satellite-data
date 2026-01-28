@@ -65,9 +65,10 @@ export function TimeSeriesChart({
   });
 
   useEffect(() => {
-    if (!svgRef.current || selectedMetrics.length === 0 || !hasData) return;
+    const svgElement = svgRef.current;
+    if (!svgElement || selectedMetrics.length === 0 || !hasData) return;
 
-    const svg = d3.select(svgRef.current);
+    const svg = d3.select(svgElement);
 
     // Interrupt any ongoing transitions and clear previous content
     svg.selectAll('*').interrupt();
@@ -198,11 +199,8 @@ export function TimeSeriesChart({
     });
     // Cleanup function to prevent memory leaks
     return () => {
-      if (svgRef.current) {
-        const svg = d3.select(svgRef.current);
-        svg.selectAll('*').interrupt();
-        svg.selectAll('*').on('.', null); // Remove all event listeners
-      }
+      svg.selectAll('*').interrupt();
+      svg.selectAll('*').on('.', null); // Remove all event listeners
     };
   }, [data, selectedMetrics, width, height, hasData]);
 

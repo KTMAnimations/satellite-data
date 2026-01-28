@@ -5,76 +5,74 @@ import { SeasonalBarChart } from '../../components/Charts/SeasonalBarChart';
 // Mock D3
 vi.mock('d3', async () => {
   const actual = await vi.importActual('d3');
+  const stubSelection = {
+    selectAll: vi.fn().mockReturnThis(),
+    interrupt: vi.fn().mockReturnThis(),
+    remove: vi.fn().mockReturnThis(),
+    append: vi.fn().mockReturnThis(),
+    attr: vi.fn().mockReturnThis(),
+    style: vi.fn().mockReturnThis(),
+    text: vi.fn().mockReturnThis(),
+    datum: vi.fn().mockReturnThis(),
+    call: vi.fn().mockReturnThis(),
+    on: vi.fn().mockReturnThis(),
+    filter: vi.fn().mockReturnThis(),
+    enter: vi.fn().mockReturnThis(),
+    data: vi.fn().mockReturnThis(),
+  };
   return {
     ...actual,
-    select: vi.fn().mockReturnValue({
-      selectAll: vi.fn().mockReturnThis(),
-      remove: vi.fn().mockReturnThis(),
-      append: vi.fn().mockReturnThis(),
-      attr: vi.fn().mockReturnThis(),
-      style: vi.fn().mockReturnThis(),
-      text: vi.fn().mockReturnThis(),
-      datum: vi.fn().mockReturnThis(),
-      call: vi.fn().mockReturnThis(),
-      on: vi.fn().mockReturnThis(),
-    }),
+    select: vi.fn().mockReturnValue(stubSelection),
   };
 });
 
 describe('SeasonalBarChart', () => {
-  const mockData = {
-    winter: {
-      ndvi: 0.35,
-      nightlights: 45.2,
-    },
-    summer: {
-      ndvi: 0.62,
-      nightlights: 38.7,
-    },
-  };
+  const emptyAverage = {
+    ndvi: null,
+    nightlights: null,
+    urban_density: null,
+    parking: null,
+    land_cover: null,
+    surface_water: null,
+    active_fire: null,
+    no2: null,
+    temperature: null,
+    precipitation: null,
+    aerosol: null,
+    cropland: null,
+    evapotranspiration: null,
+    soil_moisture: null,
+    impervious: null,
+    fire_historical: null,
+    canopy_height: null,
+  } as const;
 
-  it('renders without crashing', () => {
-    const { container } = render(
-      <SeasonalBarChart
-        data={mockData}
-        metrics={['ndvi', 'nightlights']}
-      />
-    );
-    expect(container).toBeTruthy();
-  });
-
-  it('shows seasonal labels', () => {
+  it('shows empty-state message when no seasonal data is available', () => {
     render(
       <SeasonalBarChart
-        data={mockData}
-        metrics={['ndvi']}
+        data={{
+          winter_avg: { ...emptyAverage },
+          summer_avg: { ...emptyAverage },
+          change_pct: { ...emptyAverage },
+        }}
       />
     );
 
-    expect(screen.getByText(/Winter/i)).toBeInTheDocument();
-    expect(screen.getByText(/Summer/i)).toBeInTheDocument();
+    expect(screen.getByText('No seasonal comparison available')).toBeInTheDocument();
   });
 
-  it('displays header with comparison title', () => {
-    render(
-      <SeasonalBarChart
-        data={mockData}
-        metrics={['ndvi']}
-      />
-    );
-
-    expect(screen.getByText(/Seasonal Comparison/i)).toBeInTheDocument();
-  });
-
-  it('renders chart container', () => {
+  it('renders an SVG when seasonal data exists', () => {
     const { container } = render(
       <SeasonalBarChart
-        data={mockData}
-        metrics={['ndvi']}
+        data={{
+          winter_avg: { ...emptyAverage, ndvi: 0.35, nightlights: 45.2 },
+          summer_avg: { ...emptyAverage, ndvi: 0.62, nightlights: 38.7 },
+          change_pct: { ...emptyAverage, ndvi: 10, nightlights: -5 },
+        }}
       />
     );
 
-    const chartContainer = container.querySelector('.seasonal-bar-chart');
-    expect(chartContainer).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeInTheDocument();
+    expect(screen.queryByText('No seasonal comparison available')).not.toBeInTheDocument();
   });
 });

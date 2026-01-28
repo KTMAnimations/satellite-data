@@ -2,70 +2,53 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Animation Studio', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/animation');
+    await page.goto('/animations');
   });
 
   test('displays animation studio header', async ({ page }) => {
     await expect(page.locator('h1')).toContainText('Animation Studio');
   });
 
-  test('shows metric selector with all 17 metrics', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const metricSelector = page.locator('select.metric-select, .metric-selector select');
-    await expect(metricSelector.first()).toBeVisible();
-
-    // Click to open dropdown and check options
-    await metricSelector.first().click();
-    const options = page.locator('option');
-    const count = await options.count();
-    expect(count).toBeGreaterThanOrEqual(4); // At least core metrics
+  test('shows 17 metric cards with granularity badges', async ({ page }) => {
+    const metricCards = page.locator('button.metric-card');
+    await expect(metricCards).toHaveCount(17);
+    await expect(metricCards.first().locator('.granularity-badge')).toBeVisible();
   });
 
-  test('has playback controls', async ({ page }) => {
-    await page.waitForTimeout(2000);
+  test('can select a region and see preview map', async ({ page }) => {
+    const regionSelect = page.locator('select.region-select');
+    await expect(regionSelect).toBeVisible();
 
-    // Check for play/pause button
-    const playBtn = page.locator('button').filter({ hasText: /play|pause/i }).or(
-      page.locator('.play-button, .playback-controls button')
-    );
-    await expect(playBtn.first()).toBeVisible();
-  });
+    // Wait for regions to load, then select a known region.
+    await expect(regionSelect.locator('option', { hasText: 'Phoenix, AZ' })).toHaveCount(1);
+    await regionSelect.selectOption({ label: 'Phoenix, AZ' });
 
-  test('shows timeline slider', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const slider = page.locator('.timeline-slider, input[type="range"], .time-slider');
-    await expect(slider.first()).toBeVisible();
-  });
-
-  test('displays map with overlay', async ({ page }) => {
-    await page.waitForSelector('.leaflet-container', { timeout: 10000 });
+    await expect(page.locator('.preview-header h3')).toHaveText('Phoenix, AZ');
     await expect(page.locator('.leaflet-container')).toBeVisible();
   });
 
-  test('has speed control', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const speedControl = page.locator('.speed-control, .playback-speed').or(
-      page.getByText(/speed|1x|2x/i)
-    );
-    await expect(speedControl.first()).toBeVisible();
+  test('shows timeline, playback controls, and speed control after selecting region', async ({ page }) => {
+    const regionSelect = page.locator('select.region-select');
+    await expect(regionSelect).toBeVisible();
+    await expect(regionSelect.locator('option', { hasText: 'Phoenix, AZ' })).toHaveCount(1);
+    await regionSelect.selectOption({ label: 'Phoenix, AZ' });
+
+    const timeSlider = page.locator('.time-slider');
+    await expect(timeSlider).toBeVisible();
+
+    await expect(page.locator('button.play-btn')).toBeVisible();
+    await expect(page.locator('.speed-control')).toBeVisible();
+    await expect(page.locator('.current-date')).toBeVisible();
   });
 
-  test('shows frame indicator', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    // Look for date/frame display
-    const frameIndicator = page.locator('.frame-indicator, .current-date, .timeline-label');
-    await expect(frameIndicator.first()).toBeVisible();
-  });
+  test('can change metric selection', async ({ page }) => {
+    const regionSelect = page.locator('select.region-select');
+    await expect(regionSelect).toBeVisible();
+    await expect(regionSelect.locator('option', { hasText: 'Phoenix, AZ' })).toHaveCount(1);
+    await regionSelect.selectOption({ label: 'Phoenix, AZ' });
 
-  test('can change metric and see overlay update', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
-    // Select NDVI metric
-    const select = page.locator('select').first();
-    await select.selectOption({ label: /ndvi/i });
-    await page.waitForTimeout(2000);
-
-    // Verify no error
-    await expect(page.locator('.error-message, .error-state')).not.toBeVisible();
+    const ndviCard = page.locator('button.metric-card', { hasText: 'NDVI' });
+    await ndviCard.click();
+    await expect(ndviCard).toHaveClass(/active/);
   });
 });

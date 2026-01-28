@@ -1,6 +1,6 @@
 # Shipping Checklist
 
-**Last Updated:** 2026-01-26
+**Last Updated:** 2026-01-27
 **MVP Goal:** End-to-end working platform with 5 key regions
 **Overall Status:** ~85% complete
 
@@ -15,7 +15,7 @@
 | Database | **Ready** | Migrations complete, schema verified |
 | Docker | **Ready** | All services defined, health checks configured |
 | Data | **Partial** | Need tile data for 5 key regions |
-| Testing | **Minimal** | No automated tests yet |
+| Testing | **Good** | Backend + frontend + Playwright E2E suites passing |
 
 ---
 
@@ -188,6 +188,11 @@ docker exec satellite-api python scripts/collect_archive.py \
 - [ ] Verify winter values > summer values (snowbird pattern)
 - [ ] Export CSV and verify data
 - [ ] Generate animation and verify playback
+
+### Automated Testing (COMPLETE)
+- [x] Backend tests: `docker-compose exec api pytest -q` (141 passed, 1 skipped)
+- [x] Frontend unit tests: `cd frontend && npm test` (24 passed)
+- [x] Frontend E2E (Playwright): `cd frontend && npm run test:e2e` (60 tests across Chromium/Firefox/WebKit/Mobile)
 
 ### API Testing
 ```bash

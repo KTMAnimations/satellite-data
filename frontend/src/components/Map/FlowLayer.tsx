@@ -66,7 +66,6 @@ export function FlowLayer({
 }: FlowLayerProps) {
   const map = useMap();
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const animationRef = useRef<number | null>(null);
   const isMountedRef = useRef<boolean>(true);
 
   // Check for reduced motion preference
@@ -135,14 +134,17 @@ export function FlowLayer({
       svgRef.current = svg;
     }
 
-    const svg = d3.select(svgRef.current);
+    const svgElement = svgRef.current;
+    if (!svgElement) return;
+
+    const svg = d3.select(svgElement);
 
     // Update SVG position and size
     const topLeft = map.latLngToLayerPoint(bounds.getNorthWest());
-    svgRef.current.style.left = `${topLeft.x}px`;
-    svgRef.current.style.top = `${topLeft.y}px`;
-    svgRef.current.setAttribute('width', `${size.x}`);
-    svgRef.current.setAttribute('height', `${size.y}`);
+    svgElement.style.left = `${topLeft.x}px`;
+    svgElement.style.top = `${topLeft.y}px`;
+    svgElement.setAttribute('width', `${size.x}`);
+    svgElement.setAttribute('height', `${size.y}`);
 
     // Clear previous content
     svg.selectAll('*').remove();
@@ -306,12 +308,10 @@ export function FlowLayer({
       const newTopLeft = map.latLngToLayerPoint(newBounds.getNorthWest());
       const newSize = map.getSize();
 
-      if (svgRef.current) {
-        svgRef.current.style.left = `${newTopLeft.x}px`;
-        svgRef.current.style.top = `${newTopLeft.y}px`;
-        svgRef.current.setAttribute('width', `${newSize.x}`);
-        svgRef.current.setAttribute('height', `${newSize.y}`);
-      }
+      svgElement.style.left = `${newTopLeft.x}px`;
+      svgElement.style.top = `${newTopLeft.y}px`;
+      svgElement.setAttribute('width', `${newSize.x}`);
+      svgElement.setAttribute('height', `${newSize.y}`);
 
       // Redraw paths and points at new positions
       // For efficiency, we just update transforms rather than redrawing
@@ -364,45 +364,17 @@ export function FlowLayer({
       map.off('move', updatePosition);
       map.off('zoom', updatePosition);
 
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-
       // Interrupt all D3 transitions to prevent memory leaks
-      if (svgRef.current) {
-        d3.select(svgRef.current).selectAll('*').interrupt();
-      }
+      svg.selectAll('*').interrupt();
 
-      if (svgRef.current && svgRef.current.parentNode) {
-        svgRef.current.parentNode.removeChild(svgRef.current);
+      if (svgElement.parentNode) {
+        svgElement.parentNode.removeChild(svgElement);
+      }
+      if (svgRef.current === svgElement) {
         svgRef.current = null;
       }
     };
   }, [map, connections, points, shouldAnimate, speed, particleCount, color, showLabels]);
 
   return null;
-}
-
-// Helper function to create flow data from region metrics
-export function createFlowData(
-  regions: Array<{ id: string; name: string; lat: number; lng: number }>,
-  winterValues: Record<string, number>,
-  summerValues: Record<string, number>
-): FlowPoint[] {
-  return regions.map((region) => {
-    const winter = winterValues[region.id] || 0;
-    const summer = summerValues[region.id] || 0;
-    const total = winter + summer || 1;
-
-    // Normalize: 0 = all summer activity, 1 = all winter activity
-    const value = winter / total;
-
-    return {
-      id: region.id,
-      name: region.name,
-      lat: region.lat,
-      lng: region.lng,
-      value,
-    };
-  });
 }

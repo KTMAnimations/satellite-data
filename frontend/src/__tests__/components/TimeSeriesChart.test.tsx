@@ -5,82 +5,85 @@ import { TimeSeriesChart } from '../../components/Charts/TimeSeriesChart';
 // Mock D3 to prevent canvas rendering issues
 vi.mock('d3', async () => {
   const actual = await vi.importActual('d3');
+  const stubSelection = {
+    selectAll: vi.fn().mockReturnThis(),
+    interrupt: vi.fn().mockReturnThis(),
+    remove: vi.fn().mockReturnThis(),
+    append: vi.fn().mockReturnThis(),
+    attr: vi.fn().mockReturnThis(),
+    style: vi.fn().mockReturnThis(),
+    text: vi.fn().mockReturnThis(),
+    datum: vi.fn().mockReturnThis(),
+    call: vi.fn().mockReturnThis(),
+    on: vi.fn().mockReturnThis(),
+    data: vi.fn().mockReturnThis(),
+    enter: vi.fn().mockReturnThis(),
+  };
   return {
     ...actual,
-    select: vi.fn().mockReturnValue({
-      selectAll: vi.fn().mockReturnThis(),
-      remove: vi.fn().mockReturnThis(),
-      append: vi.fn().mockReturnThis(),
-      attr: vi.fn().mockReturnThis(),
-      style: vi.fn().mockReturnThis(),
-      text: vi.fn().mockReturnThis(),
-      datum: vi.fn().mockReturnThis(),
-      call: vi.fn().mockReturnThis(),
-      on: vi.fn().mockReturnThis(),
-    }),
+    select: vi.fn().mockReturnValue(stubSelection),
   };
 });
 
 describe('TimeSeriesChart', () => {
-  const mockData = [
-    { date: '2024-01', ndvi: 0.45, nightlights: 32.5 },
-    { date: '2024-02', ndvi: 0.48, nightlights: 35.2 },
-    { date: '2024-03', ndvi: 0.52, nightlights: 38.1 },
-  ];
+  const emptyMetric = { unit: '', data: [] };
+  const baseData = {
+    nightlights: { ...emptyMetric },
+    ndvi: { ...emptyMetric },
+    urban_density: { ...emptyMetric },
+    parking: { ...emptyMetric },
+    land_cover: { ...emptyMetric },
+    surface_water: { ...emptyMetric },
+    active_fire: { ...emptyMetric },
+    no2: { ...emptyMetric },
+    temperature: { ...emptyMetric },
+    precipitation: { ...emptyMetric },
+    aerosol: { ...emptyMetric },
+    cropland: { ...emptyMetric },
+    evapotranspiration: { ...emptyMetric },
+    soil_moisture: { ...emptyMetric },
+    impervious: { ...emptyMetric },
+    fire_historical: { ...emptyMetric },
+    canopy_height: { ...emptyMetric },
+  } as const;
 
-  it('renders without crashing', () => {
+  it('shows empty-state message when selected metrics have no data', () => {
     const { container } = render(
       <TimeSeriesChart
-        data={mockData}
-        metrics={['ndvi']}
-      />
-    );
-    expect(container).toBeTruthy();
-  });
-
-  it('shows header with metric label', () => {
-    render(
-      <TimeSeriesChart
-        data={mockData}
-        metrics={['ndvi']}
+        data={{ ...baseData }}
+        selectedMetrics={['ndvi']}
       />
     );
 
-    expect(screen.getByText(/NDVI/i)).toBeInTheDocument();
+    expect(container.querySelector('.chart-tooltip')).not.toBeInTheDocument();
+    expect(screen.getByText('No data collected for this region')).toBeInTheDocument();
   });
 
-  it('displays multiple metrics', () => {
-    render(
-      <TimeSeriesChart
-        data={mockData}
-        metrics={['ndvi', 'nightlights']}
-      />
-    );
-
-    expect(screen.getByText(/NDVI/i)).toBeInTheDocument();
-    expect(screen.getByText(/Nighttime Lights/i)).toBeInTheDocument();
-  });
-
-  it('renders chart container', () => {
+  it('renders an SVG and tooltip when data exists', () => {
     const { container } = render(
       <TimeSeriesChart
-        data={mockData}
-        metrics={['ndvi']}
+        data={{
+          ...baseData,
+          ndvi: {
+            unit: 'index (-1 to 1)',
+            data: [
+              { date: '2024-01-01', value: 0.45 },
+              { date: '2024-02-01', value: 0.48 },
+            ],
+          },
+          nightlights: {
+            unit: 'nW/cm²/sr',
+            data: [
+              { date: '2024-01-01', value: 32.5 },
+              { date: '2024-02-01', value: 35.2 },
+            ],
+          },
+        }}
+        selectedMetrics={['ndvi', 'nightlights']}
       />
     );
 
-    const chartContainer = container.querySelector('.time-series-chart');
-    expect(chartContainer).toBeInTheDocument();
-  });
-
-  it('handles empty data gracefully', () => {
-    const { container } = render(
-      <TimeSeriesChart
-        data={[]}
-        metrics={['ndvi']}
-      />
-    );
-
-    expect(container).toBeTruthy();
+    expect(container.querySelector('svg')).toBeInTheDocument();
+    expect(container.querySelector('.chart-tooltip')).toBeInTheDocument();
   });
 });

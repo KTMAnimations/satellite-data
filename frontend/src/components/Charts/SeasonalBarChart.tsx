@@ -5,6 +5,7 @@ import './Charts.css';
 
 interface SeasonalBarChartProps {
   data: SeasonalSummary;
+  selectedMetrics?: MetricType[];
   width?: number;
   height?: number;
 }
@@ -29,12 +30,14 @@ const METRIC_LABELS: Record<MetricType, string> = {
   canopy_height: 'Canopy Height',
 };
 
-export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBarChartProps) {
+export function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 300 }: SeasonalBarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Prepare data - only include metrics with data in BOTH seasons
-  const metrics: MetricType[] = ['nightlights', 'ndvi', 'urban_density', 'parking'];
-  const chartData = metrics
+  // Prepare data - only include metrics that are selected AND have data in BOTH seasons
+  // If no selectedMetrics provided, show all metrics that have data
+  const allMetrics: MetricType[] = Object.keys(METRIC_LABELS) as MetricType[];
+  const metricsToShow = selectedMetrics && selectedMetrics.length > 0 ? selectedMetrics : allMetrics;
+  const chartData = metricsToShow
     .filter(
       (m) =>
         data.winter_avg[m] !== null &&
@@ -50,9 +53,10 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
     }));
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    const svgElement = svgRef.current;
+    if (!svgElement) return;
 
-    const svg = d3.select(svgRef.current);
+    const svg = d3.select(svgElement);
 
     // Interrupt any ongoing transitions and clear previous content
     svg.selectAll('*').interrupt();
@@ -162,11 +166,8 @@ export function SeasonalBarChart({ data, width = 400, height = 300 }: SeasonalBa
 
     // Cleanup function to prevent memory leaks
     return () => {
-      if (svgRef.current) {
-        const svg = d3.select(svgRef.current);
-        svg.selectAll('*').interrupt();
-        svg.selectAll('*').on('.', null); // Remove all event listeners
-      }
+      svg.selectAll('*').interrupt();
+      svg.selectAll('*').on('.', null); // Remove all event listeners
     };
   }, [chartData, width, height]);
 

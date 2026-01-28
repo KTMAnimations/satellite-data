@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
 import api from '../../services/api';
 
 // Mock axios
@@ -69,22 +68,34 @@ describe('API Service', () => {
       expect(typeof api.getTileUrl).toBe('function');
     });
 
-    it('generates correct tile URL', () => {
-      const url = api.getTileUrl('ndvi', '2024-01');
-      expect(url).toContain('ndvi');
-      expect(url).toContain('2024-01');
+    it('generates correct region tile URL (with and without date)', () => {
+      const urlNoDate = api.getTileUrl('region-123', 'ndvi');
+      expect(urlNoDate).toContain('region-123');
+      expect(urlNoDate).toContain('ndvi');
+      expect(urlNoDate).not.toContain('date=');
+
+      const urlWithDate = api.getTileUrl('region-123', 'ndvi', '2024-01-15');
+      expect(urlWithDate).toContain('region-123');
+      expect(urlWithDate).toContain('ndvi');
+      expect(urlWithDate).toContain('date=2024-01-15');
+    });
+
+    it('generates correct US tile URL', () => {
+      const url = api.getUSTileUrl('nightlights', '2024-01');
+      expect(url).toContain('tiles/us/nightlights/2024-01');
     });
   });
 
-  describe('granularity mapping', () => {
-    it('has getMetricGranularity function', () => {
-      expect(typeof api.getMetricGranularity).toBe('function');
+  describe('date helpers', () => {
+    it('converts dates to year-month', () => {
+      expect(api.dateToYearMonth('2024-01-15')).toBe('2024-01');
     });
 
-    it('returns correct granularity for different metrics', () => {
-      expect(api.getMetricGranularity('nightlights')).toBe('monthly');
-      expect(api.getMetricGranularity('ndvi')).toBe('weekly');
-      expect(api.getMetricGranularity('urban_density')).toBe('yearly');
+    it('chooses correct tile date string based on granularity/metric', () => {
+      expect(api.getTileDateString('2024-01-15', 'nightlights', 'daily')).toBe('2024-01-15');
+      expect(api.getTileDateString('2024-01-15', 'active_fire', 'daily')).toBe('2024-01-15');
+      expect(api.getTileDateString('2024-01-15', 'ndvi', 'daily')).toBe('2024-01');
+      expect(api.getTileDateString('2024-01-15', 'nightlights', 'monthly')).toBe('2024-01');
     });
   });
 });

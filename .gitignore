@@ -70,6 +70,11 @@ htmlcov/
 .pytest_cache/
 .tox/
 
+# Playwright / E2E artifacts
+.playwright-mcp/
+frontend/e2e/playwright-report/
+frontend/test-results/
+
 # Build
 dist/
 build/
@@ -83,3 +88,6 @@ frontend/dist/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Local scratch
+tmp_tile_debug/

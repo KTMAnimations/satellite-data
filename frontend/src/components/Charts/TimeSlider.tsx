@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import './TimeSlider.css';
+
+const SLIDER_MARGIN = { left: 40, right: 40, top: 20, bottom: 30 } as const;
 
 interface TimeSliderProps {
   dates: Date[];
@@ -27,18 +29,28 @@ export function TimeSlider({
   const [isDragging, setIsDragging] = useState(false);
 
   const height = 80;
-  const margin = { left: 40, right: 40, top: 20, bottom: 30 };
-  const innerWidth = width - margin.left - margin.right;
+  const innerWidth = width - SLIDER_MARGIN.left - SLIDER_MARGIN.right;
 
-  const sortedDates = [...dates].sort((a, b) => a.getTime() - b.getTime());
+  const sortedDates = useMemo(
+    () => [...dates].sort((a, b) => a.getTime() - b.getTime()),
+    [dates]
+  );
 
-  const xScale = d3
-    .scaleTime()
-    .domain(d3.extent(sortedDates) as [Date, Date])
-    .range([0, innerWidth]);
+  const xScale = useMemo(() => {
+    const [minDate, maxDate] = d3.extent(sortedDates);
+    const domainStart = minDate ?? selectedDate;
+    const domainEnd = maxDate ?? selectedDate;
+
+    return d3
+      .scaleTime()
+      .domain([domainStart, domainEnd])
+      .range([0, innerWidth]);
+  }, [sortedDates, innerWidth, selectedDate]);
 
   const findClosestDate = useCallback(
     (x: number) => {
+      if (sortedDates.length === 0) return selectedDate;
+
       const targetDate = xScale.invert(x);
       let closest = sortedDates[0];
       let minDiff = Math.abs(targetDate.getTime() - closest.getTime());
@@ -52,13 +64,14 @@ export function TimeSlider({
       }
       return closest;
     },
-    [sortedDates, xScale]
+    [sortedDates, xScale, selectedDate]
   );
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    const svgElement = svgRef.current;
+    if (!svgElement || sortedDates.length === 0) return;
 
-    const svg = d3.select(svgRef.current);
+    const svg = d3.select(svgElement);
 
     // Interrupt any ongoing transitions and clear previous content
     svg.selectAll('*').interrupt();
@@ -66,7 +79,7 @@ export function TimeSlider({
 
     const g = svg
       .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+      .attr('transform', `translate(${SLIDER_MARGIN.left},${SLIDER_MARGIN.top})`);
 
     // Track background
     g.append('rect')
@@ -181,7 +194,7 @@ export function TimeSlider({
       .on('drag', (event) => {
         // Get pointer relative to SVG element, then subtract left margin
         const [svgX] = d3.pointer(event.sourceEvent, svg.node());
-        const x = Math.max(0, Math.min(innerWidth, svgX - margin.left));
+        const x = Math.max(0, Math.min(innerWidth, svgX - SLIDER_MARGIN.left));
         const closestDate = findClosestDate(x);
         onDateChange(closestDate);
       })
@@ -192,20 +205,17 @@ export function TimeSlider({
     // Click to jump - get coordinates relative to SVG then subtract margin
     overlay.on('click', (event) => {
       const [svgX] = d3.pointer(event, svg.node());
-      const x = Math.max(0, Math.min(innerWidth, svgX - margin.left));
+      const x = Math.max(0, Math.min(innerWidth, svgX - SLIDER_MARGIN.left));
       const closestDate = findClosestDate(x);
       onDateChange(closestDate);
     });
 
     // Cleanup function to prevent memory leaks
     return () => {
-      if (svgRef.current) {
-        const svg = d3.select(svgRef.current);
-        svg.selectAll('*').interrupt();
-        svg.selectAll('*').on('.', null); // Remove all event listeners
-      }
+      svg.selectAll('*').interrupt();
+      svg.selectAll('*').on('.', null); // Remove all event listeners
     };
-  }, [dates, selectedDate, width, innerWidth, xScale, findClosestDate, onDateChange]);
+  }, [sortedDates, selectedDate, innerWidth, xScale, findClosestDate, onDateChange]);
 
   // Playback effect
   useEffect(() => {

@@ -194,9 +194,9 @@ export function CompositeTileLayer({
         layerRef.current = null;
       }
       // Clear tile cache to free memory
-      tileCacheRef.current.clear();
+      tileCache.clear();
     };
-  }, [map, baseUrl, nativeZoom, minZoom, maxZoom, opacity]);
+  }, [map, baseUrl, nativeZoom, minZoom, maxZoom, opacity, maxCompositeZoomDiff]);
 
   return null;
 }

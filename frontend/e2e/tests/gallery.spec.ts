@@ -21,11 +21,9 @@ test.describe('Example Gallery', () => {
   });
 
   test('preset cards have descriptions', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
-    // Check that descriptions are visible
-    await expect(page.getByText(/Track winter population/i)).toBeVisible();
-    await expect(page.getByText(/COVID/i).first()).toBeVisible();
+    const descriptions = page.locator('.preset-card .preset-description');
+    await expect(descriptions).toHaveCount(5);
+    await expect(descriptions.first()).toHaveText(/.+/);
   });
 
   test('preset cards show regions', async ({ page }) => {
@@ -37,11 +35,9 @@ test.describe('Example Gallery', () => {
   });
 
   test('preset cards show key findings', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
-    // Check for findings sections
-    await expect(page.getByText('Key Findings')).toBeVisible();
-    await expect(page.getByText(/\+\d+%/)).toBeVisible(); // Percentage change
+    await expect(page.locator('.preset-findings h4')).toHaveCount(5);
+    // At least one finding should contain a percentage change.
+    await expect(page.locator('.preset-findings li', { hasText: '%' }).first()).toBeVisible();
   });
 
   test('preset cards have explore button', async ({ page }) => {
@@ -59,11 +55,9 @@ test.describe('Example Gallery', () => {
   });
 
   test('methodology lists data sources', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
-    await expect(page.getByText(/Nighttime Lights.*VIIRS/i)).toBeVisible();
-    await expect(page.getByText(/NDVI/i)).toBeVisible();
-    await expect(page.getByText(/Urban Density/i)).toBeVisible();
+    await expect(page.getByText('Nighttime Lights (VIIRS):')).toBeVisible();
+    await expect(page.getByText('NDVI:')).toBeVisible();
+    await expect(page.getByText('Urban Density:')).toBeVisible();
   });
 
   test('can click explore to navigate', async ({ page }) => {

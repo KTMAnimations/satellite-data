@@ -11,13 +11,14 @@ test.describe('Dashboard', () => {
 
   test('shows featured analyses cards', async ({ page }) => {
     const featuredCards = page.locator('.featured-card');
-    await expect(featuredCards).toHaveCount(4);
+    await expect(featuredCards).toHaveCount(5);
 
     // Check specific presets exist
     await expect(page.getByText('Snowbird Migration Pattern')).toBeVisible();
     await expect(page.getByText('COVID-19 Impact Analysis')).toBeVisible();
-    await expect(page.getByText('Urban Growth')).toBeVisible();
+    await expect(page.getByText('Urban Growth: Phoenix')).toBeVisible();
     await expect(page.getByText('College Town Seasonality')).toBeVisible();
+    await expect(page.getByText('Tourist Destination Patterns')).toBeVisible();
   });
 
   test('displays statistics panel', async ({ page }) => {
@@ -52,9 +53,12 @@ test.describe('Dashboard', () => {
   });
 
   test('data sources section is visible', async ({ page }) => {
-    await expect(page.getByText('Data Sources')).toBeVisible();
-    await expect(page.getByText('Sentinel-2')).toBeVisible();
-    await expect(page.getByText('VIIRS')).toBeVisible();
-    await expect(page.getByText('GHSL')).toBeVisible();
+    const dataSourcesHeading = page.getByRole('heading', { name: 'Data Sources' });
+    await expect(dataSourcesHeading).toBeVisible();
+
+    const section = page.locator('section.dashboard-section', { has: dataSourcesHeading });
+    await expect(section.getByText('Sentinel-2')).toBeVisible();
+    await expect(section.getByText('VIIRS')).toBeVisible();
+    await expect(section.getByText('GHSL')).toBeVisible();
   });
 });

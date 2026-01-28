@@ -15,17 +15,14 @@ test.describe('Analysis View', () => {
   });
 
   test('shows metric selector', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    // Look for metric toggle or selector
-    const metricSelector = page.locator('.metric-toggle, .metric-selector, select');
-    await expect(metricSelector.first()).toBeVisible();
+    const metricSelector = page.locator('select.metric-select');
+    await expect(metricSelector).toBeVisible();
   });
 
   test('displays time series chart', async ({ page }) => {
-    await page.waitForTimeout(3000);
-    // Look for chart container or SVG
-    const chart = page.locator('.chart-container, .time-series-chart, svg');
-    await expect(chart.first()).toBeVisible();
+    await expect(page.getByText('Activity Over Time')).toBeVisible();
+    const chart = page.locator('.chart-card', { hasText: 'Activity Over Time' }).locator('.chart-wrapper svg');
+    await expect(chart).toBeVisible();
   });
 
   test('has date range controls', async ({ page }) => {
@@ -41,18 +38,13 @@ test.describe('Analysis View', () => {
   });
 
   test('can switch between metrics', async ({ page }) => {
-    await page.waitForTimeout(2000);
+    // Toggle an additional metric (Parking) and ensure charts still render.
+    const parkingToggle = page.locator('label.metric-toggle', { hasText: 'Parking Occupancy' });
+    await expect(parkingToggle).toBeVisible();
+    await parkingToggle.click();
 
-    // Find and click metric options
-    const metricButtons = page.locator('.metric-toggle button, .metric-option');
-    const count = await metricButtons.count();
-
-    if (count > 1) {
-      await metricButtons.nth(1).click();
-      await page.waitForTimeout(1000);
-      // Verify chart/map updates (no error state)
-      await expect(page.locator('.error-state')).not.toBeVisible();
-    }
+    const parkingStat = page.locator('.stats-grid .stat-card h5', { hasText: 'Parking Occupancy' });
+    await expect(parkingStat).toBeVisible();
   });
 
   test('has export options', async ({ page }) => {
@@ -61,5 +53,27 @@ test.describe('Analysis View', () => {
       page.getByRole('link', { name: /export/i })
     );
     await expect(exportBtn.first()).toBeVisible();
+  });
+
+  test('shows seasonal comparison when date range spans winter and summer', async ({ page }) => {
+    const dateInputs = page.locator('.date-section input[type="date"]');
+    await expect(dateInputs).toHaveCount(2);
+
+    await dateInputs.nth(0).fill('2023-01-01');
+    await dateInputs.nth(1).fill('2023-12-31');
+
+    await expect(page.getByText('Seasonal Comparison')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('can switch to correlation view and see scatter plot', async ({ page }) => {
+    await page.getByRole('button', { name: 'Correlation' }).click();
+    const chart = page.locator('.correlation-view .chart-wrapper svg');
+    await expect(chart).toBeVisible();
+  });
+
+  test('can switch to year-over-year view and see chart', async ({ page }) => {
+    await page.getByRole('button', { name: /year over year/i }).click();
+    const chart = page.locator('.yoy-view .yoy-chart svg');
+    await expect(chart).toBeVisible();
   });
 });

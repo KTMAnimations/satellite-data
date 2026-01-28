@@ -702,10 +702,15 @@ class TestAnimationGenerator:
     def test_colormap_values(self, animation_generator):
         """Test colormap values are valid matplotlib colormaps."""
         import matplotlib.pyplot as plt
+        from matplotlib.colors import LinearSegmentedColormap
 
-        for metric, cmap_name in animation_generator.COLORMAPS.items():
-            # This will raise an error if colormap doesn't exist
-            cmap = plt.get_cmap(cmap_name)
+        for metric, cmap_value in animation_generator.COLORMAPS.items():
+            if isinstance(cmap_value, str):
+                # This will raise an error if colormap doesn't exist
+                cmap = plt.get_cmap(cmap_value)
+            else:
+                cmap_colors = [(c[0] / 255, c[1] / 255, c[2] / 255) for c in cmap_value]
+                cmap = LinearSegmentedColormap.from_list(metric, cmap_colors, N=256)
             assert cmap is not None
 
     def test_generate_synthetic_frames_with_agg_backend(self, mock_settings, mock_region):

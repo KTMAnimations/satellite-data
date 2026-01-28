@@ -7,6 +7,7 @@ import {
 } from 'react-leaflet';
 import type { Region, MetricType } from '../../types';
 import api from '../../services/api';
+import { CompositeTileLayer } from './CompositeTileLayer';
 import './SplitScreenCompare.css';
 
 
@@ -65,6 +66,7 @@ export function SplitScreenCompare({
   const [isDragging, setIsDragging] = useState(false);
   const [mapA, setMapA] = useState<L.Map | null>(null);
   const [mapB, setMapB] = useState<L.Map | null>(null);
+  const resizeRafRef = useRef<number | null>(null);
 
   // Calculate center from region geometry
   const coords = region.geometry.coordinates[0];
@@ -108,6 +110,30 @@ export function SplitScreenCompare({
     };
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
+  // Leaflet doesn't auto-detect container width changes. The split position
+  // changes map container sizes, so we need to invalidate sizes to keep tiles
+  // (and overlays) aligned while dragging.
+  useEffect(() => {
+    if (!mapA && !mapB) return;
+
+    if (resizeRafRef.current) {
+      cancelAnimationFrame(resizeRafRef.current);
+    }
+
+    resizeRafRef.current = requestAnimationFrame(() => {
+      mapA?.invalidateSize({ pan: false, animate: false });
+      mapB?.invalidateSize({ pan: false, animate: false });
+      resizeRafRef.current = null;
+    });
+
+    return () => {
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current);
+        resizeRafRef.current = null;
+      }
+    };
+  }, [splitPosition, mapA, mapB]);
+
   const regionStyle = {
     color: '#06b6d4',
     weight: 2,
@@ -118,6 +144,9 @@ export function SplitScreenCompare({
   const handleMapMove = useCallback(() => {
     // Force re-render to sync maps
   }, []);
+
+  const tileDateA = ['nightlights', 'active_fire'].includes(metric) ? dateA : api.dateToYearMonth(dateA);
+  const tileDateB = ['nightlights', 'active_fire'].includes(metric) ? dateB : api.dateToYearMonth(dateB);
 
   return (
     <div
@@ -133,6 +162,8 @@ export function SplitScreenCompare({
         <LeafletMapContainer
           center={center}
           zoom={10}
+          minZoom={9}
+          maxZoom={11}
           className="leaflet-map"
           ref={(m) => setMapA(m || null)}
           zoomControl={false}
@@ -141,11 +172,13 @@ export function SplitScreenCompare({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-          <TileLayer
-            url={api.getUSTileUrl(metric, api.dateToYearMonth(dateA))}
-            opacity={0.8}
+          <CompositeTileLayer
+            key={`us-${metric}-${tileDateA}`}
+            baseUrl={api.getUSTileUrl(metric, tileDateA)}
+            nativeZoom={11}
+            minZoom={9}
             maxZoom={11}
-            minZoom={8}
+            opacity={0.8}
           />
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
           {mapB && <SyncedMap targetMap={mapB} onMove={handleMapMove} />}
@@ -179,6 +212,8 @@ export function SplitScreenCompare({
         <LeafletMapContainer
           center={center}
           zoom={10}
+          minZoom={9}
+          maxZoom={11}
           className="leaflet-map"
           ref={(m) => setMapB(m || null)}
           zoomControl={false}
@@ -187,11 +222,13 @@ export function SplitScreenCompare({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-          <TileLayer
-            url={api.getUSTileUrl(metric, api.dateToYearMonth(dateB))}
-            opacity={0.8}
+          <CompositeTileLayer
+            key={`us-${metric}-${tileDateB}`}
+            baseUrl={api.getUSTileUrl(metric, tileDateB)}
+            nativeZoom={11}
+            minZoom={9}
             maxZoom={11}
-            minZoom={8}
+            opacity={0.8}
           />
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
           {mapA && <SyncedMap targetMap={mapA} onMove={handleMapMove} />}

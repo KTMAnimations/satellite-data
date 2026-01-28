@@ -42,6 +42,8 @@ function MapController({
   focusRegion: Region | null;
 }) {
   const map = useMap();
+  const setMapCenter = useStore((state) => state.setMapCenter);
+  const setMapZoom = useStore((state) => state.setMapZoom);
 
   useEffect(() => {
     if (focusRegion) {
@@ -57,10 +59,15 @@ function MapController({
 
         // Fit bounds to show the region - allow any zoom level
         // CompositeTileLayer will handle rendering z11 tiles at lower zoom levels
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 11 });
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 11, animate: false });
+
+        // Sync store state immediately so zoom-gated overlays render on first load.
+        const center = map.getCenter();
+        setMapCenter([center.lat, center.lng]);
+        setMapZoom(map.getZoom());
       }
     }
-  }, [focusRegion, map]);
+  }, [focusRegion, map, setMapCenter, setMapZoom]);
 
   return null;
 }

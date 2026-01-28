@@ -5,21 +5,25 @@ import { SmallMultiples } from '../../components/Charts/SmallMultiples';
 // Mock D3
 vi.mock('d3', async () => {
   const actual = await vi.importActual('d3');
+  const stubSelection = {
+    selectAll: vi.fn().mockReturnThis(),
+    interrupt: vi.fn().mockReturnThis(),
+    remove: vi.fn().mockReturnThis(),
+    append: vi.fn().mockReturnThis(),
+    attr: vi.fn().mockReturnThis(),
+    style: vi.fn().mockReturnThis(),
+    text: vi.fn().mockReturnThis(),
+    datum: vi.fn().mockReturnThis(),
+    call: vi.fn().mockReturnThis(),
+    on: vi.fn().mockReturnThis(),
+    each: vi.fn().mockReturnThis(),
+    node: vi.fn().mockReturnValue({ getTotalLength: () => 100 }),
+    data: vi.fn().mockReturnThis(),
+    enter: vi.fn().mockReturnThis(),
+  };
   return {
     ...actual,
-    select: vi.fn().mockReturnValue({
-      selectAll: vi.fn().mockReturnThis(),
-      remove: vi.fn().mockReturnThis(),
-      append: vi.fn().mockReturnThis(),
-      attr: vi.fn().mockReturnThis(),
-      style: vi.fn().mockReturnThis(),
-      text: vi.fn().mockReturnThis(),
-      datum: vi.fn().mockReturnThis(),
-      call: vi.fn().mockReturnThis(),
-      on: vi.fn().mockReturnThis(),
-      each: vi.fn().mockReturnThis(),
-      node: vi.fn().mockReturnValue({ getTotalLength: () => 100 }),
-    }),
+    select: vi.fn().mockReturnValue(stubSelection),
   };
 });
 
@@ -98,15 +102,6 @@ describe('SmallMultiples', () => {
 
   it('handles click callback', () => {
     const handleClick = vi.fn();
-    render(
-      <SmallMultiples
-        regions={mockRegions}
-        metric="ndvi"
-        onRegionClick={handleClick}
-      />
-    );
-
-    // Grid should be rendered
     const { container } = render(
       <SmallMultiples
         regions={mockRegions}
@@ -118,7 +113,7 @@ describe('SmallMultiples', () => {
   });
 
   it('handles empty regions array', () => {
-    const { container } = render(
+    render(
       <SmallMultiples
         regions={[]}
         metric="ndvi"

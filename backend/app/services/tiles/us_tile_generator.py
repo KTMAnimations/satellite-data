@@ -24,6 +24,11 @@ logger = get_logger(__name__)
 # Tile size in pixels
 TILE_SIZE = 256
 
+# Padding (in US-raster pixels) to include around each tile when extracting
+# data before resampling. This reduces visible seams at tile boundaries by
+# avoiding edge-clamping artifacts when each tile is resized independently.
+TILE_RESAMPLE_PADDING_PX = 2
+
 # Earth circumference at equator in meters (Web Mercator)
 EARTH_CIRCUMFERENCE = 40075016.686
 
@@ -565,8 +570,23 @@ class USTileGenerator:
         if src_col_end <= src_col_start or src_row_end <= src_row_start:
             return None
 
-        # Extract region
-        region = us_raster[src_row_start:src_row_end, src_col_start:src_col_end]
+        tile_src_width = src_col_end - src_col_start
+        tile_src_height = src_row_end - src_row_start
+
+        if tile_src_width <= 0 or tile_src_height <= 0:
+            return None
+
+        # Extract region with padding to reduce edge artifacts during resampling.
+        pad = TILE_RESAMPLE_PADDING_PX
+        src_col_start_padded = max(0, src_col_start - pad)
+        src_col_end_padded = min(raster_width, src_col_end + pad)
+        src_row_start_padded = max(0, src_row_start - pad)
+        src_row_end_padded = min(raster_height, src_row_end + pad)
+
+        region = us_raster[
+            src_row_start_padded:src_row_end_padded,
+            src_col_start_padded:src_col_end_padded,
+        ]
 
         if region.size == 0:
             return None
@@ -577,10 +597,23 @@ class USTileGenerator:
         region_normalized = (region_clean - val_min) / (val_max - val_min)
         region_normalized = np.clip(region_normalized, 0, 1)
 
-        # Resize to tile size
+        # Resize with overscan then crop back to TILE_SIZE.
+        #
+        # Without this, the resampler clamps to the region edge and the output edge
+        # pixels get anchored to the last/first source sample, creating visible
+        # seams between adjacent tiles after colormapping.
+        pad_out_x = max(1, int(round(pad * TILE_SIZE / tile_src_width)))
+        pad_out_y = max(1, int(round(pad * TILE_SIZE / tile_src_height)))
+
         region_uint8 = (region_normalized * 255).astype(np.uint8)
         region_img = Image.fromarray(region_uint8)
-        tile_img = region_img.resize((TILE_SIZE, TILE_SIZE), Image.Resampling.LANCZOS)
+        resized = region_img.resize(
+            (TILE_SIZE + 2 * pad_out_x, TILE_SIZE + 2 * pad_out_y),
+            Image.Resampling.LANCZOS,
+        )
+        tile_img = resized.crop(
+            (pad_out_x, pad_out_y, pad_out_x + TILE_SIZE, pad_out_y + TILE_SIZE)
+        )
 
         return np.array(tile_img) / 255.0
 
@@ -614,8 +647,10 @@ class USTileGenerator:
         rgb[mask, 2] = colors[-1][2]
         rgb[mask, 3] = 200
 
-        # Make zero/nan transparent
-        zero_mask = data <= 0.001
+        # Make low values transparent to reduce background sensor noise.
+        # Nightlights in particular often has non-zero "haze" everywhere.
+        transparent_threshold = 0.02 if metric == "nightlights" else 0.001
+        zero_mask = data <= transparent_threshold
         rgb[zero_mask, 3] = 0
 
         return Image.fromarray(rgb, "RGBA")

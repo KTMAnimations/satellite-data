@@ -6,7 +6,7 @@ test.describe('Region Explorer', () => {
   });
 
   test('displays region explorer header', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('Region Explorer');
+    await expect(page.locator('.region-sidebar h2')).toHaveText('Regions');
   });
 
   test('shows map container', async ({ page }) => {
@@ -15,27 +15,36 @@ test.describe('Region Explorer', () => {
   });
 
   test('has region search/filter functionality', async ({ page }) => {
-    // Look for search input or region list
-    const regionList = page.locator('.region-list, .regions-sidebar');
-    await expect(regionList).toBeVisible();
+    await expect(page.locator('input.search-input')).toBeVisible();
+    await expect(page.locator('.region-list')).toBeVisible();
   });
 
   test('can navigate to region details', async ({ page }) => {
-    // Wait for regions to load
-    await page.waitForTimeout(2000);
+    const regionItem = page.locator('.region-item').first();
+    await expect(regionItem).toBeVisible();
+    await regionItem.click();
 
-    // Click on first region card if available
-    const regionCard = page.locator('.region-card, .region-item').first();
-    if (await regionCard.isVisible()) {
-      await regionCard.click();
-      // Should navigate to analysis view or show region details
-      await page.waitForTimeout(1000);
-    }
+    const viewAnalysis = page.getByRole('button', { name: 'View Analysis' });
+    await expect(viewAnalysis).toBeVisible();
+    await viewAnalysis.click();
+
+    await expect(page).toHaveURL(/\/analysis\//);
   });
 
   test('has predefined regions category', async ({ page }) => {
-    // Check for predefined regions section or filter
-    const predefinedFilter = page.getByText(/predefined|cities|popular/i);
-    await expect(predefinedFilter.first()).toBeVisible();
+    const typeSelect = page.locator('select.filter-select').first();
+    await expect(typeSelect).toBeVisible();
+
+    await typeSelect.selectOption('predefined');
+    await expect(page.locator('.region-item').first()).toBeVisible();
+    await expect(page.locator('.region-item').first().locator('.region-type')).toHaveText('predefined');
+  });
+
+  test('can search regions by name', async ({ page }) => {
+    const search = page.locator('input.search-input');
+    await expect(search).toBeVisible();
+
+    await search.fill('Phoenix');
+    await expect(page.getByText('Phoenix, AZ')).toBeVisible();
   });
 });

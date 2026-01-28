@@ -471,7 +471,7 @@ export function AnalysisView() {
                         <h3>Seasonal Comparison</h3>
                         <span className="chart-subtitle">Winter (Dec-Feb) vs Summer (Jun-Aug)</span>
                       </div>
-                      <SeasonalBarChart data={metrics.seasonal_summary} width={600} height={280} />
+                      <SeasonalBarChart data={metrics.seasonal_summary} selectedMetrics={selectedMetrics} width={600} height={280} />
                     </div>
                   )}
 
