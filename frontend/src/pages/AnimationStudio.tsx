@@ -11,6 +11,7 @@ import { TimeSlider } from '../components/Charts/TimeSlider';
 import api from '../services/api';
 import type { Region, MetricType } from '../types';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
+import { formatApiError } from '../utils/errors';
 import './AnimationStudio.css';
 
 const METRIC_OPTIONS: { value: MetricType; label: string; description: string; granularity: string }[] = [
@@ -90,7 +91,12 @@ export function AnimationStudio() {
   const previewRef = useRef<HTMLDivElement>(null);
 
   // Fetch regions
-  const { data: regionsData, isLoading: regionsLoading } = useQuery({
+  const {
+    data: regionsData,
+    isLoading: regionsLoading,
+    isError: regionsIsError,
+    error: regionsError,
+  } = useQuery({
     queryKey: ['regions', 'predefined'],
     queryFn: () => api.listRegions({ type: 'predefined', page_size: 50 }),
   });
@@ -248,10 +254,16 @@ export function AnimationStudio() {
                   setSelectedRegion(region || null);
                 }}
                 className="region-select"
-                disabled={regionsLoading}
+                disabled={regionsLoading || regionsIsError}
               >
-                <option value="">{regionsLoading ? 'Loading regions...' : 'Select a region...'}</option>
-                {regionsData?.regions.map((region) => (
+                <option value="">
+                  {regionsLoading
+                    ? 'Loading regions...'
+                    : regionsIsError
+                      ? `Error loading regions: ${formatApiError(regionsError)}`
+                      : 'Select a region...'}
+                </option>
+                {!regionsIsError && regionsData?.regions.map((region) => (
                   <option key={region.id} value={region.id}>
                     {region.name}
                   </option>

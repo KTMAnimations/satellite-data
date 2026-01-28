@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     database_path: str = Field(default="data/satellite.sqlite3")
     exports_dir: str = Field(default="data/exports")
 
+    # Regions
+    auto_seed_predefined_regions: bool = True
+
     # Earth Engine
     gee_project_id: str | None = None
     gee_service_account_key: str | None = None  # Path to service-account JSON

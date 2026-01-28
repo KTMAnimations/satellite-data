@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import close_db, init_db
+from app.db import close_db, ensure_db_initialized
 from app.gee import initialize_ee
 from app.routes import api_router
 from app.settings import get_settings
@@ -20,7 +20,7 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Storage
-    await init_db()
+    await ensure_db_initialized()
 
     # Earth Engine (optional at startup; errors surface on first request)
     try:
@@ -58,4 +58,3 @@ app.include_router(api_router, prefix=settings.api_v1_prefix)
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "version": "0.2.0"}
-

@@ -5,6 +5,7 @@ import { UploadSimple } from '@phosphor-icons/react';
 import { MapView } from '../components/Map/MapContainer';
 import { useStore } from '../store';
 import api from '../services/api';
+import { formatApiError } from '../utils/errors';
 import type { Region, GeoJSONPolygon } from '../types';
 import './RegionExplorer.css';
 
@@ -20,9 +21,10 @@ export function RegionExplorer() {
   const [newRegionName, setNewRegionName] = useState('');
   const [newRegionGeometry, setNewRegionGeometry] = useState<GeoJSONPolygon | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: regionsData, isLoading } = useQuery({
+  const { data: regionsData, isLoading, isError: regionsIsError, error: regionsError } = useQuery({
     queryKey: ['regions', { search: searchTerm, type: filterType, category: filterCategory }],
     queryFn: () =>
       api.listRegions({
@@ -41,8 +43,12 @@ export function RegionExplorer() {
       setShowCreateModal(false);
       setNewRegionName('');
       setNewRegionGeometry(null);
+      setCreateError(null);
       setSelectedRegion(region);
       navigate(`/regions/${region.id}`);
+    },
+    onError: (err) => {
+      setCreateError(formatApiError(err));
     },
   });
 
@@ -53,6 +59,7 @@ export function RegionExplorer() {
   const handleRegionCreate = (geometry: GeoJSONPolygon) => {
     setNewRegionGeometry(geometry);
     setShowCreateModal(true);
+    setCreateError(null);
   };
 
   const handleCreateSubmit = () => {
@@ -115,6 +122,7 @@ export function RegionExplorer() {
           setNewRegionName(defaultName);
           setNewRegionGeometry(geometry);
           setShowCreateModal(true);
+          setCreateError(null);
         } else {
           setUploadError('Could not find a valid Polygon geometry in the file');
         }
@@ -195,6 +203,8 @@ export function RegionExplorer() {
         <div className="region-list">
           {isLoading ? (
             <div className="loading">Loading regions...</div>
+          ) : regionsIsError ? (
+            <div className="loading">Error loading regions: {formatApiError(regionsError)}</div>
           ) : (
             regionsData?.regions.map((region) => (
               <div
@@ -261,7 +271,13 @@ export function RegionExplorer() {
 
       {/* Create Region Modal */}
       {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowCreateModal(false);
+            setCreateError(null);
+          }}
+        >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Create Custom Region</h3>
             <p>Give your region a name to save it for analysis.</p>
@@ -275,12 +291,15 @@ export function RegionExplorer() {
               autoFocus
             />
 
+            {createError && <div className="upload-error">{createError}</div>}
+
             <div className="modal-actions">
               <button
                 className="btn btn-outline"
                 onClick={() => {
                   setShowCreateModal(false);
                   setNewRegionGeometry(null);
+                  setCreateError(null);
                 }}
               >
                 Cancel

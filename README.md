@@ -23,8 +23,9 @@ cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# optional: seed curated predefined regions
-python ../scripts/seed_regions.py
+# predefined regions are auto-seeded on first API request (if missing)
+# (optional) you can also run the seeder manually:
+# python ../scripts/seed_regions.py
 
 uvicorn app.main:app --reload --port 8000
 ```

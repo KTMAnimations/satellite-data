@@ -13,6 +13,7 @@ import {
 } from '@phosphor-icons/react';
 import api from '../services/api';
 import { useStore } from '../store';
+import { formatApiError } from '../utils/errors';
 import type { MetricType } from '../types';
 import './ExportCenter.css';
 
@@ -51,7 +52,7 @@ export function ExportCenter() {
   const addExportToQueue = useStore((state) => state.addExportToQueue);
   const setExportQueue = useStore((state) => state.setExportQueue);
 
-  const { data: regionsData } = useQuery({
+  const { data: regionsData, isLoading: regionsLoading, isError: regionsIsError, error: regionsError } = useQuery({
     queryKey: ['regions', { page_size: 100 }],
     queryFn: () => api.listRegions({ page_size: 100 }),
   });
@@ -175,9 +176,16 @@ export function ExportCenter() {
               value={selectedRegionId}
               onChange={(e) => setSelectedRegionId(e.target.value)}
               className="form-select"
+              disabled={regionsLoading || regionsIsError}
             >
-              <option value="">Select a region...</option>
-              {regionsData?.regions.map((region) => (
+              <option value="">
+                {regionsLoading
+                  ? 'Loading regions...'
+                  : regionsIsError
+                    ? `Error loading regions: ${formatApiError(regionsError)}`
+                    : 'Select a region...'}
+              </option>
+              {!regionsIsError && regionsData?.regions.map((region) => (
                 <option key={region.id} value={region.id}>
                   {region.name}
                 </option>
