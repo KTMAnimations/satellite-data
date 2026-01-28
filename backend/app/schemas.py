@@ -142,6 +142,15 @@ class TileTemplateResponse(BaseModel):
     opacity: float
 
 
+class GEEStatusResponse(BaseModel):
+    auth_mode: Literal["user", "service_account"]
+    project_id_configured: bool
+    service_account_key_configured: bool
+    service_account_key_exists: bool
+    initialized: bool
+    error: str | None = None
+
+
 class ExportRequest(BaseModel):
     region_id: str
     format: Literal["pdf"]
@@ -185,3 +194,39 @@ class ExportResponse(BaseModel):
     completed_at: datetime | None = None
     error: str | None = None
 
+
+class PresetRegion(BaseModel):
+    name: str
+    region_id: str | None = None
+
+
+class PresetDateRange(BaseModel):
+    start_date: date
+    end_date: date
+
+
+class PresetComparePeriod(BaseModel):
+    label: str | None = None
+    start_date: date
+    end_date: date
+
+
+class PresetCompare(BaseModel):
+    period_a: PresetComparePeriod
+    period_b: PresetComparePeriod
+
+
+class PresetResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    category: str | None = None
+    regions: list[PresetRegion]
+    metrics: list[MetricId]
+    date_range: PresetDateRange | None = None
+    compare: PresetCompare | None = None
+    methodology_notes: str | None = None
+
+
+class PresetListResponse(BaseModel):
+    presets: list[PresetResponse]

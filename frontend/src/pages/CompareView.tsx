@@ -77,8 +77,8 @@ export function CompareView() {
   });
 
   const changePercent = useMemo(() => {
-    if (!comparison?.change?.[selectedMetric]) return null;
-    return comparison.change[selectedMetric];
+    const v = comparison?.change?.[selectedMetric];
+    return v === undefined || v === null ? null : v;
   }, [comparison, selectedMetric]);
 
   const applyPreset = (preset: typeof PRESET_COMPARISONS[0]) => {
@@ -209,7 +209,7 @@ export function CompareView() {
                   </svg>
                   <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>No data available</p>
                   <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
-                    Run data collection for this region to enable comparison
+                    Try adjusting the date ranges or selecting a different metric
                   </p>
                 </div>
               ) : (

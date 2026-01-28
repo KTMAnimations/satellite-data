@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.gee import METRICS, compute_time_series
-from app.models import Region
+from app.gee import METRICS, bucket_starts, compute_time_series, format_bucket_date
+from app.models import MetricObservation, Region
 from app.schemas import MetricData, MetricDataPoint, MetricsResponse, MetricId, SeasonalAverage, SeasonalSummary
 
 
@@ -79,6 +79,7 @@ async def get_region_metrics(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     metrics: list[MetricId] | None = Query(None),
+    metrics_brackets: list[MetricId] | None = Query(None, alias="metrics[]"),
     granularity: str = Query("monthly"),
 ) -> MetricsResponse:
     if start_date is None or end_date is None:
@@ -98,10 +99,51 @@ async def get_region_metrics(
     except Exception:
         raise HTTPException(status_code=500, detail="Region geometry is invalid JSON")
 
-    requested = metrics or list(METRICS.keys())
+    requested = metrics or metrics_brackets or list(METRICS.keys())
     out: dict[str, MetricData] = {}
 
+    # Cache-aware: first check SQLite for already-collected observations. If any
+    # buckets are missing, compute from Earth Engine and persist back to SQLite.
     semaphore = asyncio.Semaphore(4)
+
+    per_metric: dict[MetricId, dict] = {}
+    for metric in requested:
+        metric_def = METRICS[metric]
+        effective_granularity = (
+            granularity if granularity in metric_def.supported_granularities else metric_def.default_granularity
+        )
+
+        starts = bucket_starts(start_date, end_date, effective_granularity)
+        buckets = [format_bucket_date(d, effective_granularity) for d in starts]
+        if not buckets:
+            per_metric[metric] = {
+                "metric_def": metric_def,
+                "granularity": effective_granularity,
+                "buckets": [],
+                "existing": {},
+                "needs_compute": False,
+            }
+            continue
+
+        q = (
+            select(MetricObservation)
+            .where(MetricObservation.region_id == region.id)
+            .where(MetricObservation.metric == metric)  # type: ignore[arg-type]
+            .where(MetricObservation.granularity == effective_granularity)
+            .where(MetricObservation.date_bucket >= buckets[0])
+            .where(MetricObservation.date_bucket <= buckets[-1])
+        )
+        rows = (await db.execute(q)).scalars().all()
+        existing = {r.date_bucket: r for r in rows}
+        needs_compute = any(b not in existing for b in buckets)
+
+        per_metric[metric] = {
+            "metric_def": metric_def,
+            "granularity": effective_granularity,
+            "buckets": buckets,
+            "existing": existing,
+            "needs_compute": needs_compute,
+        }
 
     async def compute_one(metric: MetricId) -> tuple[MetricId, list[tuple[str, float]]]:
         async with semaphore:
@@ -112,18 +154,74 @@ async def get_region_metrics(
                     metric=metric,
                     start_date=start_date,
                     end_date=end_date,
-                    granularity=granularity,  # type: ignore[arg-type]
+                    granularity=per_metric[metric]["granularity"],  # type: ignore[arg-type]
                 )
             except ValueError as e:
                 raise HTTPException(status_code=400, detail=str(e)) from e
+            except Exception as e:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Failed to fetch data from Earth Engine. "
+                        "Verify credentials (run `earthengine authenticate` or configure GEE_* env vars) "
+                        f"and try again. Error: {e}"
+                    ),
+                ) from e
             return metric, series
 
-    results = await asyncio.gather(*(compute_one(m) for m in requested))
-    for metric, series in results:
-        out[metric] = MetricData(
-            unit=METRICS[metric].unit,
-            data=[MetricDataPoint(date=d, value=v) for d, v in series],
-        )
+    to_compute = [m for m in requested if per_metric[m]["needs_compute"]]
+    computed = await asyncio.gather(*(compute_one(m) for m in to_compute))
+    computed_by_metric = {m: series for m, series in computed}
+
+    # Persist computed series (and explicit "no data" buckets) to SQLite.
+    computed_at = datetime.now(timezone.utc)
+    for metric in to_compute:
+        info = per_metric[metric]
+        metric_def = info["metric_def"]
+        buckets: list[str] = info["buckets"]
+        existing: dict[str, MetricObservation] = info["existing"]
+        series = computed_by_metric.get(metric, [])
+        by_bucket = {d: v for d, v in series}
+
+        for bucket in buckets:
+            value = by_bucket.get(bucket)
+            row = existing.get(bucket)
+            if row is None:
+                row = MetricObservation(
+                    region_id=region.id,
+                    metric=metric,
+                    granularity=info["granularity"],
+                    date_bucket=bucket,
+                    value=value,
+                    unit=metric_def.unit,
+                    source="earth_engine",
+                    computed_at=computed_at,
+                )
+                db.add(row)
+                existing[bucket] = row
+            else:
+                row.value = value
+                row.unit = metric_def.unit
+                row.source = "earth_engine"
+                row.computed_at = computed_at
+
+        # Mark the dict back (mutated in place)
+        info["existing"] = existing
+
+    for metric in requested:
+        info = per_metric[metric]
+        metric_def = info["metric_def"]
+        buckets: list[str] = info["buckets"]
+        existing: dict[str, MetricObservation] = info["existing"]
+
+        data_points: list[MetricDataPoint] = []
+        for bucket in buckets:
+            row = existing.get(bucket)
+            if row is None or row.value is None:
+                continue
+            data_points.append(MetricDataPoint(date=bucket, value=float(row.value)))
+
+        out[metric] = MetricData(unit=metric_def.unit, data=data_points)
 
     seasonal = _seasonal_summary(out)
 

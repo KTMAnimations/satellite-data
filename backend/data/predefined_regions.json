@@ -253,6 +253,42 @@
       "state_province": "Texas"
     },
     {
+      "name": "Ann Arbor, MI",
+      "description": "University town anchored by the University of Michigan.",
+      "bounds": {
+        "minLat": 42.15,
+        "maxLat": 42.4,
+        "minLon": -83.85,
+        "maxLon": -83.6
+      },
+      "center": {
+        "lat": 42.2808,
+        "lon": -83.743
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Michigan"
+    },
+    {
+      "name": "Boulder, CO",
+      "description": "University town at the base of the Rocky Mountains.",
+      "bounds": {
+        "minLat": 39.95,
+        "maxLat": 40.1,
+        "minLon": -105.35,
+        "maxLon": -105.15
+      },
+      "center": {
+        "lat": 40.015,
+        "lon": -105.2705
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Colorado"
+    },
+    {
       "name": "San Antonio, TX",
       "description": "Historic Texas city with tourism and military-driven population patterns.",
       "bounds": {

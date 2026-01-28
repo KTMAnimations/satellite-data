@@ -390,7 +390,7 @@ def build_metric_image(metric: MetricId, start, end, geom):
             ee.ImageCollection("NASA/LANCE/SNPP_VIIRS/C2")
             .filterBounds(geom)
             .filterDate(start, end)
-            .select(["FRP"])
+            .select(["frp"])
         )
         has_images = collection.size().gt(0)
         image = collection.max().rename([band])

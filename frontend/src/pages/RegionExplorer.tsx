@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { UploadSimple } from '@phosphor-icons/react';
 import { MapView } from '../components/Map/MapContainer';
 import { useStore } from '../store';
@@ -11,8 +11,11 @@ import './RegionExplorer.css';
 
 export function RegionExplorer() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { selectedRegion, setSelectedRegion } = useStore();
+  const { selectedRegion, setSelectedRegion, setSelectedMetrics, setDateRange } = useStore();
+
+  const presetId = searchParams.get('preset');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('');
@@ -24,16 +27,59 @@ export function RegionExplorer() {
   const [createError, setCreateError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: regionsData, isLoading, isError: regionsIsError, error: regionsError } = useQuery({
-    queryKey: ['regions', { search: searchTerm, type: filterType, category: filterCategory }],
-    queryFn: () =>
-      api.listRegions({
+  const { data: preset, isLoading: presetLoading, isError: presetIsError, error: presetError } = useQuery({
+    queryKey: ['preset', presetId],
+    queryFn: () => api.getPreset(presetId!),
+    enabled: !!presetId,
+  });
+
+  useEffect(() => {
+    if (!preset) return;
+
+    setSelectedMetrics(preset.metrics);
+    if (preset.date_range) {
+      setDateRange({
+        start: new Date(preset.date_range.start_date),
+        end: new Date(preset.date_range.end_date),
+      });
+    }
+  }, [preset, setDateRange, setSelectedMetrics]);
+
+  const listParams = presetId
+    ? { page_size: 200 }
+    : {
         search: searchTerm || undefined,
         type: filterType || undefined,
         category: filterCategory || undefined,
         page_size: 100,
-      }),
+      };
+
+  const { data: regionsData, isLoading, isError: regionsIsError, error: regionsError } = useQuery({
+    queryKey: ['regions', listParams],
+    queryFn: () => api.listRegions(listParams),
   });
+
+  const visibleRegions = useMemo(() => {
+    let regions = regionsData?.regions ?? [];
+
+    if (preset) {
+      const ids = new Set(preset.regions.flatMap((r) => (r.region_id ? [r.region_id] : [])));
+      regions = regions.filter((r) => ids.has(r.id));
+    }
+
+    if (searchTerm) {
+      const needle = searchTerm.toLowerCase();
+      regions = regions.filter((r) => r.name.toLowerCase().includes(needle));
+    }
+    if (filterType) {
+      regions = regions.filter((r) => r.type === filterType);
+    }
+    if (filterCategory) {
+      regions = regions.filter((r) => r.category === filterCategory);
+    }
+
+    return regions;
+  }, [preset, regionsData, searchTerm, filterCategory, filterType]);
 
   const createRegionMutation = useMutation({
     mutationFn: (data: { name: string; geometry: GeoJSONPolygon }) =>
@@ -150,6 +196,27 @@ export function RegionExplorer() {
 
         {/* Filters */}
         <div className="sidebar-filters">
+          {presetId && (
+            <div className="preset-banner">
+              <div className="preset-banner-text">
+                <strong>Preset:</strong>{' '}
+                {presetLoading
+                  ? 'Loading…'
+                  : presetIsError
+                    ? `Error: ${formatApiError(presetError)}`
+                    : preset?.name ?? presetId}
+              </div>
+              <button
+                className="btn btn-outline"
+                onClick={() => {
+                  navigate('/regions');
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
           <input
             type="text"
             placeholder="Search regions..."
@@ -206,7 +273,7 @@ export function RegionExplorer() {
           ) : regionsIsError ? (
             <div className="loading">Error loading regions: {formatApiError(regionsError)}</div>
           ) : (
-            regionsData?.regions.map((region) => (
+            visibleRegions.map((region) => (
               <div
                 key={region.id}
                 className={`region-item ${selectedRegion?.id === region.id ? 'selected' : ''}`}
@@ -257,7 +324,7 @@ export function RegionExplorer() {
 
       <main className="region-map-area">
         <MapView
-          regions={regionsData?.regions || []}
+          regions={visibleRegions}
           onRegionSelect={handleRegionSelect}
           onRegionCreate={handleRegionCreate}
           showDrawControls={true}

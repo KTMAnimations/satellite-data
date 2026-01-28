@@ -6,6 +6,8 @@ from uuid import uuid4
 from sqlalchemy import DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from app.schemas import MetricId
+
 
 class Base(DeclarativeBase):
     pass
@@ -45,3 +47,17 @@ class ExportJob(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+
+class MetricObservation(Base):
+    __tablename__ = "metric_observations"
+
+    region_id: Mapped[str] = mapped_column(String(36), primary_key=True, index=True)
+    metric: Mapped[MetricId] = mapped_column(String(50), primary_key=True, index=True)  # type: ignore[assignment]
+    granularity: Mapped[str] = mapped_column(String(20), primary_key=True, index=True)  # daily|weekly|monthly
+    date_bucket: Mapped[str] = mapped_column(String(20), primary_key=True, index=True)  # YYYY-MM or YYYY-MM-DD
+
+    # Value is NULL when the bucket was computed but no valid observation exists.
+    value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    unit: Mapped[str] = mapped_column(String(50), nullable=False)
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="earth_engine")
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)

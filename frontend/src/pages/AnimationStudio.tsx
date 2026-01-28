@@ -173,7 +173,7 @@ export function AnimationStudio() {
       setCurrentDate(dateRange.start);
       setPreviewDate(dateRange.start);
     }
-  }, [availableDatesKey, dateRange.start, selectedMetric]);
+  }, [availableDatesKey, availableDates, dateRange.start, selectedMetric]);
 
   // If preview is paused, ensure playback doesn't keep advancing dates invisibly.
   useEffect(() => {

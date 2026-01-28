@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Example Gallery', () => {
+test.describe('Gallery', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/gallery');
   });
 
   test('displays gallery header', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('Example Gallery');
+    await expect(page.locator('h1')).toContainText('Gallery');
   });
 
   test('shows all 5 preset analyses', async ({ page }) => {
@@ -27,29 +27,21 @@ test.describe('Example Gallery', () => {
   });
 
   test('preset cards show regions', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
     // Check for region tags
     await expect(page.getByText('Phoenix, AZ')).toBeVisible();
     await expect(page.getByText('Miami, FL')).toBeVisible();
   });
 
-  test('preset cards show key findings', async ({ page }) => {
-    await expect(page.locator('.preset-findings h4')).toHaveCount(5);
-    // At least one finding should contain a percentage change.
-    await expect(page.locator('.preset-findings li', { hasText: '%' }).first()).toBeVisible();
+  test('preset cards show date ranges', async ({ page }) => {
+    await expect(page.locator('.preset-details .detail-label', { hasText: 'Date Range:' })).toHaveCount(5);
   });
 
   test('preset cards have explore button', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
     const exploreButtons = page.getByRole('link', { name: /explore analysis/i });
     expect(await exploreButtons.count()).toBe(5);
   });
 
   test('shows methodology section', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
     await expect(page.getByText('Methodology')).toBeVisible();
     await expect(page.getByText(/proxy metrics/i)).toBeVisible();
   });
@@ -61,8 +53,6 @@ test.describe('Example Gallery', () => {
   });
 
   test('can click explore to navigate', async ({ page }) => {
-    await page.waitForTimeout(2000);
-
     // Click first explore button
     const exploreBtn = page.getByRole('link', { name: /explore analysis/i }).first();
     await exploreBtn.click();

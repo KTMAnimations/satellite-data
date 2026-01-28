@@ -33,4 +33,13 @@ async def tile_template(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Failed to fetch tile template from Earth Engine. "
+                "Verify credentials (run `earthengine authenticate` or configure GEE_* env vars) "
+                f"and try again. Error: {e}"
+            ),
+        ) from e
     return TileTemplateResponse(**payload)

@@ -216,7 +216,7 @@ export function YearOverYearChart({
           </svg>
           <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>No year-over-year data available</p>
           <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
-            Data collection required for multiple years
+            Select a date range spanning multiple years
           </p>
         </div>
       </div>

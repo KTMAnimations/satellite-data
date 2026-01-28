@@ -13,6 +13,7 @@ import api from '../services/api';
 import type { MetricType } from '../types';
 import { METRIC_DEFAULT_GRANULARITY } from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
+import { formatApiError } from '../utils/errors';
 import './AnalysisView.css';
 
 const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
@@ -67,7 +68,7 @@ export function AnalysisView() {
     return Array.from(metricsSet).sort();
   }, [correlationMetricX, correlationMetricY, selectedMapMetric, selectedMetrics, viewMode]);
 
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
+  const { data: metrics, isLoading: metricsLoading, isError: metricsIsError, error: metricsError } = useQuery({
     queryKey: ['metrics', regionId, granularity, dateRange, requestedMetrics],
     queryFn: () =>
       api.getMetrics(regionId!, {
@@ -428,6 +429,16 @@ export function AnalysisView() {
               <div className="loading-spinner" />
               <span>Loading metrics...</span>
             </div>
+          ) : metricsIsError ? (
+            <div className="no-data">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M12 9v4" />
+                <path d="M12 17h.01" />
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <p>Failed to load metrics for this region.</p>
+              <p className="hint">{formatApiError(metricsError)}</p>
+            </div>
           ) : metrics ? (
             <>
               {viewMode === 'charts' && (
@@ -509,7 +520,7 @@ export function AnalysisView() {
                         <div className="no-stats-message" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px', color: '#78716C' }}>
                           <p style={{ margin: 0, fontSize: '14px' }}>No statistics available</p>
                           <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
-                            Data collection required for the selected metrics and time period
+                            Try adjusting the date range or selecting different metrics
                           </p>
                         </div>
                       )}
@@ -593,8 +604,8 @@ export function AnalysisView() {
                 <path d="M3 3v18h18" />
                 <path d="M7 16l4-4 4 4 5-6" opacity="0.3" />
               </svg>
-              <p>No data available for this region and time period.</p>
-              <p className="hint">Try adjusting the date range or collecting new data.</p>
+              <p>No metrics available for this region and time period.</p>
+              <p className="hint">Try adjusting the date range or selecting different metrics.</p>
             </div>
           )}
         </main>

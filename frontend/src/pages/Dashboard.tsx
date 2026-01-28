@@ -17,6 +17,16 @@ import { MapView } from '../components/Map/MapContainer';
 import api from '../services/api';
 import './Dashboard.css';
 
+const PRESET_ICONS = {
+  'snowbird': Bird,
+  'covid': Virus,
+  'urban-growth': Buildings,
+  'college-towns': GraduationCap,
+  'tourism': Airplane,
+} as const;
+
+const FEATURED_PRESET_ORDER = ['snowbird', 'covid', 'urban-growth', 'college-towns', 'tourism'] as const;
+
 export function Dashboard() {
   const navigate = useNavigate();
   const { data: regionsData } = useQuery({
@@ -24,48 +34,16 @@ export function Dashboard() {
     queryFn: () => api.listRegions({ type: 'predefined', page_size: 100 }),
   });
 
-  const featuredAnalyses = [
-    {
-      id: 'snowbird',
-      title: 'Snowbird Migration Pattern',
-      description: 'Track winter population shifts to Sun Belt cities',
-      regions: ['Phoenix, AZ', 'Miami, FL', 'Tampa, FL'],
-      icon: Bird,
-      category: 'Migration',
-    },
-    {
-      id: 'covid',
-      title: 'COVID-19 Impact Analysis',
-      description: 'Activity collapse and recovery patterns 2020-2022',
-      regions: ['New York, NY', 'San Francisco, CA', 'Las Vegas, NV'],
-      icon: Virus,
-      category: 'Temporal',
-    },
-    {
-      id: 'urban-growth',
-      title: 'Urban Growth: Phoenix 2015-2024',
-      description: 'Tracking one of Americas fastest-growing cities',
-      regions: ['Phoenix Metro'],
-      icon: Buildings,
-      category: 'Growth',
-    },
-    {
-      id: 'college-towns',
-      title: 'College Town Seasonality',
-      description: 'University impact on city activity patterns',
-      regions: ['Austin, TX', 'Ann Arbor, MI', 'Boulder, CO'],
-      icon: GraduationCap,
-      category: 'Seasonal',
-    },
-    {
-      id: 'tourism',
-      title: 'Tourist Destination Patterns',
-      description: 'Tourism-driven activity fluctuations peak vs off-season',
-      regions: ['Las Vegas, NV', 'Orlando, FL'],
-      icon: Airplane,
-      category: 'Seasonal',
-    },
-  ];
+  const { data: presetsData } = useQuery({
+    queryKey: ['presets'],
+    queryFn: () => api.listPresets(),
+  });
+
+  const presets = presetsData?.presets ?? [];
+  const presetsById = new Map(presets.map((p) => [p.id, p] as const));
+  const featuredPresets = FEATURED_PRESET_ORDER
+    .map((id) => presetsById.get(id))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   const stats = [
     { label: 'Predefined Regions', value: regionsData?.total || 0 },
@@ -129,12 +107,12 @@ export function Dashboard() {
       <section className="dashboard-section">
         <h2>Featured Analyses</h2>
         <div className="featured-grid">
-          {featuredAnalyses.map((analysis) => {
-            const Icon = analysis.icon;
+          {featuredPresets.map((preset) => {
+            const Icon = PRESET_ICONS[preset.id as keyof typeof PRESET_ICONS] ?? Planet;
             return (
               <Link
-                key={analysis.id}
-                to={`/gallery?preset=${analysis.id}`}
+                key={preset.id}
+                to={`/gallery?preset=${preset.id}`}
                 className="featured-card instrument-panel"
               >
                 <span className="bracket-bl" />
@@ -143,14 +121,14 @@ export function Dashboard() {
                   <div className="featured-icon">
                     <Icon size={24} weight="duotone" />
                   </div>
-                  <span className="featured-category">{analysis.category}</span>
+                  {preset.category && <span className="featured-category">{preset.category}</span>}
                 </div>
-                <h3>{analysis.title}</h3>
-                <p>{analysis.description}</p>
+                <h3>{preset.name}</h3>
+                <p>{preset.description}</p>
                 <div className="featured-regions">
-                  {analysis.regions.map((region) => (
-                    <span key={region} className="region-tag">
-                      {region}
+                  {preset.regions.slice(0, 3).map((region) => (
+                    <span key={region.name} className="region-tag">
+                      {region.name}
                     </span>
                   ))}
                 </div>

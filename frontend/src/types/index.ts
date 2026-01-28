@@ -186,3 +186,41 @@ export interface MapState {
   zoom: number;
   selectedRegionId: string | null;
 }
+
+// Presets
+export interface PresetRegion {
+  name: string;
+  region_id: string | null;
+}
+
+export interface PresetDateRange {
+  start_date: string;
+  end_date: string;
+}
+
+export interface PresetComparePeriod {
+  label: string | null;
+  start_date: string;
+  end_date: string;
+}
+
+export interface PresetCompare {
+  period_a: PresetComparePeriod;
+  period_b: PresetComparePeriod;
+}
+
+export interface Preset {
+  id: string;
+  name: string;
+  description: string;
+  category: string | null;
+  regions: PresetRegion[];
+  metrics: MetricType[];
+  date_range: PresetDateRange | null;
+  compare: PresetCompare | null;
+  methodology_notes: string | null;
+}
+
+export interface PresetListResponse {
+  presets: Preset[];
+}

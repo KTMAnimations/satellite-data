@@ -217,9 +217,9 @@ export function TimeSeriesChart({
             <path d="M3 3v18h18" />
             <path d="M7 16l4-4 4 4 5-6" opacity="0.3" />
           </svg>
-          <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>No data collected for this region</p>
+          <p style={{ margin: 0, fontSize: '14px', fontWeight: 500 }}>No observations available</p>
           <p style={{ margin: '8px 0 0', fontSize: '12px', opacity: 0.7 }}>
-            Run data collection to populate metrics for this time period
+            Try adjusting the date range or selecting different metrics
           </p>
         </div>
       </div>

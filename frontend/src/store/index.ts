@@ -43,10 +43,12 @@ interface AppState {
 }
 
 // Default to last 2 years of data for meaningful analysis
-const defaultDateRange: DateRange = {
-  start: new Date(2023, 0, 1),   // Jan 1, 2023
-  end: new Date(),               // Today
-};
+const defaultDateRange: DateRange = (() => {
+  const end = new Date();
+  const start = new Date(end);
+  start.setFullYear(end.getFullYear() - 2);
+  return { start, end };
+})();
 
 export const useStore = create<AppState>()(
   persist(

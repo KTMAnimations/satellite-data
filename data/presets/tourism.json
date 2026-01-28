@@ -3,41 +3,13 @@
   "name": "Tourist Destination Patterns",
   "description": "Tourism-driven economies show predictable seasonal activity fluctuations. Analyze peak vs off-peak patterns in major tourist destinations.",
   "category": "seasonal",
-  "regions": [
-    {
-      "name": "Las Vegas, NV",
-      "lat": 36.1699,
-      "lng": -115.1398,
-      "tourism_type": "entertainment",
-      "peak_months": [3, 10, 11],
-      "peak_increase_pct": 25
-    },
-    {
-      "name": "Orlando, FL",
-      "lat": 28.5383,
-      "lng": -81.3792,
-      "tourism_type": "theme_parks",
-      "peak_months": [6, 7, 12],
-      "peak_increase_pct": 35
-    }
-  ],
-  "comparison": {
-    "period_a": {
-      "name": "Peak Season",
-      "description": "Varies by destination - see region details"
-    },
-    "period_b": {
-      "name": "Off-Peak",
-      "description": "January-February typically lowest"
-    }
-  },
+  "regions": ["Las Vegas, NV", "Orlando, FL"],
   "metrics": ["nightlights", "parking"],
-  "key_findings": [
-    "Orlando: Summer peak from theme parks (school vacation)",
-    "Las Vegas: Convention-driven patterns (March, October highest)",
-    "Clear correlation with school holiday periods",
-    "Weekend vs weekday patterns also visible in higher-frequency data"
-  ],
+  "date_range": { "start_date": "2024-01-01", "end_date": "2024-12-31" },
+  "compare": {
+    "period_a": { "label": "Peak Season (Summer)", "start_date": "2024-06-01", "end_date": "2024-08-31" },
+    "period_b": { "label": "Off-Peak (Winter)", "start_date": "2024-01-01", "end_date": "2024-02-29" }
+  },
   "tourism_drivers": {
     "las_vegas": [
       "CES (January)",
@@ -59,5 +31,5 @@
     },
     "color_scheme": "warm"
   },
-  "methodology_notes": "Tourism patterns inferred from nightlight intensity variations. Major events can create short-term spikes not captured in monthly composites."
+  "methodology_notes": "Tourism patterns are inferred from satellite-derived proxy metrics. Major events can create short-term spikes not captured in monthly composites."
 }

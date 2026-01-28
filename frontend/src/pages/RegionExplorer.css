@@ -37,6 +37,28 @@
   gap: 0.75rem;
 }
 
+.preset-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #f8fafc;
+  font-size: 0.875rem;
+}
+
+.preset-banner-text {
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+}
+
+.preset-banner-text strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .search-input {
   width: 100%;
   padding: 0.5rem 0.75rem;

@@ -3,51 +3,13 @@
   "name": "College Town Seasonality",
   "description": "University towns show distinct seasonal patterns driven by academic calendars. Compare activity during the school year (Sep-May) versus summer break.",
   "category": "seasonal",
-  "regions": [
-    {
-      "name": "Austin, TX",
-      "lat": 30.2672,
-      "lng": -97.7431,
-      "university": "University of Texas",
-      "enrollment": 51000,
-      "summer_drop_pct": -12
-    },
-    {
-      "name": "Ann Arbor, MI",
-      "lat": 42.2808,
-      "lng": -83.743,
-      "university": "University of Michigan",
-      "enrollment": 47000,
-      "summer_drop_pct": -22
-    },
-    {
-      "name": "Boulder, CO",
-      "lat": 40.015,
-      "lng": -105.2705,
-      "university": "University of Colorado",
-      "enrollment": 35000,
-      "summer_drop_pct": -18
-    }
-  ],
-  "comparison": {
-    "period_a": {
-      "name": "Academic Year",
-      "months": [9, 10, 11, 12, 1, 2, 3, 4, 5],
-      "description": "September through May"
-    },
-    "period_b": {
-      "name": "Summer Break",
-      "months": [6, 7, 8],
-      "description": "June through August"
-    }
-  },
+  "regions": ["Austin, TX", "Ann Arbor, MI", "Boulder, CO"],
   "metrics": ["nightlights", "parking"],
-  "key_findings": [
-    "Ann Arbor: -22% summer activity drop (highest proportional student population)",
-    "Boulder: -18% summer activity drop with tourism offset",
-    "Austin: -12% more moderate drop due to larger permanent population",
-    "Pattern correlates with academic calendar dates"
-  ],
+  "date_range": { "start_date": "2024-09-01", "end_date": "2025-08-31" },
+  "compare": {
+    "period_a": { "label": "Academic Year", "start_date": "2024-09-01", "end_date": "2025-05-31" },
+    "period_b": { "label": "Summer Break", "start_date": "2025-06-01", "end_date": "2025-08-31" }
+  },
   "academic_calendar": {
     "fall_start": "Late August",
     "winter_break": "Mid-December to Early January",
@@ -62,5 +24,5 @@
     },
     "color_scheme": "categorical"
   },
-  "methodology_notes": "Comparison based on average nightlight intensity during academic months vs summer months. Larger cities show smaller percentage changes due to non-student population dilution."
+  "methodology_notes": "Comparison based on average proxy metric values during the academic year versus summer break."
 }

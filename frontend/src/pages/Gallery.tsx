@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import type { Icon } from '@phosphor-icons/react';
 import {
   Bird,
@@ -9,6 +10,8 @@ import {
   AirplaneTilt,
 } from '@phosphor-icons/react';
 import './Gallery.css';
+import api from '../services/api';
+import { formatApiError } from '../utils/errors';
 
 const PRESET_ICONS: Record<string, Icon> = {
   'snowbird': Bird,
@@ -18,88 +21,16 @@ const PRESET_ICONS: Record<string, Icon> = {
   'tourism': AirplaneTilt,
 };
 
-const PRESETS = [
-  {
-    id: 'snowbird',
-    title: 'Snowbird Migration Pattern',
-    description:
-      'Track how winter populations swell in Sun Belt cities like Phoenix, Miami, and Tampa. This analysis compares nighttime light intensity between December-February and June-August.',
-    regions: ['Phoenix, AZ', 'Miami, FL', 'Tampa, FL', 'Tucson, AZ'],
-    metrics: ['nightlights', 'parking'],
-    period: 'Dec-Feb vs Jun-Aug (2023)',
-    findings: [
-      'Phoenix shows +42% winter activity increase',
-      'Miami sees +38% seasonal population proxy',
-      'Tampa records +35% winter nightlight intensity',
-    ],
-    image: '/images/snowbird-preview.png',
-  },
-  {
-    id: 'covid',
-    title: 'COVID-19 Impact Analysis',
-    description:
-      'Examine how urban activity collapsed in 2020 and recovered through 2022. This preset compares major metropolitan areas across the pandemic timeline.',
-    regions: ['New York, NY', 'San Francisco, CA', 'Las Vegas, NV'],
-    metrics: ['nightlights', 'parking', 'urban_density'],
-    period: 'Jan 2019 vs Jan 2020 vs Jan 2021 vs Jan 2022',
-    findings: [
-      'Las Vegas: -45% activity drop in April 2020',
-      'NYC: Nightlights down 25% at pandemic peak',
-      'Recovery to pre-pandemic levels by mid-2022',
-    ],
-    image: '/images/covid-preview.png',
-  },
-  {
-    id: 'urban-growth',
-    title: 'Urban Growth: Phoenix 2015-2024',
-    description:
-      'Phoenix is one of Americas fastest-growing cities. This analysis tracks urban expansion using the full Sentinel-2 archive from 2015 to present.',
-    regions: ['Phoenix Metro'],
-    metrics: ['urban_density', 'ndvi'],
-    period: '2015-2024 (Annual)',
-    findings: [
-      'Built-up area increased 23% since 2015',
-      'Suburban sprawl visible in satellite imagery',
-      'Vegetation (NDVI) declining at urban edges',
-    ],
-    image: '/images/phoenix-growth-preview.png',
-  },
-  {
-    id: 'college-towns',
-    title: 'College Town Seasonality',
-    description:
-      'University towns show distinct seasonal patterns driven by academic calendars. Compare activity during the school year (Sep-May) versus summer break.',
-    regions: ['Austin, TX', 'Ann Arbor, MI', 'Boulder, CO'],
-    metrics: ['nightlights', 'parking'],
-    period: 'Academic Year vs Summer',
-    findings: [
-      'Ann Arbor: -22% summer activity drop',
-      'Boulder: Significant seasonal variation',
-      'Austin: More moderate due to city size',
-    ],
-    image: '/images/college-preview.png',
-  },
-  {
-    id: 'tourism',
-    title: 'Tourist Destination Patterns',
-    description:
-      'Tourism-driven economies show predictable seasonal activity fluctuations. Analyze peak vs off-peak patterns in major tourist destinations.',
-    regions: ['Las Vegas, NV', 'Orlando, FL', 'Cancun, Mexico'],
-    metrics: ['nightlights', 'parking'],
-    period: 'Peak Season vs Off-Season',
-    findings: [
-      'Orlando: Summer peak from theme parks',
-      'Las Vegas: Convention-driven patterns',
-      'Clear correlation with school holiday periods',
-    ],
-    image: '/images/tourism-preview.png',
-  },
-];
-
 export function Gallery() {
   const [searchParams] = useSearchParams();
   const highlightedPreset = searchParams.get('preset');
   const presetRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const { data: presetsData, isLoading, isError, error } = useQuery({
+    queryKey: ['presets'],
+    queryFn: () => api.listPresets(),
+  });
+  const presets = presetsData?.presets ?? [];
 
   // Scroll to highlighted preset when navigating from Dashboard
   useEffect(() => {
@@ -114,15 +45,20 @@ export function Gallery() {
   return (
     <div className="gallery">
       <header className="gallery-header">
-        <h1>Example Gallery</h1>
+        <h1>Gallery</h1>
         <p>
-          Explore curated analyses demonstrating the platform capabilities. Click any example
-          to view the full analysis.
+          Explore curated presets. Click any preset to apply its regions, metrics, and date
+          range in the Region Explorer.
         </p>
       </header>
 
       <div className="presets-grid">
-        {PRESETS.map((preset) => (
+        {isLoading ? (
+          <div className="loading">Loading presets...</div>
+        ) : isError ? (
+          <div className="loading">Error loading presets: {formatApiError(error)}</div>
+        ) : (
+          presets.map((preset) => (
           <article
             key={preset.id}
             ref={(el) => (presetRefs.current[preset.id] = el)}
@@ -138,13 +74,13 @@ export function Gallery() {
             </div>
 
             <div className="preset-content">
-              <h2>{preset.title}</h2>
+              <h2>{preset.name}</h2>
               <p className="preset-description">{preset.description}</p>
 
               <div className="preset-details">
                 <div className="detail-row">
                   <span className="detail-label">Regions:</span>
-                  <span className="detail-value">{preset.regions.join(', ')}</span>
+                  <span className="detail-value">{preset.regions.map((r) => r.name).join(', ')}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Metrics:</span>
@@ -152,19 +88,22 @@ export function Gallery() {
                     {preset.metrics.map((m) => m.replace('_', ' ')).join(', ')}
                   </span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Period:</span>
-                  <span className="detail-value">{preset.period}</span>
-                </div>
-              </div>
-
-              <div className="preset-findings">
-                <h4>Key Findings:</h4>
-                <ul>
-                  {preset.findings.map((finding, i) => (
-                    <li key={i}>{finding}</li>
-                  ))}
-                </ul>
+                {preset.date_range && (
+                  <div className="detail-row">
+                    <span className="detail-label">Date Range:</span>
+                    <span className="detail-value">
+                      {preset.date_range.start_date} to {preset.date_range.end_date}
+                    </span>
+                  </div>
+                )}
+                {preset.compare && (
+                  <div className="detail-row">
+                    <span className="detail-label">Comparison:</span>
+                    <span className="detail-value">
+                      {(preset.compare.period_a.label ?? 'Period A')} vs {(preset.compare.period_b.label ?? 'Period B')}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <Link to={`/regions?preset=${preset.id}`} className="btn btn-primary">
@@ -172,7 +111,8 @@ export function Gallery() {
               </Link>
             </div>
           </article>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Methodology Note */}

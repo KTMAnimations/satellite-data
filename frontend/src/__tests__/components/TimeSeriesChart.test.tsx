@@ -56,7 +56,7 @@ describe('TimeSeriesChart', () => {
     );
 
     expect(container.querySelector('.chart-tooltip')).not.toBeInTheDocument();
-    expect(screen.getByText('No data collected for this region')).toBeInTheDocument();
+    expect(screen.getByText('No observations available')).toBeInTheDocument();
   });
 
   it('renders an SVG and tooltip when data exists', () => {

@@ -2,6 +2,8 @@ import axios, { AxiosInstance } from 'axios';
 import type {
   Region,
   RegionListResponse,
+  Preset,
+  PresetListResponse,
   MetricsResponse,
   CompareRequest,
   CompareResponse,
@@ -26,6 +28,7 @@ class APIClient {
         'Content-Type': 'application/json',
       },
       timeout: 30000,
+      paramsSerializer: { indexes: null },
     });
   }
 
@@ -60,6 +63,17 @@ class APIClient {
 
   async deleteRegion(id: string): Promise<void> {
     await this.client.delete(`/regions/${id}`);
+  }
+
+  // Presets
+  async listPresets(): Promise<PresetListResponse> {
+    const response = await this.client.get<PresetListResponse>('/presets');
+    return response.data;
+  }
+
+  async getPreset(id: string): Promise<Preset> {
+    const response = await this.client.get<Preset>(`/presets/${id}`);
+    return response.data;
   }
 
   // Metrics
