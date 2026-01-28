@@ -85,9 +85,9 @@ export const VALUE_RANGES: Record<MetricType, [number, number]> = {
   temperature: [-30.0, 45.0],
   precipitation: [0.0, 500.0],
   aerosol: [-2.0, 5.0],
-  cropland: [0.0, 255.0],
+  cropland: [0.0, 1.0],
   evapotranspiration: [0.0, 300.0],
-  soil_moisture: [0.0, 50.0],
+  soil_moisture: [0.0, 0.5],
   impervious: [0.0, 1.0],
   fire_historical: [0.0, 500.0],
   canopy_height: [0.0, 60.0],
@@ -121,4 +121,3 @@ export function interpolateColor(colors: string[], t: number): string {
 
   return `rgb(${r}, ${g}, ${b})`;
 }
-

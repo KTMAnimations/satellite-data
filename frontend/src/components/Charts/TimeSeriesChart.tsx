@@ -5,7 +5,7 @@ import { parseMetricDate } from '../../utils/dates';
 import './Charts.css';
 
 interface TimeSeriesChartProps {
-  data: Record<MetricType, MetricData>;
+  data: Partial<Record<MetricType, MetricData>>;
   selectedMetrics: MetricType[];
   width?: number;
   height?: number;
@@ -111,10 +111,7 @@ export function TimeSeriesChart({
       .range([0, innerWidth]);
 
     // Create separate Y scales for each metric (normalized)
-    const yScales: Record<MetricType, d3.ScaleLinear<number, number>> = {} as Record<
-      MetricType,
-      d3.ScaleLinear<number, number>
-    >;
+    const yScales: Partial<Record<MetricType, d3.ScaleLinear<number, number>>> = {};
 
     selectedMetrics.forEach((metric) => {
       const metricData = parsedDataByMetric[metric];
@@ -136,12 +133,13 @@ export function TimeSeriesChart({
     // Draw lines for each metric
     selectedMetrics.forEach((metric) => {
       const metricData = parsedDataByMetric[metric];
-      if (!metricData || !yScales[metric]) return;
+      const yScale = yScales[metric];
+      if (!metricData || !yScale) return;
 
       const line = d3
         .line<{ date: Date; value: number }>()
         .x((d) => xScale(d.date))
-        .y((d) => yScales[metric](d.value))
+        .y((d) => yScale(d.value))
         .curve(d3.curveMonotoneX);
 
       // Line path
@@ -159,7 +157,7 @@ export function TimeSeriesChart({
         .append('circle')
         .attr('class', `dot-${metric}`)
         .attr('cx', (d) => xScale(d.date))
-        .attr('cy', (d) => yScales[metric](d.value))
+        .attr('cy', (d) => yScale(d.value))
         .attr('r', 3)
         .attr('fill', METRIC_COLORS[metric])
         .style('cursor', 'pointer')

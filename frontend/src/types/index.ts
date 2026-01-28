@@ -49,6 +49,8 @@ export type MetricType =
   | 'fire_historical'
   | 'canopy_height';
 
+export type Granularity = 'daily' | 'weekly' | 'monthly';
+
 export interface MetricDataPoint {
   date: string;
   value: number;
@@ -93,46 +95,8 @@ export interface SeasonalSummary {
 export interface MetricsResponse {
   region_id: string;
   region_name: string;
-  metrics: Record<MetricType, MetricData>;
+  metrics: Partial<Record<MetricType, MetricData>>;
   seasonal_summary: SeasonalSummary | null;
-}
-
-// Analysis types
-export type AnalysisType = 'seasonal_change' | 'urban_growth' | 'migration' | 'covid_impact';
-
-export interface AnalysisRequest {
-  region_id: string;
-  analysis_type: AnalysisType;
-  start_date: string;
-  end_date: string;
-  parameters?: Record<string, unknown>;
-}
-
-export interface AnalysisStatus {
-  id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: number;
-  message: string | null;
-  created_at: string;
-  completed_at: string | null;
-}
-
-export interface AnalysisResults {
-  summary: Record<string, unknown>;
-  metrics: Record<string, unknown>;
-  visualizations: Record<string, unknown>[] | null;
-  methodology: string | null;
-}
-
-export interface AnalysisResponse {
-  id: string;
-  region_id: string;
-  region_name: string;
-  analysis_type: AnalysisType;
-  start_date: string;
-  end_date: string;
-  results: AnalysisResults;
-  created_at: string;
 }
 
 // Compare types
@@ -142,7 +106,7 @@ export interface CompareRequest {
   period_a_end: string;
   period_b_start: string;
   period_b_end: string;
-  metrics?: string[];
+  metrics?: MetricType[];
 }
 
 export interface PeriodSummary {
@@ -161,13 +125,26 @@ export interface CompareResponse {
   change_absolute: Record<string, number>;
 }
 
+// Tiles
+export interface TileTemplateResponse {
+  metric: MetricType;
+  date_bucket: string;
+  granularity: Granularity;
+  tile_url: string;
+  attribution: string | null;
+  min: number;
+  max: number;
+  palette: string[];
+  opacity: number;
+}
+
 // Export types
 export interface ExportRequest {
   region_id: string;
-  format: 'pdf' | 'html' | 'csv';
+  format: 'pdf';
   start_date?: string;
   end_date?: string;
-  metrics?: string[];
+  metrics?: MetricType[];
   include_charts?: boolean;
   include_maps?: boolean;
   title?: string;
@@ -180,7 +157,6 @@ export interface ExportResponse {
   format: string;
   progress?: number;
   message?: string | null;
-  frame_count?: number | null;
   download_url: string | null;
   file_size: number | null;
   created_at: string;
@@ -190,47 +166,13 @@ export interface ExportResponse {
 
 export interface AnimationRequest {
   region_id: string;
-  metric: string;
-  format: 'gif' | 'frames';
+  metric: MetricType;
+  format: 'gif';
   start_date: string;
   end_date: string;
   frame_duration_ms?: number;
   width?: number;
   height?: number;
-  lock_view?: boolean;
-  view_center?: [number, number]; // [lat, lon]
-  view_zoom?: number;
-}
-
-// API Key types
-export interface APIKeyCreate {
-  name: string;
-}
-
-export interface APIKeyResponse {
-  id: string;
-  name: string;
-  key: string | null;
-  created_at: string;
-  last_used: string | null;
-  is_active: boolean;
-}
-
-// Map types
-export interface MapBounds {
-  west: number;
-  south: number;
-  east: number;
-  north: number;
-}
-
-export interface RegionBounds {
-  region_id: string;
-  bounds: MapBounds;
-  center: {
-    lon: number;
-    lat: number;
-  };
 }
 
 // App state types

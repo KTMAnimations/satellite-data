@@ -11,6 +11,7 @@ import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
 import api from '../services/api';
 import type { MetricType } from '../types';
+import { METRIC_DEFAULT_GRANULARITY } from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import './AnalysisView.css';
 
@@ -34,27 +35,6 @@ const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
   { value: 'canopy_height', label: 'Canopy Height', color: '#15803D' },   // Green-700
 ];
 
-// Finest available granularity per metric (based on data source limitations)
-const METRIC_GRANULARITY: Record<MetricType, 'daily' | 'weekly' | 'monthly'> = {
-  ndvi: 'weekly',           // Sentinel-2: 5-day revisit
-  parking: 'weekly',        // Sentinel-2: 5-day revisit
-  nightlights: 'monthly',   // VIIRS: monthly composites only
-  urban_density: 'monthly', // GHSL: static epochs
-  land_cover: 'weekly',     // Dynamic World: near real-time
-  surface_water: 'monthly', // JRC GSW: monthly history
-  active_fire: 'daily',     // VIIRS 375m: daily
-  no2: 'daily',             // Sentinel-5P: daily
-  temperature: 'daily',     // ERA5-Land: hourly aggregated to daily
-  precipitation: 'daily',   // ERA5-Land: hourly aggregated to daily
-  aerosol: 'daily',         // Sentinel-5P: daily
-  cropland: 'monthly',      // USDA CDL: annual
-  evapotranspiration: 'monthly', // OpenET: monthly
-  soil_moisture: 'weekly',  // SMAP: 3-day
-  impervious: 'monthly',    // GAIA: annual
-  fire_historical: 'monthly', // FIRMS: daily aggregated
-  canopy_height: 'monthly', // GEDI: static
-};
-
 type ViewMode = 'charts' | 'correlation' | 'yoy';
 
 export function AnalysisView() {
@@ -75,13 +55,25 @@ export function AnalysisView() {
   });
 
   // Use finest granularity based on selected map metric
-  const granularity = METRIC_GRANULARITY[selectedMapMetric];
+  const granularity = METRIC_DEFAULT_GRANULARITY[selectedMapMetric];
+  const requestedMetrics = useMemo(() => {
+    const metricsSet = new Set<MetricType>();
+    metricsSet.add(selectedMapMetric);
+    for (const metric of selectedMetrics) metricsSet.add(metric);
+    if (viewMode === 'correlation') {
+      metricsSet.add(correlationMetricX);
+      metricsSet.add(correlationMetricY);
+    }
+    return Array.from(metricsSet).sort();
+  }, [correlationMetricX, correlationMetricY, selectedMapMetric, selectedMetrics, viewMode]);
+
   const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['metrics', regionId, selectedMapMetric, granularity, dateRange],
+    queryKey: ['metrics', regionId, granularity, dateRange, requestedMetrics],
     queryFn: () =>
       api.getMetrics(regionId!, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
         end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
+        metrics: requestedMetrics,
         granularity,
       }),
     enabled: !!regionId,
@@ -275,6 +267,7 @@ export function AnalysisView() {
                 <MapView
                   regions={[region]}
                   selectedMetric={selectedMapMetric}
+                  tileGranularity={granularity}
                   tileDate={
                     formatDateYYYYMMDD(currentTimelineDate)
                       ?? formatDateYYYYMMDD(dateRange.start)

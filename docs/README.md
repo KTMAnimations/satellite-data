@@ -43,7 +43,6 @@ The API is self-documented via OpenAPI/Swagger:
 | GEE dataset details | [GEE_DATASETS.md](./GEE_DATASETS.md) |
 | API endpoints | http://localhost:8000/docs |
 | Source of Truth | [../SOT.md](../SOT.md) |
-| Shipping checklist | [../CHECKLIST.md](../CHECKLIST.md) |
 
 ## Contributing
 

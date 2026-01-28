@@ -35,10 +35,6 @@ interface AppState {
   activeTab: 'regions' | 'analysis' | 'exports' | 'gallery';
   setActiveTab: (tab: 'regions' | 'analysis' | 'exports' | 'gallery') => void;
 
-  // API key
-  apiKey: string | null;
-  setApiKey: (key: string | null) => void;
-
   // Export queue (in-memory; not persisted)
   exportQueue: ExportResponse[];
   addExportToQueue: (exportItem: ExportResponse) => void;
@@ -99,10 +95,6 @@ export const useStore = create<AppState>()(
       activeTab: 'regions',
       setActiveTab: (tab) => set({ activeTab: tab }),
 
-      // API key
-      apiKey: null,
-      setApiKey: (key) => set({ apiKey: key }),
-
       // Export queue (in-memory; not persisted)
       exportQueue: [],
       addExportToQueue: (exportItem) =>
@@ -113,7 +105,6 @@ export const useStore = create<AppState>()(
     {
       name: 'satellite-migration-storage',
       partialize: (state) => ({
-        apiKey: state.apiKey,
         selectedMetrics: state.selectedMetrics,
       }),
     }

@@ -1,35 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer,
   GeoJSON,
   useMap,
 } from 'react-leaflet';
-import type { Region, MetricType } from '../../types';
+import type { Granularity, Region, MetricType } from '../../types';
 import api from '../../services/api';
-import { CompositeTileLayer } from './CompositeTileLayer';
+import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
 import './SplitScreenCompare.css';
 
-const US_BOUNDS_4326 = { west: -125.0, east: -66.0, south: 24.0, north: 50.0 };
-
-function regionLikelyInUS(region: Region): boolean {
-  if (region.country?.toUpperCase() === 'USA') return true;
-  const ring = region.geometry?.coordinates?.[0];
-  if (!ring || ring.length === 0) return false;
-
-  let west = Number.POSITIVE_INFINITY;
-  let south = Number.POSITIVE_INFINITY;
-  let east = Number.NEGATIVE_INFINITY;
-  let north = Number.NEGATIVE_INFINITY;
-
-  for (const [lon, lat] of ring) {
-    west = Math.min(west, lon);
-    south = Math.min(south, lat);
-    east = Math.max(east, lon);
-    north = Math.max(north, lat);
-  }
-
-  return !(east < US_BOUNDS_4326.west || west > US_BOUNDS_4326.east || north < US_BOUNDS_4326.south || south > US_BOUNDS_4326.north);
+function toDateBucket(dateStr: string, granularity: Granularity): string {
+  return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
 }
 
 
@@ -167,9 +150,33 @@ export function SplitScreenCompare({
     // Force re-render to sync maps
   }, []);
 
-  const tileDateA = ['nightlights', 'active_fire'].includes(metric) ? dateA : api.dateToYearMonth(dateA);
-  const tileDateB = ['nightlights', 'active_fire'].includes(metric) ? dateB : api.dateToYearMonth(dateB);
-  const useUsTiles = regionLikelyInUS(region);
+  const granularity = METRIC_DEFAULT_GRANULARITY[metric];
+  const dateBucketA = toDateBucket(dateA, granularity);
+  const dateBucketB = toDateBucket(dateB, granularity);
+
+  const { data: tileTemplateA } = useQuery({
+    queryKey: ['tiles', 'template', metric, dateBucketA, granularity],
+    queryFn: () =>
+      api.getTileTemplate({
+        metric,
+        date_bucket: dateBucketA,
+        granularity,
+      }),
+    enabled: Boolean(metric && dateBucketA && granularity),
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const { data: tileTemplateB } = useQuery({
+    queryKey: ['tiles', 'template', metric, dateBucketB, granularity],
+    queryFn: () =>
+      api.getTileTemplate({
+        metric,
+        date_bucket: dateBucketB,
+        granularity,
+      }),
+    enabled: Boolean(metric && dateBucketB && granularity),
+    staleTime: 1000 * 60 * 60,
+  });
 
   return (
     <div
@@ -195,16 +202,14 @@ export function SplitScreenCompare({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-          <CompositeTileLayer
-            key={`${useUsTiles ? 'us' : 'world'}-${metric}-${tileDateA}`}
-            baseUrl={
-              useUsTiles ? api.getUSTileUrl(metric, tileDateA) : api.getWorldTileUrl(metric, tileDateA)
-            }
-            nativeZoom={11}
-            minZoom={9}
-            maxZoom={11}
-            opacity={0.8}
-          />
+          {tileTemplateA?.tile_url && (
+            <TileLayer
+              key={`${metric}:${granularity}:${dateBucketA}`}
+              url={tileTemplateA.tile_url}
+              opacity={tileTemplateA.opacity}
+              attribution={tileTemplateA.attribution ?? undefined}
+            />
+          )}
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
           {mapB && <SyncedMap targetMap={mapB} onMove={handleMapMove} />}
         </LeafletMapContainer>
@@ -247,16 +252,14 @@ export function SplitScreenCompare({
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
-          <CompositeTileLayer
-            key={`${useUsTiles ? 'us' : 'world'}-${metric}-${tileDateB}`}
-            baseUrl={
-              useUsTiles ? api.getUSTileUrl(metric, tileDateB) : api.getWorldTileUrl(metric, tileDateB)
-            }
-            nativeZoom={11}
-            minZoom={9}
-            maxZoom={11}
-            opacity={0.8}
-          />
+          {tileTemplateB?.tile_url && (
+            <TileLayer
+              key={`${metric}:${granularity}:${dateBucketB}`}
+              url={tileTemplateB.tile_url}
+              opacity={tileTemplateB.opacity}
+              attribution={tileTemplateB.attribution ?? undefined}
+            />
+          )}
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
           {mapA && <SyncedMap targetMap={mapA} onMove={handleMapMove} />}
         </LeafletMapContainer>

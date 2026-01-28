@@ -38,9 +38,17 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Secrets / local config
+.env
+.env.*
+credentials/*.json
+
 # Data
 data/cache/
 data/exports/
+data/*.sqlite3
+data/*.sqlite
+data/*.db
 *.tif
 *.tiff
 *.geotiff

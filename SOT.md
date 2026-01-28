@@ -4,7 +4,9 @@
 
 **Project Name:** SatelliteMigration
 **Last Updated:** 2026-01-26
-**Status:** Implementation ~85% Complete - Frontend verified, Backend functional
+**Status:** Dockerless local-first implementation (SQLite + Earth Engine)
+
+> Implementation note (2026-01-28): the repo was rebuilt for personal/local use. Docker/PostGIS/Redis/Celery were removed; the backend now uses SQLite and Earth Engine for server-side compute + tile URL templates.
 
 ---
 
@@ -125,86 +127,34 @@ See `docs/GEE_DATASETS.md` for detailed dataset specifications.
 
 ```
 satellite-data/
-├── docker-compose.yml
-├── Dockerfile.api
-├── Dockerfile.worker
-│
-├── frontend/                    # React + TypeScript
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Map/            # Leaflet map components
-│   │   │   ├── Charts/         # Time series charts
-│   │   │   ├── Controls/       # Region selection, date pickers
-│   │   │   └── Reports/        # Export functionality
-│   │   ├── hooks/
-│   │   ├── services/           # API client
-│   │   ├── types/
-│   │   └── App.tsx
-│   ├── package.json
-│   └── tsconfig.json
-│
-├── backend/                     # FastAPI
+├── backend/                     # FastAPI (dockerless)
 │   ├── app/
-│   │   ├── main.py
-│   │   ├── api/
-│   │   │   ├── routes/
-│   │   │   │   ├── regions.py
-│   │   │   │   ├── analysis.py
-│   │   │   │   ├── exports.py
-│   │   │   │   └── auth.py
-│   │   │   └── dependencies.py
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   └── security.py
-│   │   ├── models/             # SQLAlchemy models
-│   │   ├── schemas/            # Pydantic schemas
-│   │   └── services/
-│   │       ├── satellite/
-│   │       │   ├── gee_client.py
-│   │       │   ├── planetary_computer.py
-│   │       │   ├── sentinel_hub.py
-│   │       │   └── base.py
-│   │       ├── features/
-│   │       │   ├── nightlights.py
-│   │       │   ├── urban_density.py
-│   │       │   ├── parking.py
-│   │       │   └── ndvi.py
-│   │       ├── analysis/
-│   │       │   ├── temporal.py
-│   │       │   ├── change_detection.py
-│   │       │   └── migration.py
-│   │       └── export/
-│   │           ├── pdf.py
-│   │           ├── csv.py
-│   │           └── animation.py
-│   ├── alembic/                # DB migrations
-│   ├── tests/
-│   │   ├── unit/
-│   │   ├── integration/
-│   │   └── e2e/
+│   │   ├── main.py              # FastAPI entrypoint
+│   │   ├── settings.py          # repo-root .env + local defaults
+│   │   ├── db.py                # SQLite (aiosqlite)
+│   │   ├── models.py            # Region + ExportJob
+│   │   ├── schemas.py           # Pydantic schemas
+│   │   ├── gee.py               # Metric definitions + EE compute/tiles
+│   │   └── routes/
+│   │       ├── regions.py
+│   │       ├── metrics.py
+│   │       ├── tiles.py
+│   │       ├── analysis.py
+│   │       └── exports.py
+│   ├── data/predefined_regions.json
 │   └── requirements.txt
 │
-├── workers/                     # Background processing
-│   ├── tasks/
-│   │   ├── precompute.py
-│   │   └── on_demand.py
-│   └── celery_app.py
+├── frontend/                    # React + TypeScript (Vite)
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
 │
-├── data/
-│   ├── regions/                # Predefined region configs (PMTiles)
-│   ├── presets/                # Example analysis presets (COVID, snowbirds, etc.)
-│   ├── cache/                  # Downloaded imagery cache
-│   └── exports/                # Generated reports
+├── scripts/
+│   ├── setup_gee.py
+│   └── seed_regions.py
 │
-├── docs/
-│   ├── api/                    # OpenAPI/Swagger
-│   ├── user-guide/
-│   └── methodology.md
-│
-└── scripts/
-    ├── setup_gee.py
-    ├── seed_regions.py
-    └── precompute_popular.py
+├── data/                        # local runtime data (SQLite + exports)
+└── docs/
 ```
 
 ---

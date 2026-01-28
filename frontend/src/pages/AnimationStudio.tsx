@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
@@ -6,13 +6,10 @@ import {
   DownloadSimple,
   Image,
 } from '@phosphor-icons/react';
-import { shallow } from 'zustand/shallow';
 import { MapView } from '../components/Map/MapContainer';
 import { TimeSlider } from '../components/Charts/TimeSlider';
-import { useStore } from '../store';
 import api from '../services/api';
 import type { Region, MetricType } from '../types';
-import type { CompositeTileEvent } from '../components/Map/CompositeTileLayer';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import './AnimationStudio.css';
 
@@ -32,7 +29,7 @@ const METRIC_OPTIONS: { value: MetricType; label: string; description: string; g
   { value: 'precipitation', label: 'Precipitation', description: 'ERA5-Land total precipitation', granularity: 'Monthly' },
   { value: 'aerosol', label: 'Aerosol', description: 'UV Aerosol Index (smoke/dust)', granularity: 'Monthly' },
   // Phase 3: Agriculture
-  { value: 'cropland', label: 'Cropland', description: 'USDA crop type classification', granularity: 'Yearly' },
+  { value: 'cropland', label: 'Cropland', description: 'ESA WorldCover cropland fraction', granularity: 'Static' },
   { value: 'evapotranspiration', label: 'Evapotranspiration', description: 'OpenET water use', granularity: 'Monthly' },
   { value: 'soil_moisture', label: 'Soil Moisture', description: 'SMAP root-zone moisture', granularity: 'Monthly' },
   // Phase 4: Historical & specialized
@@ -63,7 +60,7 @@ const METRIC_GRANULARITY: Record<MetricType, 'daily' | 'weekly' | 'monthly'> = {
   precipitation: 'monthly', // ERA5-Land: hourly but monthly totals
   aerosol: 'monthly',       // S5P: daily but monthly composites
   // Phase 3: Agriculture
-  cropland: 'monthly',      // USDA CDL: annual (use monthly for UI)
+  cropland: 'monthly',      // WorldCover: static (bucketed monthly for UI)
   evapotranspiration: 'monthly', // OpenET: monthly
   soil_moisture: 'monthly', // SMAP: 3-day revisit, monthly composites
   // Phase 4: Historical & specialized
@@ -73,8 +70,6 @@ const METRIC_GRANULARITY: Record<MetricType, 'daily' | 'weekly' | 'monthly'> = {
 };
 
 export function AnimationStudio() {
-  const mapState = useStore((state) => state.mapState, shallow);
-
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('nightlights');
   const [dateRange, setDateRange] = useState({
@@ -86,141 +81,13 @@ export function AnimationStudio() {
   const [currentDate, setCurrentDate] = useState<Date>(dateRange.start);
   const [livePreview, setLivePreview] = useState(false);
   const [previewDate, setPreviewDate] = useState<Date | null>(null);
-  const [overlayNetworkEnabled, setOverlayNetworkEnabled] = useState(false);
   const [viewLocked, setViewLocked] = useState(false);
-  const [lockedView, setLockedView] = useState<{ center: [number, number]; zoom: number } | null>(null);
   const [exportFormat, setExportFormat] = useState<'gif'>('gif');
   const [frameDuration, setFrameDuration] = useState(500);
   const [resolution, setResolution] = useState({ width: 800, height: 600 });
   const [exportId, setExportId] = useState<string | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
-  const appliedOverlayKeysRef = useRef<Set<string>>(new Set());
-
-  type OverlayLogEntry = { id: number; ts: number; message: string };
-  const OVERLAY_LOG_MAX = 200;
-  const [showOverlayLog, setShowOverlayLog] = useState(false);
-  const showOverlayLogRef = useRef(false);
-  const [overlayLog, setOverlayLog] = useState<OverlayLogEntry[]>([]);
-  const [overlayStats, setOverlayStats] = useState({
-    inflight: 0,
-    tilesStarted: 0,
-    tilesDone: 0,
-    sourceTiles: 0,
-    cacheHits: 0,
-    missingSources: 0,
-  });
-  const overlayLogIdRef = useRef(0);
-  const pendingOverlayEventsRef = useRef<CompositeTileEvent[]>([]);
-  const overlayFlushRafRef = useRef<number | null>(null);
-
-  const setOverlayLogVisible = (visible: boolean) => {
-    showOverlayLogRef.current = visible;
-    setShowOverlayLog(visible);
-  };
-
-  const appendOverlayLog = useCallback((message: string) => {
-    const entry: OverlayLogEntry = { id: overlayLogIdRef.current++, ts: Date.now(), message };
-    setOverlayLog((prev) => [...prev, entry].slice(-OVERLAY_LOG_MAX));
-  }, []);
-
-  const resetOverlayLog = useCallback((message: string) => {
-    overlayLogIdRef.current = 0;
-    setOverlayLog([{ id: overlayLogIdRef.current++, ts: Date.now(), message }]);
-    setOverlayStats({
-      inflight: 0,
-      tilesStarted: 0,
-      tilesDone: 0,
-      sourceTiles: 0,
-      cacheHits: 0,
-      missingSources: 0,
-    });
-  }, []);
-
-  const handleOverlayTileEvent = useCallback((event: CompositeTileEvent) => {
-    pendingOverlayEventsRef.current.push(event);
-
-    if (overlayFlushRafRef.current !== null) return;
-    overlayFlushRafRef.current = window.requestAnimationFrame(() => {
-      overlayFlushRafRef.current = null;
-      const events = pendingOverlayEventsRef.current.splice(0);
-      if (events.length === 0) return;
-
-      setOverlayStats((prev) => {
-        const next = { ...prev };
-        for (const e of events) {
-          if (e.kind === 'tile-start') {
-            next.inflight += 1;
-            next.tilesStarted += 1;
-            next.sourceTiles += e.sourceTiles;
-          } else {
-            next.inflight = Math.max(0, next.inflight - 1);
-            next.tilesDone += 1;
-            next.cacheHits += e.cacheHits;
-            next.missingSources += e.missingSources;
-          }
-        }
-        return next;
-      });
-
-      if (!showOverlayLogRef.current) return;
-
-      setOverlayLog((prev) => {
-        const next = [...prev];
-        for (const e of events) {
-          const coord = `z${e.coords.z}/${e.coords.x}/${e.coords.y}`;
-          if (e.kind === 'tile-start') {
-            next.push({
-              id: overlayLogIdRef.current++,
-              ts: Date.now(),
-              message: `→ ${coord} ${e.composite ? `composite (${e.sourceTiles} sources)` : 'direct'}`,
-            });
-          } else {
-            const loaded = Math.max(0, e.sourceTiles - e.missingSources);
-            const ms = Math.round(e.durationMs);
-            next.push({
-              id: overlayLogIdRef.current++,
-              ts: Date.now(),
-              message: `← ${coord} ${loaded}/${e.sourceTiles} in ${ms}ms (cache ${e.cacheHits}/${e.sourceTiles}${e.missingSources ? `, missing ${e.missingSources}` : ''})`,
-            });
-          }
-        }
-        return next.slice(-OVERLAY_LOG_MAX);
-      });
-    });
-  }, []);
-
-  // In manual mode, allow network requests only long enough to populate the current viewport.
-  useEffect(() => {
-    if (livePreview) {
-      if (overlayNetworkEnabled) setOverlayNetworkEnabled(false);
-      return;
-    }
-    if (!overlayNetworkEnabled) return;
-    if (overlayStats.tilesStarted === 0) return;
-    if (overlayStats.inflight !== 0) return;
-
-    const timer = window.setTimeout(() => {
-      setOverlayNetworkEnabled(false);
-      appendOverlayLog('Preview fetch complete (cache-only)');
-    }, 250);
-
-    return () => window.clearTimeout(timer);
-  }, [appendOverlayLog, livePreview, overlayNetworkEnabled, overlayStats.inflight, overlayStats.tilesStarted]);
-
-  const overlayKeyForDate = (metric: MetricType, date: Date): string => {
-    const iso = formatDateYYYYMMDD(date) ?? date.toISOString().split('T')[0];
-    // Only these metrics request daily (YYYY-MM-DD) tiles; all others bucket to monthly tiles (YYYY-MM).
-    const tileBucket = ['nightlights', 'active_fire'].includes(metric) ? iso : iso.substring(0, 7);
-    return `${metric}:${tileBucket}`;
-  };
-
-  const markOverlayApplied = (metric: MetricType, date: Date) => {
-    appliedOverlayKeysRef.current.add(overlayKeyForDate(metric, date));
-  };
-
-  const isOverlayApplied = (metric: MetricType, date: Date) =>
-    appliedOverlayKeysRef.current.has(overlayKeyForDate(metric, date));
 
   // Fetch regions
   const { data: regionsData, isLoading: regionsLoading } = useQuery({
@@ -236,6 +103,7 @@ export function AnimationStudio() {
       api.getMetrics(selectedRegion!.id, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
         end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
+        metrics: [selectedMetric],
         granularity,
       }),
     enabled: !!selectedRegion,
@@ -263,9 +131,6 @@ export function AnimationStudio() {
         frame_duration_ms: frameDuration,
         width: resolution.width,
         height: resolution.height,
-        ...(viewLocked && lockedView
-          ? { lock_view: true, view_center: lockedView.center, view_zoom: lockedView.zoom }
-          : {}),
       }),
     onSuccess: (data) => {
       setExportId(data.id);
@@ -295,38 +160,14 @@ export function AnimationStudio() {
       // Find the first date that's within or after the selected date range
       const validDate = availableDates.find(d => d >= dateRange.start) || availableDates[0];
       setCurrentDate(validDate);
-      setOverlayNetworkEnabled(false);
-      if (livePreview || isOverlayApplied(selectedMetric, validDate)) {
-        setPreviewDate(validDate);
-      } else {
-        setPreviewDate(null);
-      }
-      if (livePreview) {
-        markOverlayApplied(selectedMetric, validDate);
-      }
+      setPreviewDate(validDate);
+      return;
     } else {
       // Reset to date range start when no dates available (e.g., during metric switch)
       setCurrentDate(dateRange.start);
-      setOverlayNetworkEnabled(false);
-      if (livePreview || isOverlayApplied(selectedMetric, dateRange.start)) {
-        setPreviewDate(dateRange.start);
-      } else {
-        setPreviewDate(null);
-      }
-      if (livePreview) {
-        markOverlayApplied(selectedMetric, dateRange.start);
-      }
+      setPreviewDate(dateRange.start);
     }
-  }, [availableDatesKey, dateRange.start, livePreview, selectedMetric]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    return () => {
-      if (overlayFlushRafRef.current !== null) {
-        window.cancelAnimationFrame(overlayFlushRafRef.current);
-        overlayFlushRafRef.current = null;
-      }
-    };
-  }, []);
+  }, [availableDatesKey, dateRange.start, selectedMetric]);
 
   // If preview is paused, ensure playback doesn't keep advancing dates invisibly.
   useEffect(() => {
@@ -349,49 +190,21 @@ export function AnimationStudio() {
   const isPreviewDirty = !previewDate || previewDate.getTime() !== currentDate.getTime();
 
   const handleApplyPreview = () => {
-    resetOverlayLog(
-      `Update preview: ${selectedMetric} ${formatDateYYYYMMDD(currentDate) ?? currentDate.toISOString().split('T')[0]}`
-    );
-    setOverlayLogVisible(true);
-    markOverlayApplied(selectedMetric, currentDate);
     setPreviewDate(currentDate);
-    setOverlayNetworkEnabled(true);
   };
   const handleToggleLivePreview = (next: boolean) => {
     setLivePreview(next);
-    setOverlayNetworkEnabled(false);
-    if (next) {
-      appendOverlayLog(
-        `Live preview enabled: ${selectedMetric} ${formatDateYYYYMMDD(currentDate) ?? currentDate.toISOString().split('T')[0]}`
-      );
-      setOverlayLogVisible(true);
-      markOverlayApplied(selectedMetric, currentDate);
-      setPreviewDate(currentDate);
-      return;
-    }
-    // If live preview is off and this frame hasn't been applied before, blank the overlay.
-    appendOverlayLog('Live preview disabled');
-    setPreviewDate(isOverlayApplied(selectedMetric, currentDate) ? currentDate : null);
+    setPreviewDate(currentDate);
   };
 
   const handleToggleViewLock = (next: boolean) => {
     setViewLocked(next);
-    if (next) {
-      const snapshot = { center: mapState.center, zoom: mapState.zoom };
-      setLockedView(snapshot);
-      appendOverlayLog(`View locked: z${snapshot.zoom} @ ${snapshot.center[0].toFixed(4)}, ${snapshot.center[1].toFixed(4)}`);
-      return;
-    }
-    setLockedView(null);
-    appendOverlayLog('View unlocked');
   };
 
   const handlePlayPause = () => {
     // Starting playback implies live updates (otherwise we'd spam-select dates without showing them).
     if (!isPlaying && !livePreview) {
       setLivePreview(true);
-      setOverlayNetworkEnabled(false);
-      markOverlayApplied(selectedMetric, currentDate);
       setPreviewDate(currentDate);
     }
     setIsPlaying(!isPlaying);
@@ -401,14 +214,8 @@ export function AnimationStudio() {
     setCurrentDate(date);
 
     if (livePreview) {
-      markOverlayApplied(selectedMetric, date);
       setPreviewDate(date);
-      return;
     }
-
-    // Non-live mode: only show overlays we've already applied before (best proxy for "cached").
-    setOverlayNetworkEnabled(false);
-    setPreviewDate(isOverlayApplied(selectedMetric, date) ? date : null);
   };
 
   return (
@@ -642,12 +449,11 @@ export function AnimationStudio() {
                     regions={[selectedRegion]}
                     selectedRegion={selectedRegion}
                     selectedMetric={selectedMetric}
-                    tileDate={currentDate && !isNaN(currentDate.getTime())
-                      ? (formatDateYYYYMMDD(currentDate) ?? currentDate.toISOString().split('T')[0])
+                    tileGranularity={granularity}
+                    tileDate={previewDate && !isNaN(previewDate.getTime())
+                      ? (formatDateYYYYMMDD(previewDate) ?? previewDate.toISOString().split('T')[0])
                       : undefined}
                     overlayEnabled={Boolean(previewDate)}
-                    overlayAllowNetwork={livePreview || overlayNetworkEnabled}
-                    onOverlayTileEvent={handleOverlayTileEvent}
                     viewLocked={viewLocked}
                   />
                 </div>
@@ -685,39 +491,10 @@ export function AnimationStudio() {
                     <button
                       className="btn btn-secondary"
                       onClick={handleApplyPreview}
-                      disabled={overlayNetworkEnabled}
-                      title={
-                        overlayNetworkEnabled
-                          ? 'Fetching tiles for the current view...'
-                          : isPreviewDirty
-                            ? 'Load the selected date tiles for the current view'
-                            : 'Refresh tiles for the current view'
-                      }
+                      disabled={!isPreviewDirty}
+                      title={isPreviewDirty ? 'Update the map preview to the selected date' : 'Preview is up to date'}
                     >
-                      {overlayNetworkEnabled ? 'Updating…' : 'Update preview'}
-                    </button>
-                  )}
-                </div>
-                <div className="timeline-toolbar-right">
-                  {showOverlayLog && (
-                    <span className="overlay-stats mono">
-                      {overlayStats.inflight} inflight · {overlayStats.tilesDone}/{overlayStats.tilesStarted} tiles · cache {overlayStats.cacheHits}/{overlayStats.sourceTiles}
-                    </span>
-                  )}
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => setOverlayLogVisible(!showOverlayLog)}
-                    title={showOverlayLog ? 'Hide overlay request log' : 'Show overlay request log'}
-                  >
-                    {showOverlayLog ? 'Hide log' : 'Show log'}
-                  </button>
-                  {showOverlayLog && (
-                    <button
-                      className="btn btn-ghost"
-                      onClick={() => resetOverlayLog('Overlay log cleared')}
-                      title="Clear overlay log"
-                    >
-                      Clear
+                      Update preview
                     </button>
                   )}
                 </div>
@@ -732,24 +509,6 @@ export function AnimationStudio() {
                 onSpeedChange={setPlaybackSpeed}
                 width={Math.min(800, window.innerWidth - 400)}
               />
-              {showOverlayLog && (
-                <div className="overlay-log">
-                  <div className="overlay-log-meta mono">
-                    Applied overlays (this session): {appliedOverlayKeysRef.current.size}
-                  </div>
-                  <div className="overlay-log-lines mono">
-                    {overlayLog.length === 0 ? (
-                      <div className="overlay-log-empty">No overlay activity yet.</div>
-                    ) : (
-                      overlayLog.map((line) => (
-                        <div key={line.id} className="overlay-log-line">
-                          {new Date(line.ts).toLocaleTimeString()} {line.message}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

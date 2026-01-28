@@ -97,7 +97,7 @@ const METRIC_CONFIG: Record<
   },
   cropland: {
     label: 'Cropland',
-    unit: 'type',
+    unit: 'ratio',
     gradient: 'linear-gradient(90deg, #FFFFB2 0%, #FED976 25%, #FD8D3C 50%, #BD0026 75%, #228B22 100%)',
     lowLabel: 'Fallow',
     highLabel: 'Crops',
@@ -111,7 +111,7 @@ const METRIC_CONFIG: Record<
   },
   soil_moisture: {
     label: 'Soil Moisture',
-    unit: 'mm',
+    unit: 'm³/m³',
     gradient: 'linear-gradient(90deg, #8B4513 0%, #D2B48C 30%, #ADD8E6 60%, #00008B 100%)',
     lowLabel: 'Dry',
     highLabel: 'Wet',

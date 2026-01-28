@@ -1,8 +1,26 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIRequestContext } from '@playwright/test';
+
+const API_BASE = 'http://localhost:8000/api/v1';
+
+type RegionListResponse = {
+  regions: Array<{ id: string; name: string }>;
+};
+
+async function getRegionIdByName(request: APIRequestContext, name: string): Promise<string> {
+  const res = await request.get(`${API_BASE}/regions?page=1&page_size=200`);
+  expect(res.ok()).toBeTruthy();
+  const data = (await res.json()) as RegionListResponse;
+  const region = data.regions.find((r) => r.name === name);
+  expect(region, `Region not found in API: ${name}`).toBeTruthy();
+  return region!.id;
+}
 
 test.describe('Analysis View', () => {
-  // Use a known region ID for testing
-  const testRegionId = '5ada41b8-c754-4cc6-aada-0a693bf7f5db';
+  let testRegionId = '';
+
+  test.beforeAll(async ({ request }) => {
+    testRegionId = await getRegionIdByName(request, 'Phoenix, AZ');
+  });
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`/analysis/${testRegionId}`);

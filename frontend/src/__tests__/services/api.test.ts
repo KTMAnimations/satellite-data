@@ -64,43 +64,8 @@ describe('API Service', () => {
   });
 
   describe('tiles', () => {
-    it('has getTileUrl function', () => {
-      expect(typeof api.getTileUrl).toBe('function');
-    });
-
-    it('generates correct region tile URL (with and without date)', () => {
-      const urlNoDate = api.getTileUrl('region-123', 'ndvi');
-      expect(urlNoDate).toContain('region-123');
-      expect(urlNoDate).toContain('ndvi');
-      expect(urlNoDate).not.toContain('date=');
-
-      const urlWithDate = api.getTileUrl('region-123', 'ndvi', '2024-01-15');
-      expect(urlWithDate).toContain('region-123');
-      expect(urlWithDate).toContain('ndvi');
-      expect(urlWithDate).toContain('date=2024-01-15');
-    });
-
-    it('generates correct US tile URL', () => {
-      const url = api.getUSTileUrl('nightlights', '2024-01');
-      expect(url).toContain('tiles/us/nightlights/2024-01');
-    });
-
-    it('generates correct world tile URL', () => {
-      const url = api.getWorldTileUrl('nightlights', '2024-01');
-      expect(url).toContain('tiles/world/nightlights/2024-01');
-    });
-  });
-
-  describe('date helpers', () => {
-    it('converts dates to year-month', () => {
-      expect(api.dateToYearMonth('2024-01-15')).toBe('2024-01');
-    });
-
-    it('chooses correct tile date string based on granularity/metric', () => {
-      expect(api.getTileDateString('2024-01-15', 'nightlights', 'daily')).toBe('2024-01-15');
-      expect(api.getTileDateString('2024-01-15', 'active_fire', 'daily')).toBe('2024-01-15');
-      expect(api.getTileDateString('2024-01-15', 'ndvi', 'daily')).toBe('2024-01');
-      expect(api.getTileDateString('2024-01-15', 'nightlights', 'monthly')).toBe('2024-01');
+    it('has getTileTemplate method', () => {
+      expect(typeof api.getTileTemplate).toBe('function');
     });
   });
 });

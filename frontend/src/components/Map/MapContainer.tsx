@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer,
@@ -10,58 +11,17 @@ import {
 import type { LatLngBounds, Map as LeafletMap } from 'leaflet';
 import { shallow } from 'zustand/shallow';
 import { useStore } from '../../store';
-import type { Region, GeoJSONPolygon, MetricType } from '../../types';
+import type { Granularity, Region, GeoJSONPolygon, MetricType } from '../../types';
 import api from '../../services/api';
-import { CompositeTileLayer } from './CompositeTileLayer';
+import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
 import type { CompositeTileEvent } from './CompositeTileLayer';
 import type { FlowPoint } from './FlowLayer';
 import './MapContainer.css';
 
 const METRIC_OVERLAY_MIN_ZOOM = 9;
-const US_BOUNDS_4326 = { west: -125.0, east: -66.0, south: 24.0, north: 50.0 };
 
-function getPolygonBounds(geometry: GeoJSONPolygon | null | undefined): {
-  west: number;
-  south: number;
-  east: number;
-  north: number;
-} | null {
-  const ring = geometry?.coordinates?.[0];
-  if (!ring || ring.length === 0) return null;
-
-  let west = Number.POSITIVE_INFINITY;
-  let south = Number.POSITIVE_INFINITY;
-  let east = Number.NEGATIVE_INFINITY;
-  let north = Number.NEGATIVE_INFINITY;
-
-  for (const [lon, lat] of ring) {
-    west = Math.min(west, lon);
-    south = Math.min(south, lat);
-    east = Math.max(east, lon);
-    north = Math.max(north, lat);
-  }
-
-  if (!Number.isFinite(west) || !Number.isFinite(south) || !Number.isFinite(east) || !Number.isFinite(north)) {
-    return null;
-  }
-
-  return { west, south, east, north };
-}
-
-function intersectsBounds(
-  a: { west: number; south: number; east: number; north: number },
-  b: { west: number; south: number; east: number; north: number }
-): boolean {
-  return !(a.east < b.west || a.west > b.east || a.north < b.south || a.south > b.north);
-}
-
-function regionLikelyInUS(region: Region | null): boolean {
-  if (!region) return true; // Preserve legacy behavior if no region context
-  if (region.country?.toUpperCase() === 'USA') return true;
-
-  const bounds = getPolygonBounds(region.geometry);
-  if (!bounds) return false;
-  return intersectsBounds(bounds, US_BOUNDS_4326);
+function toDateBucket(dateStr: string, granularity: Granularity): string {
+  return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
 }
 
 const LazyFlowLayer = lazy(async () => ({
@@ -78,6 +38,7 @@ interface MapContainerProps {
   showDrawControls?: boolean;
   selectedMetric?: MetricType;
   tileDate?: string; // Date for temporal tile data (YYYY-MM-DD)
+  tileGranularity?: Granularity;
   overlayEnabled?: boolean;
   overlayAllowNetwork?: boolean;
   onOverlayTileEvent?: (event: CompositeTileEvent) => void;
@@ -145,8 +106,7 @@ function MapController({
           [Math.max(...lats), Math.max(...lngs)],
         ] as unknown as LatLngBounds;
 
-        // Fit bounds to show the region - allow any zoom level
-        // CompositeTileLayer will handle rendering z11 tiles at lower zoom levels
+        // Fit bounds to show the region.
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 11, animate: false });
 
         // Sync store state immediately so zoom-gated overlays render on first load.
@@ -184,9 +144,9 @@ export function MapView({
   showDrawControls = false,
   selectedMetric,
   tileDate,
+  tileGranularity,
   overlayEnabled = true,
   overlayAllowNetwork = true,
-  onOverlayTileEvent,
   viewLocked = false,
   selectedRegion: selectedRegionProp,
   flowPoints,
@@ -205,14 +165,29 @@ export function MapView({
   const selectedRegion = selectedRegionProp !== undefined ? selectedRegionProp : storeSelectedRegion;
   const focusRegion = selectedRegion ?? (regions.length === 1 ? regions[0] : null);
   const metricLayerMounted = Boolean(selectedMetric && tileDate);
-  const metricLayerVisible = Boolean(overlayEnabled && mapState.zoom >= METRIC_OVERLAY_MIN_ZOOM);
-  const metricTileBucket =
-    selectedMetric && tileDate
-      ? ['nightlights', 'active_fire'].includes(selectedMetric)
-        ? tileDate
-        : api.dateToYearMonth(tileDate)
+  const metricLayerVisible = Boolean(
+    overlayEnabled && overlayAllowNetwork && mapState.zoom >= METRIC_OVERLAY_MIN_ZOOM
+  );
+
+  const effectiveGranularity = selectedMetric
+    ? (tileGranularity ?? METRIC_DEFAULT_GRANULARITY[selectedMetric])
+    : undefined;
+  const dateBucket =
+    selectedMetric && tileDate && effectiveGranularity
+      ? toDateBucket(tileDate, effectiveGranularity)
       : undefined;
-  const useUsTiles = regionLikelyInUS(focusRegion);
+
+  const { data: tileTemplate } = useQuery({
+    queryKey: ['tiles', 'template', selectedMetric, dateBucket, effectiveGranularity],
+    queryFn: () =>
+      api.getTileTemplate({
+        metric: selectedMetric!,
+        date_bucket: dateBucket!,
+        granularity: effectiveGranularity!,
+      }),
+    enabled: Boolean(metricLayerMounted && metricLayerVisible && selectedMetric && dateBucket && effectiveGranularity),
+    staleTime: 1000 * 60 * 60, // tokens are short-lived; keep cache bounded
+  });
 
   const handleCreated = (e: unknown) => {
     if (onRegionCreate) {
@@ -247,23 +222,13 @@ export function MapView({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Metric tile overlay - z11 tiles composited down for lower zooms */}
-        {/* CompositeTileLayer handles rendering at lower zoom levels by compositing z11 tiles */}
-        {/* Nightlights and active_fire support daily (YYYY-MM-DD), others use monthly (YYYY-MM) */}
-        {metricLayerMounted && selectedMetric && tileDate && (
-          <CompositeTileLayer
-            baseUrl={
-              useUsTiles
-                ? api.getUSTileUrl(selectedMetric, metricTileBucket!)
-                : api.getWorldTileUrl(selectedMetric, metricTileBucket!)
-            }
-            nativeZoom={11}
-            minZoom={METRIC_OVERLAY_MIN_ZOOM}
-            maxZoom={11}
-            opacity={0.7}
-            enabled={metricLayerVisible}
-            allowNetwork={overlayAllowNetwork}
-            onTileEvent={onOverlayTileEvent}
+        {/* Metric tile overlay (Earth Engine URL template) */}
+        {metricLayerMounted && metricLayerVisible && tileTemplate?.tile_url && (
+          <TileLayer
+            key={`${tileTemplate.metric}:${tileTemplate.granularity}:${tileTemplate.date_bucket}`}
+            url={tileTemplate.tile_url}
+            opacity={tileTemplate.opacity}
+            attribution={tileTemplate.attribution ?? undefined}
           />
         )}
 

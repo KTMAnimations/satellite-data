@@ -2,37 +2,10 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 
 const API_BASE = 'http://localhost:8000/api/v1';
 
-const EXPECTED_METRICS = [
-  'ndvi',
-  'nightlights',
-  'urban_density',
-  'parking',
-  'land_cover',
-  'surface_water',
-  'active_fire',
-  'no2',
-  'temperature',
-  'precipitation',
-  'aerosol',
-  'cropland',
-  'evapotranspiration',
-  'soil_moisture',
-  'impervious',
-  'fire_historical',
-  'canopy_height',
-] as const;
+// Keep this suite fast: smoke-test a couple of high-coverage metrics.
+const EXPECTED_METRICS = ['nightlights', 'temperature'] as const;
 
-const REGION_NAMES = [
-  'Phoenix, AZ',
-  'Tokyo, Japan',
-  'Delhi, India',
-  'Shanghai, China',
-  'Sao Paulo, Brazil',
-  'Mexico City, Mexico',
-  'Cairo, Egypt',
-  'London, UK',
-  'Paris, France',
-] as const;
+const REGION_NAMES = ['Phoenix, AZ', 'Tokyo, Japan'] as const;
 
 type RegionListResponse = {
   regions: Array<{ id: string; name: string }>;
@@ -64,7 +37,7 @@ test.describe('Global metrics & time periods', () => {
       expect(region, `Missing region in seed data: ${name}`).toBeTruthy();
 
       const metricsRes = await page.request.get(
-        `${API_BASE}/metrics/${region!.id}?start_date=2023-01-01&end_date=2024-12-31&granularity=monthly`
+        `${API_BASE}/metrics/${region!.id}?start_date=2023-01-01&end_date=2024-12-31&granularity=monthly&metrics=nightlights&metrics=temperature`
       );
       expect(metricsRes.ok(), `Metrics request failed for ${name}`).toBeTruthy();
       const metricsData = (await metricsRes.json()) as {

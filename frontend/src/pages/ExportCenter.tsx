@@ -307,8 +307,7 @@ export function ExportCenter() {
           ) : (
             <div className="export-list">
               {exportQueue.map((exp) => {
-                const isAnimation =
-                  exp.format === 'gif' || exp.format === 'frames';
+                const isAnimation = exp.format === 'gif';
                 const progress = typeof exp.progress === 'number' ? exp.progress : 0;
                 const clampedProgress = Math.min(100, Math.max(0, progress));
                 const showProgress = exp.status === 'pending' || exp.status === 'processing';
