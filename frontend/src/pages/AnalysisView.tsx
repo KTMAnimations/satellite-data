@@ -228,6 +228,14 @@ export function AnalysisView() {
           </div>
         </div>
         <div className="header-actions">
+          <Link to={`/map/${regionId}`} className="btn btn-outline">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z" />
+              <path d="M9 3v15" />
+              <path d="M15 6v15" />
+            </svg>
+            Full Map
+          </Link>
           <Link to={`/compare/${regionId}`} className="btn btn-outline">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="18" rx="1" />

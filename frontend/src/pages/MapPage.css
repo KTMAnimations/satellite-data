@@ -1,0 +1,135 @@
+.map-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-page-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border-panel);
+  background: var(--surface-panel);
+  gap: 1rem;
+}
+
+.map-page-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.map-page-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.map-page-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+.map-page-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 420px;
+}
+
+.map-page-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.map-page-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.map-page-dates input {
+  font-size: 0.75rem;
+  padding: 0.5rem;
+  background: var(--surface-panel);
+}
+
+.map-page-date-sep {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+}
+
+.map-page-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-page-map {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 1rem;
+}
+
+.map-page-map .map-wrapper {
+  min-height: 0;
+}
+
+.map-page-legend {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 1200;
+}
+
+.map-page-timeline {
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--border-panel);
+  background: var(--surface-page);
+  display: flex;
+  justify-content: center;
+}
+
+.map-page-hint {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.map-page-empty {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .map-page-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .map-page-toolbar-right {
+    justify-content: flex-start;
+  }
+
+  .map-page-name {
+    max-width: 100%;
+  }
+}
+

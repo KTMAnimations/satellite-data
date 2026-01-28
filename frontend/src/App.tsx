@@ -9,6 +9,9 @@ const RegionExplorer = lazy(async () => ({
 const AnalysisView = lazy(async () => ({
   default: (await import('./pages/AnalysisView')).AnalysisView,
 }));
+const MapPage = lazy(async () => ({
+  default: (await import('./pages/MapPage')).MapPage,
+}));
 const CompareView = lazy(async () => ({
   default: (await import('./pages/CompareView')).CompareView,
 }));
@@ -30,6 +33,7 @@ function App() {
         <Route path="regions" element={<RegionExplorer />} />
         <Route path="regions/:regionId" element={<AnalysisView />} />
         <Route path="analysis/:regionId" element={<AnalysisView />} />
+        <Route path="map/:regionId" element={<MapPage />} />
         <Route path="compare/:regionId" element={<CompareView />} />
         <Route path="exports" element={<ExportCenter />} />
         <Route path="gallery" element={<Gallery />} />

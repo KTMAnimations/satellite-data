@@ -14,6 +14,7 @@ import { useStore } from '../../store';
 import type { Granularity, Region, GeoJSONPolygon, MetricType } from '../../types';
 import api from '../../services/api';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
+import { formatApiError } from '../../utils/errors';
 import type { CompositeTileEvent } from './CompositeTileLayer';
 import type { FlowPoint } from './FlowLayer';
 import './MapContainer.css';
@@ -177,7 +178,12 @@ export function MapView({
       ? toDateBucket(tileDate, effectiveGranularity)
       : undefined;
 
-  const { data: tileTemplate } = useQuery({
+  const {
+    data: tileTemplate,
+    isLoading: tileTemplateIsLoading,
+    isError: tileTemplateIsError,
+    error: tileTemplateError,
+  } = useQuery({
     queryKey: ['tiles', 'template', selectedMetric, dateBucket, effectiveGranularity],
     queryFn: () =>
       api.getTileTemplate({
@@ -303,6 +309,23 @@ export function MapView({
             Zoom in to see overlay (z≥{METRIC_OVERLAY_MIN_ZOOM})
           </div>
         )}
+        {overlayEnabled && selectedMetric && metricLayerMounted && metricLayerVisible && tileTemplateIsLoading && (
+          <div className="map-overlay-hint">Loading overlay…</div>
+        )}
+        {overlayEnabled && selectedMetric && metricLayerMounted && metricLayerVisible && tileTemplateIsError && (
+          <div className="map-overlay-hint">
+            Overlay failed to load: {formatApiError(tileTemplateError)}
+          </div>
+        )}
+        {overlayEnabled &&
+          selectedMetric &&
+          metricLayerMounted &&
+          metricLayerVisible &&
+          !tileTemplateIsLoading &&
+          !tileTemplateIsError &&
+          !tileTemplate?.tile_url && (
+            <div className="map-overlay-hint">No overlay available for this metric/date.</div>
+          )}
         {selectedMetric && (
           <div className="map-legend">
             <span className="legend-title">{selectedMetric}</span>
