@@ -169,6 +169,13 @@ class APIClient {
     return `${API_BASE_URL}/tiles/us/${metric}/${dateStr}/{z}/{x}/{y}.png?v=${TILE_VERSION}`;
   }
 
+  // Global overlay tiles (generated on-demand, cached on disk)
+  // Supports both monthly (YYYY-MM) and daily (YYYY-MM-DD) formats
+  getWorldTileUrl(metric: string, dateStr: string): string {
+    const TILE_VERSION = 1; // Increment when tile generation/caching changes
+    return `${API_BASE_URL}/tiles/world/${metric}/${dateStr}/{z}/{x}/{y}.png?v=${TILE_VERSION}`;
+  }
+
   // Convert date (YYYY-MM-DD) to year-month (YYYY-MM)
   dateToYearMonth(date: string): string {
     return date.substring(0, 7);

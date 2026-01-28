@@ -11,30 +11,8 @@ import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
 import api from '../services/api';
 import type { MetricType } from '../types';
+import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import './AnalysisView.css';
-
-// Parse date string to local Date (avoiding UTC timezone issues)
-// Handles both "YYYY-MM" (monthly) and "YYYY-MM-DD" (weekly/daily) formats
-function parseDate(dateStr: string): Date {
-  const parts = dateStr.split('-').map(Number);
-  const year = parts[0];
-  const month = parts[1] - 1; // Month is 0-indexed in JavaScript
-  const day = parts[2] || 1;
-  return new Date(year, month, day);
-}
-
-// Safely format a Date to ISO date string (YYYY-MM-DD)
-// Returns null if the date is invalid
-function safeFormatDate(date: Date | null | undefined): string | null {
-  if (!date) return null;
-  try {
-    // Check if date is valid
-    if (isNaN(date.getTime())) return null;
-    return date.toISOString().split('T')[0];
-  } catch {
-    return null;
-  }
-}
 
 const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
   { value: 'nightlights', label: 'Nighttime Lights', color: '#D97706' },  // Amber-600
@@ -102,8 +80,8 @@ export function AnalysisView() {
     queryKey: ['metrics', regionId, selectedMapMetric, granularity, dateRange],
     queryFn: () =>
       api.getMetrics(regionId!, {
-        start_date: dateRange.start.toISOString().split('T')[0],
-        end_date: dateRange.end.toISOString().split('T')[0],
+        start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
+        end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
         granularity,
       }),
     enabled: !!regionId,
@@ -112,7 +90,11 @@ export function AnalysisView() {
   // Generate timeline dates from metrics
   const timelineDates = useMemo(() => {
     if (!metrics?.metrics[selectedMapMetric]?.data) return [];
-    return metrics.metrics[selectedMapMetric].data.map((d) => parseDate(d.date));
+    return metrics.metrics[selectedMapMetric].data
+      .map((d) => parseMetricDate(d.date))
+      .flatMap((d) => (d && !Number.isNaN(d.getTime()) ? [d] : []))
+      .sort((a, b) => a.getTime() - b.getTime())
+      .filter((d, i, arr) => i === 0 || d.getTime() !== arr[i - 1].getTime());
   }, [metrics, selectedMapMetric]);
 
   // Generate Year-over-Year data
@@ -161,7 +143,9 @@ export function AnalysisView() {
       const byYear: Record<number, number[]> = {};
 
       data.data.forEach((d) => {
-        const year = new Date(d.date).getFullYear();
+        const parsed = parseMetricDate(d.date);
+        if (!parsed) return;
+        const year = parsed.getFullYear();
         if (!byYear[year]) byYear[year] = [];
         byYear[year].push(d.value);
       });
@@ -291,7 +275,12 @@ export function AnalysisView() {
                 <MapView
                   regions={[region]}
                   selectedMetric={selectedMapMetric}
-                  tileDate={safeFormatDate(currentTimelineDate) || safeFormatDate(dateRange.start) || new Date().toISOString().split('T')[0]}
+                  tileDate={
+                    formatDateYYYYMMDD(currentTimelineDate)
+                      ?? formatDateYYYYMMDD(dateRange.start)
+                      ?? formatDateYYYYMMDD(new Date())
+                      ?? new Date().toISOString().split('T')[0]
+                  }
                 />
               )}
               <div className="map-legend-overlay">
@@ -341,17 +330,17 @@ export function AnalysisView() {
             <div className="date-inputs">
               <input
                 type="date"
-                value={dateRange.start.toISOString().split('T')[0]}
+                value={formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0]}
                 onChange={(e) =>
-                  setDateRange({ ...dateRange, start: new Date(e.target.value) })
+                  setDateRange({ ...dateRange, start: parseMetricDate(e.target.value) ?? new Date(e.target.value) })
                 }
               />
               <span className="date-separator">to</span>
               <input
                 type="date"
-                value={dateRange.end.toISOString().split('T')[0]}
+                value={formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0]}
                 onChange={(e) =>
-                  setDateRange({ ...dateRange, end: new Date(e.target.value) })
+                  setDateRange({ ...dateRange, end: parseMetricDate(e.target.value) ?? new Date(e.target.value) })
                 }
               />
             </div>

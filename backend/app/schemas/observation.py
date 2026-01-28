@@ -48,7 +48,10 @@ class ObservationResponse(ObservationBase):
 class MetricDataPoint(BaseModel):
     """Single data point in a time series."""
 
-    date: str  # YYYY-MM format
+    # Date bucket label. Format depends on requested granularity:
+    # - monthly: YYYY-MM
+    # - weekly/daily: YYYY-MM-DD
+    date: str
     value: float
 
 

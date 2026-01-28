@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricData, MetricType } from '../../types';
+import { parseMetricDate } from '../../utils/dates';
 import './Charts.css';
 
 interface TimeSeriesChartProps {
@@ -84,15 +85,20 @@ export function TimeSeriesChart({
 
     // Combine all data points to determine scales
     const allDates: Date[] = [];
-    const allValues: { metric: MetricType; value: number }[] = [];
+    const parsedDataByMetric: Partial<Record<MetricType, Array<{ date: Date; value: number; rawDate: string }>>> = {};
 
     selectedMetrics.forEach((metric) => {
       const metricData = data[metric];
       if (metricData) {
-        metricData.data.forEach((d) => {
-          allDates.push(new Date(d.date));
-          allValues.push({ metric, value: d.value });
+        const parsed = metricData.data.flatMap((d) => {
+          const parsedDate = parseMetricDate(d.date);
+          if (!parsedDate) return [];
+          return [{ date: parsedDate, value: d.value, rawDate: d.date }];
         });
+        if (parsed.length > 0) {
+          parsedDataByMetric[metric] = parsed;
+          parsed.forEach((p) => allDates.push(p.date));
+        }
       }
     });
 
@@ -111,9 +117,9 @@ export function TimeSeriesChart({
     >;
 
     selectedMetrics.forEach((metric) => {
-      const metricData = data[metric];
+      const metricData = parsedDataByMetric[metric];
       if (metricData) {
-        const values = metricData.data.map((d) => d.value);
+        const values = metricData.map((d) => d.value);
         yScales[metric] = d3
           .scaleLinear()
           .domain([Math.min(...values) * 0.9, Math.max(...values) * 1.1])
@@ -129,18 +135,18 @@ export function TimeSeriesChart({
 
     // Draw lines for each metric
     selectedMetrics.forEach((metric) => {
-      const metricData = data[metric];
+      const metricData = parsedDataByMetric[metric];
       if (!metricData || !yScales[metric]) return;
 
       const line = d3
-        .line<{ date: string; value: number }>()
-        .x((d) => xScale(new Date(d.date)))
+        .line<{ date: Date; value: number }>()
+        .x((d) => xScale(d.date))
         .y((d) => yScales[metric](d.value))
         .curve(d3.curveMonotoneX);
 
       // Line path
       g.append('path')
-        .datum(metricData.data)
+        .datum(metricData)
         .attr('fill', 'none')
         .attr('stroke', METRIC_COLORS[metric])
         .attr('stroke-width', 2)
@@ -148,11 +154,11 @@ export function TimeSeriesChart({
 
       // Data points
       g.selectAll(`.dot-${metric}`)
-        .data(metricData.data)
+        .data(metricData)
         .enter()
         .append('circle')
         .attr('class', `dot-${metric}`)
-        .attr('cx', (d) => xScale(new Date(d.date)))
+        .attr('cx', (d) => xScale(d.date))
         .attr('cy', (d) => yScales[metric](d.value))
         .attr('r', 3)
         .attr('fill', METRIC_COLORS[metric])
@@ -167,7 +173,7 @@ export function TimeSeriesChart({
             .style('top', `${event.pageY - 10}px`)
             .html(`
               <strong>${METRIC_LABELS[metric]}</strong><br/>
-              ${d.date}: ${d.value.toFixed(3)}
+              ${d.rawDate}: ${d.value.toFixed(3)}
             `);
         })
         .on('mouseout', function () {

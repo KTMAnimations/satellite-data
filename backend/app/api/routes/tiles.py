@@ -217,6 +217,192 @@ async def get_us_tile(
     )
 
 
+# ============================================================================
+# Global On-Demand Tiles
+# ============================================================================
+
+@router.get("/world/{metric}/{date_str}/{z}/{x}/{y}.png")
+async def get_world_tile(
+    metric: str,
+    date_str: str,
+    z: int,
+    x: int,
+    y: int,
+    v: int = Query(1, ge=1, le=20, description="Tile cache version (frontend cache-buster)"),
+    g: Literal["daily", "monthly"] | None = Query(
+        None,
+        description="Requested granularity override (daily|monthly). If omitted, inferred from date_str.",
+    ),
+) -> Response:
+    """
+    Get a global overlay tile (on-demand).
+
+    Unlike `/tiles/us/...`, these tiles are generated and cached on-demand for any
+    location worldwide. They use the same normalization and colormaps as the US
+    tiles, but do not require pre-generation.
+    """
+    from pathlib import Path
+    import re
+
+    from app.core.config import get_settings
+    from app.services.tiles.overlay_tile_on_demand import (
+        ResolvedTileRequest,
+        generate_overlay_tile_png,
+        resolve_tile_request,
+    )
+
+    # Validate metric
+    valid_metrics = [
+        "ndvi", "nightlights", "urban_density", "parking",
+        # Phase 1: Core datasets
+        "land_cover", "surface_water", "active_fire",
+        # Phase 2: Air quality & weather
+        "no2", "temperature", "precipitation", "aerosol",
+        # Phase 3: Agriculture
+        "cropland", "evapotranspiration", "soil_moisture",
+        # Phase 4: Historical & specialized
+        "impervious", "fire_historical", "canopy_height",
+    ]
+    if metric not in valid_metrics:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid metric. Must be one of: {valid_metrics}",
+        )
+
+    # Validate zoom level (overlay layer uses z11 tiles)
+    if z < 8 or z > 11:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Zoom level must be between 8 and 11 for overlay tiles",
+        )
+
+    # Validate date format: YYYY-MM (monthly) or YYYY-MM-DD (daily)
+    if not re.match(r"^\d{4}-\d{2}(-\d{2})?$", date_str):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="date must be in format YYYY-MM (monthly) or YYYY-MM-DD (daily for nightlights/active_fire)",
+        )
+
+    try:
+        resolved = resolve_tile_request(metric=metric, date_str=date_str, requested_granularity=g)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    settings = get_settings()
+    tiles_dir_name = "world_tiles" if v <= 2 else f"world_tiles_v{v}"
+    tile_path = Path(settings.cache_dir) / tiles_dir_name / metric / resolved.date_bucket / str(z) / str(x) / f"{y}.png"
+
+    if tile_path.exists():
+        cache_duration = 86400 if resolved.granularity == "daily" else 604800  # 1 day vs 1 week
+        return Response(
+            content=tile_path.read_bytes(),
+            media_type="image/png",
+            headers={
+                "Cache-Control": f"public, max-age={cache_duration}",
+                "X-Tile-Source": "pregenerated",
+                "X-Tile-Granularity": resolved.granularity,
+                "X-Tile-Cache-Version": str(v),
+            },
+        )
+
+    # Backwards-compatible fallback: if a daily tile is requested but the monthly tile exists,
+    # serve the monthly one to avoid returning an empty tile.
+    if resolved.granularity == "daily":
+        monthly_bucket = resolved.date_bucket[:7]
+        monthly_path = Path(settings.cache_dir) / tiles_dir_name / metric / monthly_bucket / str(z) / str(x) / f"{y}.png"
+        if monthly_path.exists():
+            return Response(
+                content=monthly_path.read_bytes(),
+                media_type="image/png",
+                headers={
+                    "Cache-Control": "public, max-age=604800",
+                    "X-Tile-Source": "pregenerated",
+                    "X-Tile-Granularity": "monthly-fallback",
+                    "X-Tile-Cache-Version": str(v),
+                },
+            )
+
+    try:
+        tile_data = await generate_overlay_tile_png(metric=metric, resolved=resolved, z=z, x=x, y=y)
+    except Exception as e:
+        # Try a monthly fallback if daily generation fails.
+        if resolved.granularity == "daily":
+            try:
+                monthly_resolved = ResolvedTileRequest(metric=metric, date_bucket=resolved.date_bucket[:7], granularity="monthly")
+                tile_data = await generate_overlay_tile_png(metric=metric, resolved=monthly_resolved, z=z, x=x, y=y)
+
+                monthly_fallback_path = (
+                    Path(settings.cache_dir)
+                    / tiles_dir_name
+                    / metric
+                    / monthly_resolved.date_bucket
+                    / str(z)
+                    / str(x)
+                    / f"{y}.png"
+                )
+                monthly_fallback_path.parent.mkdir(parents=True, exist_ok=True)
+                monthly_fallback_path.write_bytes(tile_data)
+
+                return Response(
+                    content=tile_data,
+                    media_type="image/png",
+                    headers={
+                        "Cache-Control": "public, max-age=604800",
+                        "X-Tile-Source": "on-demand",
+                        "X-Tile-Granularity": "monthly-fallback",
+                        "X-Tile-Cache-Version": str(v),
+                    },
+                )
+            except Exception as e2:
+                logger.error(
+                    "Monthly fallback also failed for world tile",
+                    metric=metric,
+                    date_bucket=resolved.date_bucket,
+                    z=z,
+                    x=x,
+                    y=y,
+                    error=str(e2),
+                )
+
+        logger.error(
+            "Failed to generate world tile on-demand",
+            metric=metric,
+            date_bucket=resolved.date_bucket,
+            granularity=resolved.granularity,
+            z=z,
+            x=x,
+            y=y,
+            error=str(e),
+        )
+        from app.services.tiles.generator import create_empty_tile
+
+        tile_data = create_empty_tile()
+        return Response(
+            content=tile_data,
+            media_type="image/png",
+            headers={
+                "Cache-Control": "public, max-age=300",
+                "X-Tile-Source": "empty-error",
+                "X-Tile-Granularity": resolved.granularity,
+                "X-Tile-Cache-Version": str(v),
+            },
+        )
+
+    tile_path.parent.mkdir(parents=True, exist_ok=True)
+    tile_path.write_bytes(tile_data)
+
+    return Response(
+        content=tile_data,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=604800" if resolved.granularity == "monthly" else "public, max-age=86400",
+            "X-Tile-Source": "on-demand",
+            "X-Tile-Granularity": resolved.granularity,
+            "X-Tile-Cache-Version": str(v),
+        },
+    )
+
+
 @router.get("/us/available")
 async def get_us_available_tiles() -> dict:
     """

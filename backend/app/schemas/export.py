@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 
 ExportFormat = Literal["pdf", "html", "csv"]
-AnimationFormat = Literal["gif", "webm", "frames"]
+AnimationFormat = Literal["gif", "frames"]
 
 
 class ExportRequest(BaseModel):
@@ -28,6 +28,8 @@ class ExportResponse(BaseModel):
     id: str
     status: Literal["pending", "processing", "completed", "failed"]
     format: ExportFormat
+    progress: float = Field(0.0, ge=0.0, le=100.0)
+    message: str | None = None
     download_url: str | None = None
     file_size: int | None = None
     created_at: str
@@ -45,6 +47,20 @@ class AnimationRequest(BaseModel):
     frame_duration_ms: int = Field(500, ge=100, le=5000)
     width: int = Field(800, ge=200, le=1920)
     height: int = Field(600, ge=200, le=1080)
+    lock_view: bool = Field(
+        False,
+        description="If true, use view_center/view_zoom instead of auto fitBounds for the animation viewport.",
+    )
+    view_center: tuple[float, float] | None = Field(
+        None,
+        description="Locked map center as (lat, lon).",
+    )
+    view_zoom: int | None = Field(
+        None,
+        ge=4,
+        le=11,
+        description="Locked map zoom (matches frontend constraints).",
+    )
 
 
 class AnimationResponse(BaseModel):
@@ -53,6 +69,8 @@ class AnimationResponse(BaseModel):
     id: str
     status: Literal["pending", "processing", "completed", "failed"]
     format: AnimationFormat
+    progress: float = Field(0.0, ge=0.0, le=100.0)
+    message: str | None = None
     frame_count: int | None = None
     download_url: str | None = None
     file_size: int | None = None

@@ -84,6 +84,11 @@ describe('API Service', () => {
       const url = api.getUSTileUrl('nightlights', '2024-01');
       expect(url).toContain('tiles/us/nightlights/2024-01');
     });
+
+    it('generates correct world tile URL', () => {
+      const url = api.getWorldTileUrl('nightlights', '2024-01');
+      expect(url).toContain('tiles/world/nightlights/2024-01');
+    });
   });
 
   describe('date helpers', () => {

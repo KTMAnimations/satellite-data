@@ -21,7 +21,6 @@ wheels/
 *.egg
 .venv/
 venv/
-ENV/
 
 # Node
 node_modules/
@@ -38,20 +37,6 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
-
-# Environment
-.env
-.env.local
-.env.*.local
-*.pem
-*.key
-
-# Service Account Keys (NEVER commit these)
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-credentials/
 
 # Data
 data/cache/

@@ -1,0 +1,58 @@
+{
+  "id": "urban-growth",
+  "name": "Urban Growth: Phoenix 2015-2024",
+  "description": "Phoenix is one of America's fastest-growing cities. This analysis tracks urban expansion using the full Sentinel-2 archive from 2015 to present.",
+  "category": "growth",
+  "regions": [
+    {
+      "name": "Phoenix Metro",
+      "lat": 33.4484,
+      "lng": -112.074,
+      "bbox": [-112.8, 33.0, -111.3, 34.0],
+      "growth_rate_annual": 2.3
+    }
+  ],
+  "time_range": {
+    "start": "2015-01-01",
+    "end": "2024-12-31",
+    "granularity": "annual"
+  },
+  "metrics": ["urban_density", "ndvi", "impervious"],
+  "key_findings": [
+    "Built-up area increased 23% since 2015",
+    "Suburban sprawl visible in satellite imagery",
+    "Vegetation (NDVI) declining at urban edges",
+    "Fastest growth in Gilbert, Buckeye, and Surprise suburbs"
+  ],
+  "growth_zones": [
+    {
+      "name": "Gilbert",
+      "direction": "Southeast",
+      "growth_rate": 3.1
+    },
+    {
+      "name": "Buckeye",
+      "direction": "West",
+      "growth_rate": 4.2
+    },
+    {
+      "name": "Surprise",
+      "direction": "Northwest",
+      "growth_rate": 2.8
+    }
+  ],
+  "visualization": {
+    "primary_chart": "time_series",
+    "animation": {
+      "enabled": true,
+      "metric": "impervious",
+      "frame_duration_ms": 1000
+    },
+    "map_focus": {
+      "center": [33.45, -112.07],
+      "zoom": 9
+    },
+    "color_scheme": "sequential"
+  },
+  "methodology_notes": "Urban expansion tracked using GAIA impervious surface dataset (year of transition) and GHSL built-up layers. Annual rate calculated via linear regression on built-up area time series."
+}

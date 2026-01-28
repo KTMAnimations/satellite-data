@@ -1,0 +1,724 @@
+{
+  "regions": [
+    {
+      "name": "Phoenix, AZ",
+      "description": "Major seasonal migration destination in the Sun Belt. Known for winter 'snowbird' population increases.",
+      "bounds": {
+        "minLat": 33.2,
+        "maxLat": 33.8,
+        "minLon": -112.4,
+        "maxLon": -111.8
+      },
+      "center": {
+        "lat": 33.4484,
+        "lon": -112.074
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Arizona"
+    },
+    {
+      "name": "Miami, FL",
+      "description": "Major coastal migration destination. Popular with seasonal residents and tourists year-round.",
+      "bounds": {
+        "minLat": 25.6,
+        "maxLat": 25.95,
+        "minLon": -80.4,
+        "maxLon": -80.1
+      },
+      "center": {
+        "lat": 25.7617,
+        "lon": -80.1918
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Florida"
+    },
+    {
+      "name": "Tampa, FL",
+      "description": "Gulf Coast migration hub with significant seasonal population fluctuations.",
+      "bounds": {
+        "minLat": 27.8,
+        "maxLat": 28.1,
+        "minLon": -82.6,
+        "maxLon": -82.3
+      },
+      "center": {
+        "lat": 27.9506,
+        "lon": -82.4572
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Florida"
+    },
+    {
+      "name": "Las Vegas, NV",
+      "description": "Desert entertainment destination with strong seasonal tourism patterns.",
+      "bounds": {
+        "minLat": 35.95,
+        "maxLat": 36.35,
+        "minLon": -115.4,
+        "maxLon": -115.0
+      },
+      "center": {
+        "lat": 36.1699,
+        "lon": -115.1398
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Nevada"
+    },
+    {
+      "name": "San Diego, CA",
+      "description": "Southern California coastal city with mild climate attracting seasonal visitors.",
+      "bounds": {
+        "minLat": 32.6,
+        "maxLat": 33.0,
+        "minLon": -117.3,
+        "maxLon": -116.9
+      },
+      "center": {
+        "lat": 32.7157,
+        "lon": -117.1611
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "California"
+    },
+    {
+      "name": "Orlando, FL",
+      "description": "Central Florida tourism hub with theme parks driving year-round seasonal patterns.",
+      "bounds": {
+        "minLat": 28.35,
+        "maxLat": 28.65,
+        "minLon": -81.55,
+        "maxLon": -81.2
+      },
+      "center": {
+        "lat": 28.5383,
+        "lon": -81.3792
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Florida"
+    },
+    {
+      "name": "Tucson, AZ",
+      "description": "Desert Southwest retirement and snowbird destination.",
+      "bounds": {
+        "minLat": 32.1,
+        "maxLat": 32.4,
+        "minLon": -111.1,
+        "maxLon": -110.7
+      },
+      "center": {
+        "lat": 32.2226,
+        "lon": -110.9747
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Arizona"
+    },
+    {
+      "name": "Palm Springs, CA",
+      "description": "Desert resort city known for winter seasonal residents.",
+      "bounds": {
+        "minLat": 33.7,
+        "maxLat": 33.95,
+        "minLon": -116.6,
+        "maxLon": -116.4
+      },
+      "center": {
+        "lat": 33.8303,
+        "lon": -116.5453
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "California"
+    },
+    {
+      "name": "Fort Myers, FL",
+      "description": "Southwest Florida coastal city popular with winter visitors.",
+      "bounds": {
+        "minLat": 26.5,
+        "maxLat": 26.75,
+        "minLon": -81.95,
+        "maxLon": -81.7
+      },
+      "center": {
+        "lat": 26.6406,
+        "lon": -81.8723
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Florida"
+    },
+    {
+      "name": "Scottsdale, AZ",
+      "description": "Upscale Phoenix suburb known for golf resorts and winter visitors.",
+      "bounds": {
+        "minLat": 33.45,
+        "maxLat": 33.75,
+        "minLon": -111.95,
+        "maxLon": -111.7
+      },
+      "center": {
+        "lat": 33.4942,
+        "lon": -111.9261
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Arizona"
+    },
+    {
+      "name": "Naples, FL",
+      "description": "Affluent Gulf Coast city with significant seasonal population changes.",
+      "bounds": {
+        "minLat": 26.05,
+        "maxLat": 26.35,
+        "minLon": -81.85,
+        "maxLon": -81.65
+      },
+      "center": {
+        "lat": 26.1420,
+        "lon": -81.7948
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Florida"
+    },
+    {
+      "name": "Sarasota, FL",
+      "description": "Cultural hub on Florida's Gulf Coast attracting retirees and seasonal visitors.",
+      "bounds": {
+        "minLat": 27.2,
+        "maxLat": 27.45,
+        "minLon": -82.65,
+        "maxLon": -82.45
+      },
+      "center": {
+        "lat": 27.3364,
+        "lon": -82.5307
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Florida"
+    },
+    {
+      "name": "Albuquerque, NM",
+      "description": "High desert Southwest city with growing seasonal visitor population.",
+      "bounds": {
+        "minLat": 34.95,
+        "maxLat": 35.25,
+        "minLon": -106.8,
+        "maxLon": -106.45
+      },
+      "center": {
+        "lat": 35.0844,
+        "lon": -106.6504
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "New Mexico"
+    },
+    {
+      "name": "Austin, TX",
+      "description": "Texas capital with tech industry growth and seasonal university population.",
+      "bounds": {
+        "minLat": 30.15,
+        "maxLat": 30.5,
+        "minLon": -97.9,
+        "maxLon": -97.55
+      },
+      "center": {
+        "lat": 30.2672,
+        "lon": -97.7431
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Texas"
+    },
+    {
+      "name": "San Antonio, TX",
+      "description": "Historic Texas city with tourism and military-driven population patterns.",
+      "bounds": {
+        "minLat": 29.3,
+        "maxLat": 29.6,
+        "minLon": -98.7,
+        "maxLon": -98.35
+      },
+      "center": {
+        "lat": 29.4241,
+        "lon": -98.4936
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Texas"
+    },
+    {
+      "name": "Charleston, SC",
+      "description": "Historic coastal city with growing tourism and seasonal population.",
+      "bounds": {
+        "minLat": 32.7,
+        "maxLat": 32.95,
+        "minLon": -80.1,
+        "maxLon": -79.85
+      },
+      "center": {
+        "lat": 32.7765,
+        "lon": -79.9311
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "South Carolina"
+    },
+    {
+      "name": "Savannah, GA",
+      "description": "Historic Georgia port city with seasonal tourism patterns.",
+      "bounds": {
+        "minLat": 31.95,
+        "maxLat": 32.15,
+        "minLon": -81.2,
+        "maxLon": -81.0
+      },
+      "center": {
+        "lat": 32.0809,
+        "lon": -81.0912
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Georgia"
+    },
+    {
+      "name": "Myrtle Beach, SC",
+      "description": "Major Atlantic coast resort destination with strong seasonal patterns.",
+      "bounds": {
+        "minLat": 33.6,
+        "maxLat": 33.85,
+        "minLon": -79.1,
+        "maxLon": -78.85
+      },
+      "center": {
+        "lat": 33.6891,
+        "lon": -78.8867
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "South Carolina"
+    },
+    {
+      "name": "Fort Lauderdale, FL",
+      "description": "South Florida beach destination with major cruise port.",
+      "bounds": {
+        "minLat": 26.05,
+        "maxLat": 26.25,
+        "minLon": -80.25,
+        "maxLon": -80.05
+      },
+      "center": {
+        "lat": 26.1224,
+        "lon": -80.1373
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Florida"
+    },
+    {
+      "name": "West Palm Beach, FL",
+      "description": "Affluent South Florida city popular with seasonal residents.",
+      "bounds": {
+        "minLat": 26.6,
+        "maxLat": 26.85,
+        "minLon": -80.2,
+        "maxLon": -80.0
+      },
+      "center": {
+        "lat": 26.7153,
+        "lon": -80.0534
+      },
+      "type": "predefined",
+      "category": "Migration Hotspots",
+      "country": "United States",
+      "state_province": "Florida"
+    },
+    {
+      "name": "New York, NY",
+      "description": "Largest US city and global financial center.",
+      "bounds": {
+        "minLat": 40.5,
+        "maxLat": 40.95,
+        "minLon": -74.25,
+        "maxLon": -73.7
+      },
+      "center": {
+        "lat": 40.7128,
+        "lon": -74.006
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "New York"
+    },
+    {
+      "name": "Los Angeles, CA",
+      "description": "Second largest US city, entertainment and tech hub.",
+      "bounds": {
+        "minLat": 33.7,
+        "maxLat": 34.35,
+        "minLon": -118.65,
+        "maxLon": -118.15
+      },
+      "center": {
+        "lat": 34.0522,
+        "lon": -118.2437
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "California"
+    },
+    {
+      "name": "Chicago, IL",
+      "description": "Third largest US city and major Midwest transportation hub.",
+      "bounds": {
+        "minLat": 41.65,
+        "maxLat": 42.05,
+        "minLon": -87.85,
+        "maxLon": -87.5
+      },
+      "center": {
+        "lat": 41.8781,
+        "lon": -87.6298
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Illinois"
+    },
+    {
+      "name": "Houston, TX",
+      "description": "Fourth largest US city and energy industry capital.",
+      "bounds": {
+        "minLat": 29.5,
+        "maxLat": 30.1,
+        "minLon": -95.8,
+        "maxLon": -95.1
+      },
+      "center": {
+        "lat": 29.7604,
+        "lon": -95.3698
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Texas"
+    },
+    {
+      "name": "Dallas, TX",
+      "description": "Major Texas metroplex with diverse economy.",
+      "bounds": {
+        "minLat": 32.6,
+        "maxLat": 33.05,
+        "minLon": -97.0,
+        "maxLon": -96.55
+      },
+      "center": {
+        "lat": 32.7767,
+        "lon": -96.797
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Texas"
+    },
+    {
+      "name": "San Francisco, CA",
+      "description": "Bay Area tech hub and financial center.",
+      "bounds": {
+        "minLat": 37.7,
+        "maxLat": 37.85,
+        "minLon": -122.52,
+        "maxLon": -122.35
+      },
+      "center": {
+        "lat": 37.7749,
+        "lon": -122.4194
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "California"
+    },
+    {
+      "name": "Seattle, WA",
+      "description": "Pacific Northwest tech hub and major port city.",
+      "bounds": {
+        "minLat": 47.45,
+        "maxLat": 47.75,
+        "minLon": -122.45,
+        "maxLon": -122.2
+      },
+      "center": {
+        "lat": 47.6062,
+        "lon": -122.3321
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Washington"
+    },
+    {
+      "name": "Boston, MA",
+      "description": "Historic Northeast city with education and biotech sectors.",
+      "bounds": {
+        "minLat": 42.2,
+        "maxLat": 42.45,
+        "minLon": -71.2,
+        "maxLon": -70.95
+      },
+      "center": {
+        "lat": 42.3601,
+        "lon": -71.0589
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Massachusetts"
+    },
+    {
+      "name": "Denver, CO",
+      "description": "Mile High City with growing tech sector and outdoor lifestyle.",
+      "bounds": {
+        "minLat": 39.6,
+        "maxLat": 39.85,
+        "minLon": -105.1,
+        "maxLon": -104.85
+      },
+      "center": {
+        "lat": 39.7392,
+        "lon": -104.9903
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Colorado"
+    },
+    {
+      "name": "Atlanta, GA",
+      "description": "Major Southeast hub for business and transportation.",
+      "bounds": {
+        "minLat": 33.65,
+        "maxLat": 33.9,
+        "minLon": -84.55,
+        "maxLon": -84.25
+      },
+      "center": {
+        "lat": 33.749,
+        "lon": -84.388
+      },
+      "type": "predefined",
+      "category": "Major Cities",
+      "country": "United States",
+      "state_province": "Georgia"
+    },
+    {
+      "name": "Tokyo",
+      "description": "World's largest metropolitan area and Japan's capital.",
+      "bounds": {
+        "minLat": 35.5,
+        "maxLat": 35.85,
+        "minLon": 139.5,
+        "maxLon": 139.95
+      },
+      "center": {
+        "lat": 35.6762,
+        "lon": 139.6503
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "Japan",
+      "state_province": "Tokyo"
+    },
+    {
+      "name": "London",
+      "description": "UK capital and major global financial center.",
+      "bounds": {
+        "minLat": 51.3,
+        "maxLat": 51.7,
+        "minLon": -0.5,
+        "maxLon": 0.3
+      },
+      "center": {
+        "lat": 51.5074,
+        "lon": -0.1278
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "United Kingdom",
+      "state_province": "England"
+    },
+    {
+      "name": "Paris",
+      "description": "French capital and major European cultural center.",
+      "bounds": {
+        "minLat": 48.8,
+        "maxLat": 48.95,
+        "minLon": 2.2,
+        "maxLon": 2.5
+      },
+      "center": {
+        "lat": 48.8566,
+        "lon": 2.3522
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "France",
+      "state_province": "Ile-de-France"
+    },
+    {
+      "name": "Beijing",
+      "description": "Chinese capital and political center.",
+      "bounds": {
+        "minLat": 39.75,
+        "maxLat": 40.1,
+        "minLon": 116.15,
+        "maxLon": 116.6
+      },
+      "center": {
+        "lat": 39.9042,
+        "lon": 116.4074
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "China",
+      "state_province": "Beijing"
+    },
+    {
+      "name": "Shanghai",
+      "description": "China's largest city and major global financial hub.",
+      "bounds": {
+        "minLat": 30.95,
+        "maxLat": 31.4,
+        "minLon": 121.2,
+        "maxLon": 121.65
+      },
+      "center": {
+        "lat": 31.2304,
+        "lon": 121.4737
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "China",
+      "state_province": "Shanghai"
+    },
+    {
+      "name": "Mumbai",
+      "description": "India's financial capital and most populous city.",
+      "bounds": {
+        "minLat": 18.85,
+        "maxLat": 19.3,
+        "minLon": 72.75,
+        "maxLon": 73.05
+      },
+      "center": {
+        "lat": 19.076,
+        "lon": 72.8777
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "India",
+      "state_province": "Maharashtra"
+    },
+    {
+      "name": "Sao Paulo",
+      "description": "Brazil's largest city and South America's financial center.",
+      "bounds": {
+        "minLat": -23.7,
+        "maxLat": -23.4,
+        "minLon": -46.85,
+        "maxLon": -46.45
+      },
+      "center": {
+        "lat": -23.5505,
+        "lon": -46.6333
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "Brazil",
+      "state_province": "Sao Paulo"
+    },
+    {
+      "name": "Mexico City",
+      "description": "Mexico's capital and largest Spanish-speaking city in the world.",
+      "bounds": {
+        "minLat": 19.2,
+        "maxLat": 19.6,
+        "minLon": -99.35,
+        "maxLon": -98.95
+      },
+      "center": {
+        "lat": 19.4326,
+        "lon": -99.1332
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "Mexico",
+      "state_province": "CDMX"
+    },
+    {
+      "name": "Cairo",
+      "description": "Egypt's capital and Africa's largest city.",
+      "bounds": {
+        "minLat": 29.85,
+        "maxLat": 30.2,
+        "minLon": 31.15,
+        "maxLon": 31.45
+      },
+      "center": {
+        "lat": 30.0444,
+        "lon": 31.2357
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "Egypt",
+      "state_province": "Cairo Governorate"
+    },
+    {
+      "name": "Lagos",
+      "description": "Nigeria's largest city and major African economic hub.",
+      "bounds": {
+        "minLat": 6.35,
+        "maxLat": 6.7,
+        "minLon": 3.2,
+        "maxLon": 3.6
+      },
+      "center": {
+        "lat": 6.5244,
+        "lon": 3.3792
+      },
+      "type": "predefined",
+      "category": "Megacities",
+      "country": "Nigeria",
+      "state_province": "Lagos State"
+    }
+  ]
+}

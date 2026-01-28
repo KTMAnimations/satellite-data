@@ -13,10 +13,57 @@ import { useStore } from '../../store';
 import type { Region, GeoJSONPolygon, MetricType } from '../../types';
 import api from '../../services/api';
 import { CompositeTileLayer } from './CompositeTileLayer';
+import type { CompositeTileEvent } from './CompositeTileLayer';
 import type { FlowPoint } from './FlowLayer';
 import './MapContainer.css';
 
 const METRIC_OVERLAY_MIN_ZOOM = 9;
+const US_BOUNDS_4326 = { west: -125.0, east: -66.0, south: 24.0, north: 50.0 };
+
+function getPolygonBounds(geometry: GeoJSONPolygon | null | undefined): {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+} | null {
+  const ring = geometry?.coordinates?.[0];
+  if (!ring || ring.length === 0) return null;
+
+  let west = Number.POSITIVE_INFINITY;
+  let south = Number.POSITIVE_INFINITY;
+  let east = Number.NEGATIVE_INFINITY;
+  let north = Number.NEGATIVE_INFINITY;
+
+  for (const [lon, lat] of ring) {
+    west = Math.min(west, lon);
+    south = Math.min(south, lat);
+    east = Math.max(east, lon);
+    north = Math.max(north, lat);
+  }
+
+  if (!Number.isFinite(west) || !Number.isFinite(south) || !Number.isFinite(east) || !Number.isFinite(north)) {
+    return null;
+  }
+
+  return { west, south, east, north };
+}
+
+function intersectsBounds(
+  a: { west: number; south: number; east: number; north: number },
+  b: { west: number; south: number; east: number; north: number }
+): boolean {
+  return !(a.east < b.west || a.west > b.east || a.north < b.south || a.south > b.north);
+}
+
+function regionLikelyInUS(region: Region | null): boolean {
+  if (!region) return true; // Preserve legacy behavior if no region context
+  if (region.country?.toUpperCase() === 'USA') return true;
+
+  const bounds = getPolygonBounds(region.geometry);
+  if (!bounds) return false;
+  return intersectsBounds(bounds, US_BOUNDS_4326);
+}
+
 const LazyFlowLayer = lazy(async () => ({
   default: (await import('./FlowLayer')).FlowLayer,
 }));
@@ -31,21 +78,62 @@ interface MapContainerProps {
   showDrawControls?: boolean;
   selectedMetric?: MetricType;
   tileDate?: string; // Date for temporal tile data (YYYY-MM-DD)
+  overlayEnabled?: boolean;
+  overlayAllowNetwork?: boolean;
+  onOverlayTileEvent?: (event: CompositeTileEvent) => void;
+  viewLocked?: boolean;
   selectedRegion?: Region | null; // Optional prop to override store's selectedRegion
   flowPoints?: FlowPoint[]; // Optional migration flow visualization points
   flowColor?: string; // Color for flow particles
 }
 
+function MapInteractionLock({ locked }: { locked: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+
+    if (locked) {
+      map.dragging.disable();
+      map.scrollWheelZoom.disable();
+      map.doubleClickZoom.disable();
+      map.boxZoom.disable();
+      map.keyboard.disable();
+      map.touchZoom.disable();
+
+      // Leaflet tap handler exists only on some devices/builds.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (map as any).tap?.disable?.();
+      return;
+    }
+
+    map.dragging.enable();
+    map.scrollWheelZoom.enable();
+    map.doubleClickZoom.enable();
+    map.boxZoom.enable();
+    map.keyboard.enable();
+    map.touchZoom.enable();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (map as any).tap?.enable?.();
+  }, [map, locked]);
+
+  return null;
+}
+
 function MapController({
   focusRegion,
+  lockView,
 }: {
   focusRegion: Region | null;
+  lockView: boolean;
 }) {
   const map = useMap();
   const setMapCenter = useStore((state) => state.setMapCenter);
   const setMapZoom = useStore((state) => state.setMapZoom);
 
   useEffect(() => {
+    if (lockView) return;
     if (focusRegion) {
       // Use geometry if available, otherwise use bounds
       if (focusRegion.geometry?.coordinates?.[0]) {
@@ -67,7 +155,7 @@ function MapController({
         setMapZoom(map.getZoom());
       }
     }
-  }, [focusRegion, map, setMapCenter, setMapZoom]);
+  }, [focusRegion, lockView, map, setMapCenter, setMapZoom]);
 
   return null;
 }
@@ -96,6 +184,10 @@ export function MapView({
   showDrawControls = false,
   selectedMetric,
   tileDate,
+  overlayEnabled = true,
+  overlayAllowNetwork = true,
+  onOverlayTileEvent,
+  viewLocked = false,
   selectedRegion: selectedRegionProp,
   flowPoints,
   flowColor = '#3b82f6',
@@ -112,7 +204,15 @@ export function MapView({
   // Use prop if provided, otherwise fall back to store
   const selectedRegion = selectedRegionProp !== undefined ? selectedRegionProp : storeSelectedRegion;
   const focusRegion = selectedRegion ?? (regions.length === 1 ? regions[0] : null);
-  const showMetricOverlay = Boolean(selectedMetric && tileDate && mapState.zoom >= METRIC_OVERLAY_MIN_ZOOM);
+  const metricLayerMounted = Boolean(selectedMetric && tileDate);
+  const metricLayerVisible = Boolean(overlayEnabled && mapState.zoom >= METRIC_OVERLAY_MIN_ZOOM);
+  const metricTileBucket =
+    selectedMetric && tileDate
+      ? ['nightlights', 'active_fire'].includes(selectedMetric)
+        ? tileDate
+        : api.dateToYearMonth(tileDate)
+      : undefined;
+  const useUsTiles = regionLikelyInUS(focusRegion);
 
   const handleCreated = (e: unknown) => {
     if (onRegionCreate) {
@@ -147,20 +247,23 @@ export function MapView({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* US-wide metric tile overlay - pre-generated tiles at z11 */}
+        {/* Metric tile overlay - z11 tiles composited down for lower zooms */}
         {/* CompositeTileLayer handles rendering at lower zoom levels by compositing z11 tiles */}
         {/* Nightlights and active_fire support daily (YYYY-MM-DD), others use monthly (YYYY-MM) */}
-        {showMetricOverlay && selectedMetric && tileDate && (
+        {metricLayerMounted && selectedMetric && tileDate && (
           <CompositeTileLayer
-            key={`us-${selectedMetric}-${tileDate}`}
-            baseUrl={api.getUSTileUrl(
-              selectedMetric,
-              ['nightlights', 'active_fire'].includes(selectedMetric) ? tileDate : api.dateToYearMonth(tileDate)
-            )}
+            baseUrl={
+              useUsTiles
+                ? api.getUSTileUrl(selectedMetric, metricTileBucket!)
+                : api.getWorldTileUrl(selectedMetric, metricTileBucket!)
+            }
             nativeZoom={11}
             minZoom={METRIC_OVERLAY_MIN_ZOOM}
             maxZoom={11}
             opacity={0.7}
+            enabled={metricLayerVisible}
+            allowNetwork={overlayAllowNetwork}
+            onTileEvent={onOverlayTileEvent}
           />
         )}
 
@@ -223,13 +326,14 @@ export function MapView({
           </FeatureGroup>
         )}
 
-        <MapController focusRegion={focusRegion} />
+        <MapInteractionLock locked={viewLocked} />
+        <MapController focusRegion={focusRegion} lockView={viewLocked} />
         <MapEvents />
       </LeafletMapContainer>
 
       {/* Map controls overlay */}
       <div className="map-controls">
-        {!showMetricOverlay && selectedMetric && (
+        {overlayEnabled && selectedMetric && mapState.zoom < METRIC_OVERLAY_MIN_ZOOM && (
           <div className="map-overlay-hint">
             Zoom in to see overlay (z≥{METRIC_OVERLAY_MIN_ZOOM})
           </div>

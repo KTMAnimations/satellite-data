@@ -10,6 +10,28 @@ import api from '../../services/api';
 import { CompositeTileLayer } from './CompositeTileLayer';
 import './SplitScreenCompare.css';
 
+const US_BOUNDS_4326 = { west: -125.0, east: -66.0, south: 24.0, north: 50.0 };
+
+function regionLikelyInUS(region: Region): boolean {
+  if (region.country?.toUpperCase() === 'USA') return true;
+  const ring = region.geometry?.coordinates?.[0];
+  if (!ring || ring.length === 0) return false;
+
+  let west = Number.POSITIVE_INFINITY;
+  let south = Number.POSITIVE_INFINITY;
+  let east = Number.NEGATIVE_INFINITY;
+  let north = Number.NEGATIVE_INFINITY;
+
+  for (const [lon, lat] of ring) {
+    west = Math.min(west, lon);
+    south = Math.min(south, lat);
+    east = Math.max(east, lon);
+    north = Math.max(north, lat);
+  }
+
+  return !(east < US_BOUNDS_4326.west || west > US_BOUNDS_4326.east || north < US_BOUNDS_4326.south || south > US_BOUNDS_4326.north);
+}
+
 
 interface SplitScreenCompareProps {
   region: Region;
@@ -147,6 +169,7 @@ export function SplitScreenCompare({
 
   const tileDateA = ['nightlights', 'active_fire'].includes(metric) ? dateA : api.dateToYearMonth(dateA);
   const tileDateB = ['nightlights', 'active_fire'].includes(metric) ? dateB : api.dateToYearMonth(dateB);
+  const useUsTiles = regionLikelyInUS(region);
 
   return (
     <div
@@ -173,8 +196,10 @@ export function SplitScreenCompare({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
           <CompositeTileLayer
-            key={`us-${metric}-${tileDateA}`}
-            baseUrl={api.getUSTileUrl(metric, tileDateA)}
+            key={`${useUsTiles ? 'us' : 'world'}-${metric}-${tileDateA}`}
+            baseUrl={
+              useUsTiles ? api.getUSTileUrl(metric, tileDateA) : api.getWorldTileUrl(metric, tileDateA)
+            }
             nativeZoom={11}
             minZoom={9}
             maxZoom={11}
@@ -223,8 +248,10 @@ export function SplitScreenCompare({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
           <CompositeTileLayer
-            key={`us-${metric}-${tileDateB}`}
-            baseUrl={api.getUSTileUrl(metric, tileDateB)}
+            key={`${useUsTiles ? 'us' : 'world'}-${metric}-${tileDateB}`}
+            baseUrl={
+              useUsTiles ? api.getUSTileUrl(metric, tileDateB) : api.getWorldTileUrl(metric, tileDateB)
+            }
             nativeZoom={11}
             minZoom={9}
             maxZoom={11}

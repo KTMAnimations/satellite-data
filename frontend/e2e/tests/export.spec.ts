@@ -32,13 +32,12 @@ test.describe('Export Center', () => {
     expect(await checkboxes.count()).toBeGreaterThanOrEqual(2);
   });
 
-  test('shows animation format options when animation selected', async ({ page }) => {
+  test('shows GIF animation format option when animation selected', async ({ page }) => {
     // Click animation format
     await page.getByRole('button', { name: 'Animation' }).click();
 
-    // Check for GIF/WebM options
+    // Check for GIF option
     await expect(page.getByRole('radio', { name: 'GIF' })).toBeVisible();
-    await expect(page.getByRole('radio', { name: 'WebM' })).toBeVisible();
   });
 
   test('has generate button', async ({ page }) => {

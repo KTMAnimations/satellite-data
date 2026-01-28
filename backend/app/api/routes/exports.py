@@ -44,6 +44,8 @@ async def export_pdf(
         "id": export_id,
         "status": "pending",
         "format": "pdf",
+        "progress": 0.0,
+        "message": "Queued",
         "download_url": None,
         "file_size": None,
         "created_at": now.isoformat(),
@@ -70,7 +72,7 @@ async def generate_pdf_report(export_id: str, request: ExportRequest) -> None:
     redis_client = get_redis_client()
     await redis_client.update_status(
         export_id,
-        {"status": "processing"},
+        {"status": "processing", "progress": 5.0, "message": "Generating PDF"},
         STATUS_PREFIX_EXPORT,
     )
 
@@ -92,6 +94,8 @@ async def generate_pdf_report(export_id: str, request: ExportRequest) -> None:
             export_id,
             {
                 "status": "completed",
+                "progress": 100.0,
+                "message": "Completed",
                 "download_url": f"/api/v1/exports/download/{export_id}",
                 "completed_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -100,7 +104,7 @@ async def generate_pdf_report(export_id: str, request: ExportRequest) -> None:
     except Exception as e:
         await redis_client.update_status(
             export_id,
-            {"status": "failed", "error": str(e)},
+            {"status": "failed", "message": "Failed", "error": str(e)},
             STATUS_PREFIX_EXPORT,
         )
 
@@ -120,6 +124,8 @@ async def export_csv(
         "id": export_id,
         "status": "pending",
         "format": "csv",
+        "progress": 0.0,
+        "message": "Queued",
         "download_url": None,
         "file_size": None,
         "created_at": now.isoformat(),
@@ -145,7 +151,7 @@ async def generate_csv_export(export_id: str, request: CSVExportRequest) -> None
     redis_client = get_redis_client()
     await redis_client.update_status(
         export_id,
-        {"status": "processing"},
+        {"status": "processing", "progress": 5.0, "message": "Generating CSV"},
         STATUS_PREFIX_EXPORT,
     )
 
@@ -164,6 +170,8 @@ async def generate_csv_export(export_id: str, request: CSVExportRequest) -> None
             export_id,
             {
                 "status": "completed",
+                "progress": 100.0,
+                "message": "Completed",
                 "download_url": f"/api/v1/exports/download/{export_id}",
                 "completed_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -172,7 +180,7 @@ async def generate_csv_export(export_id: str, request: CSVExportRequest) -> None
     except Exception as e:
         await redis_client.update_status(
             export_id,
-            {"status": "failed", "error": str(e)},
+            {"status": "failed", "message": "Failed", "error": str(e)},
             STATUS_PREFIX_EXPORT,
         )
 
@@ -204,6 +212,8 @@ async def export_animation(
         "id": export_id,
         "status": "pending",
         "format": request.format,
+        "progress": 0.0,
+        "message": "Queued",
         "frame_count": None,
         "download_url": None,
         "file_size": None,
@@ -230,12 +240,15 @@ async def generate_animation(export_id: str, request: AnimationRequest) -> None:
     redis_client = get_redis_client()
     await redis_client.update_status(
         export_id,
-        {"status": "processing"},
+        {"status": "processing", "progress": 0.0, "message": "Starting"},
         STATUS_PREFIX_EXPORT,
     )
 
     try:
         generator = AnimationGenerator()
+        async def on_progress(updates: dict) -> None:
+            await redis_client.update_status(export_id, updates, STATUS_PREFIX_EXPORT)
+
         result = await generator.generate(
             region_id=request.region_id,
             metric=request.metric,
@@ -246,6 +259,10 @@ async def generate_animation(export_id: str, request: AnimationRequest) -> None:
             width=request.width,
             height=request.height,
             export_id=export_id,
+            lock_view=request.lock_view,
+            view_center=request.view_center,
+            view_zoom=request.view_zoom,
+            progress_callback=on_progress,
         )
 
         await redis_client.update_status(
@@ -253,6 +270,8 @@ async def generate_animation(export_id: str, request: AnimationRequest) -> None:
             {
                 "status": "completed",
                 "frame_count": result["frame_count"],
+                "progress": 100.0,
+                "message": "Completed",
                 "download_url": f"/api/v1/exports/download/{export_id}",
                 "file_size": result["file_size"],
                 "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -262,7 +281,7 @@ async def generate_animation(export_id: str, request: AnimationRequest) -> None:
     except Exception as e:
         await redis_client.update_status(
             export_id,
-            {"status": "failed", "error": str(e)},
+            {"status": "failed", "message": "Failed", "error": str(e)},
             STATUS_PREFIX_EXPORT,
         )
 
@@ -312,7 +331,6 @@ async def download_export(export_id: str) -> FileResponse:
         "pdf": ".pdf",
         "csv": ".csv",
         "gif": ".gif",
-        "webm": ".webm",
     }
     ext = format_ext.get(status_data["format"], "")
 

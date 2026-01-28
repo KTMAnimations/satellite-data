@@ -7,6 +7,7 @@ the source code (e.g., matplotlib backend issues on macOS).
 
 import csv
 import io
+import json
 import sys
 import tempfile
 import uuid
@@ -714,42 +715,36 @@ class TestAnimationGenerator:
             assert cmap is not None
 
     def test_generate_synthetic_frames_with_agg_backend(self, mock_settings, mock_region):
-        """Test synthetic frame generation using Agg backend."""
-        import matplotlib
-        original_backend = matplotlib.get_backend()
+        """Test synthetic frame generation without requiring interactive backends."""
+        from PIL import Image
 
-        try:
-            # Force Agg backend for consistent behavior
-            matplotlib.use('Agg')
-            import matplotlib.pyplot as plt
+        with patch.object(animation_module, "get_settings", return_value=mock_settings):
+            generator = animation_module.AnimationGenerator()
 
-            with patch.object(animation_module, "get_settings", return_value=mock_settings):
-                generator = animation_module.AnimationGenerator()
+            # Phoenix-ish bounds (lon_min, lat_min, lon_max, lat_max)
+            region_bounds_4326 = (-112.5, 33.0, -111.5, 34.0)
+            view_bbox_merc = generator._compute_view_bbox_mercator(region_bounds_4326, width=400, height=300)
+            basemap = Image.new("RGB", (400, 300), (235, 235, 235))
 
-                frames = generator._generate_synthetic_frames(
-                    region_name=mock_region.name,
-                    metric="nightlights",
-                    start_date=date(2024, 1, 1),
-                    end_date=date(2024, 6, 30),
-                    width=400,
-                    height=300,
-                )
+            frames = generator._generate_synthetic_frames(
+                region_name=mock_region.name,
+                metric="nightlights",
+                start_date=date(2024, 1, 1),
+                end_date=date(2024, 6, 30),
+                width=400,
+                height=300,
+                basemap=basemap,
+                view_bbox_merc=view_bbox_merc,
+                region_mask=None,
+                region_bounds_4326=region_bounds_4326,
+            )
 
-                assert len(frames) == 6  # 6 months
+            assert len(frames) == 6  # 6 months
 
-                # Each frame should be a numpy array with correct shape
-                for frame in frames:
-                    assert isinstance(frame, np.ndarray)
-                    assert len(frame.shape) == 3  # Height x Width x RGB
-                    assert frame.shape[2] == 3  # RGB channels
-        except Exception:
-            # If backend switching fails, skip this test
-            pytest.skip("Could not switch matplotlib backend")
-        finally:
-            try:
-                matplotlib.use(original_backend)
-            except Exception:
-                pass
+            # Each frame should be a numpy array with correct shape
+            for frame in frames:
+                assert isinstance(frame, np.ndarray)
+                assert frame.shape == (300, 400, 3)
 
     def test_generate_synthetic_frames_different_metrics_mocked(self, mock_settings, mock_region):
         """Test synthetic frame generation for different metrics with mocked canvas."""
@@ -825,7 +820,13 @@ class TestAnimationGenerator:
             mock_db_ctx.return_value.__aenter__.return_value = mock_db
 
             mock_region_result = MagicMock()
-            mock_region_result.scalar_one_or_none.return_value = mock_region
+            mock_region_geojson = {
+                "type": "Polygon",
+                "coordinates": [
+                    [[-112.5, 33.0], [-111.5, 33.0], [-111.5, 34.0], [-112.5, 34.0], [-112.5, 33.0]],
+                ],
+            }
+            mock_region_result.one_or_none.return_value = (mock_region, json.dumps(mock_region_geojson))
 
             # Return empty observations to trigger synthetic generation
             mock_obs_result = MagicMock()
@@ -841,7 +842,12 @@ class TestAnimationGenerator:
                 for _ in range(3)
             ]
 
-            with patch.object(generator, "_generate_synthetic_frames", return_value=dummy_frames):
+            from PIL import Image
+
+            with patch.object(generator, "_get_basemap", new=AsyncMock(return_value=Image.new("RGB", (400, 300), (235, 235, 235)))), \
+                 patch.object(generator, "_build_region_mask", return_value=None), \
+                 patch.object(generator, "_render_us_overlay", new=AsyncMock(return_value=np.zeros((300, 400, 4), dtype=np.uint8))), \
+                 patch.object(generator, "_generate_synthetic_frames", return_value=dummy_frames):
                 result = await generator.generate(
                     region_id=mock_region.id,
                     metric="nightlights",
@@ -873,7 +879,13 @@ class TestAnimationGenerator:
             mock_db_ctx.return_value.__aenter__.return_value = mock_db
 
             mock_region_result = MagicMock()
-            mock_region_result.scalar_one_or_none.return_value = mock_region
+            mock_region_geojson = {
+                "type": "Polygon",
+                "coordinates": [
+                    [[-112.5, 33.0], [-111.5, 33.0], [-111.5, 34.0], [-112.5, 34.0], [-112.5, 33.0]],
+                ],
+            }
+            mock_region_result.one_or_none.return_value = (mock_region, json.dumps(mock_region_geojson))
 
             mock_obs_result = MagicMock()
             mock_obs_result.scalars.return_value.all.return_value = []
@@ -888,7 +900,12 @@ class TestAnimationGenerator:
                 for _ in range(2)
             ]
 
-            with patch.object(generator, "_generate_synthetic_frames", return_value=dummy_frames):
+            from PIL import Image
+
+            with patch.object(generator, "_get_basemap", new=AsyncMock(return_value=Image.new("RGB", (800, 600), (235, 235, 235)))), \
+                 patch.object(generator, "_build_region_mask", return_value=None), \
+                 patch.object(generator, "_render_us_overlay", new=AsyncMock(return_value=np.zeros((600, 800, 4), dtype=np.uint8))), \
+                 patch.object(generator, "_generate_synthetic_frames", return_value=dummy_frames):
                 result = await generator.generate(
                     region_id=mock_region.id,
                     metric="ndvi",
@@ -916,7 +933,7 @@ class TestAnimationGenerator:
             mock_db_ctx.return_value.__aenter__.return_value = mock_db
 
             mock_region_result = MagicMock()
-            mock_region_result.scalar_one_or_none.return_value = None
+            mock_region_result.one_or_none.return_value = None
             mock_db.execute.return_value = mock_region_result
 
             generator = animation_module.AnimationGenerator()
@@ -930,48 +947,6 @@ class TestAnimationGenerator:
                 )
 
     @pytest.mark.asyncio
-    async def test_generate_webm_format_mocked(self, mock_settings, mock_region):
-        """Test WebM video generation with mocked frames."""
-        with patch.object(animation_module, "get_settings", return_value=mock_settings), \
-             patch.object(animation_module, "get_db_context") as mock_db_ctx:
-
-            mock_db = AsyncMock()
-            mock_db_ctx.return_value.__aenter__.return_value = mock_db
-
-            mock_region_result = MagicMock()
-            mock_region_result.scalar_one_or_none.return_value = mock_region
-
-            mock_obs_result = MagicMock()
-            mock_obs_result.scalars.return_value.all.return_value = []
-
-            mock_db.execute.side_effect = [mock_region_result, mock_obs_result]
-
-            generator = animation_module.AnimationGenerator()
-
-            dummy_frames = [
-                np.random.randint(0, 255, (300, 400, 3), dtype=np.uint8)
-                for _ in range(2)
-            ]
-
-            with patch.object(generator, "_generate_synthetic_frames", return_value=dummy_frames):
-                try:
-                    result = await generator.generate(
-                        region_id=mock_region.id,
-                        metric="urban_density",
-                        start_date=date(2024, 1, 1),
-                        end_date=date(2024, 2, 28),
-                        format="webm",
-                        width=400,
-                        height=300,
-                    )
-
-                    assert result["format"] == "webm"
-                    assert result["path"].endswith(".webm")
-                except Exception:
-                    # WebM may require ffmpeg - skip if not available
-                    pytest.skip("WebM generation requires ffmpeg")
-
-
 # ==============================================================================
 # Flow Animation Generator Tests
 # ==============================================================================

@@ -12,7 +12,8 @@ import {
   WarningCircle,
 } from '@phosphor-icons/react';
 import api from '../services/api';
-import type { ExportResponse, MetricType } from '../types';
+import { useStore } from '../store';
+import type { MetricType } from '../types';
 import './ExportCenter.css';
 
 const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
@@ -45,8 +46,10 @@ export function ExportCenter() {
   const [startDate, setStartDate] = useState('2023-01-01');
   const [endDate, setEndDate] = useState('2023-12-31');
   const [animationMetric, setAnimationMetric] = useState<MetricType>('nightlights');
-  const [animationFormat, setAnimationFormat] = useState<'gif' | 'webm'>('gif');
-  const [exports, setExports] = useState<ExportResponse[]>([]);
+  const [animationFormat, setAnimationFormat] = useState<'gif'>('gif');
+  const exportQueue = useStore((state) => state.exportQueue);
+  const addExportToQueue = useStore((state) => state.addExportToQueue);
+  const setExportQueue = useStore((state) => state.setExportQueue);
 
   const { data: regionsData } = useQuery({
     queryKey: ['regions', { page_size: 100 }],
@@ -64,7 +67,7 @@ export function ExportCenter() {
         include_charts: true,
         include_maps: true,
       }),
-    onSuccess: (data) => setExports((prev) => [data, ...prev]),
+    onSuccess: (data) => addExportToQueue(data),
   });
 
   const csvMutation = useMutation({
@@ -75,7 +78,7 @@ export function ExportCenter() {
         start_date: startDate,
         end_date: endDate,
       }),
-    onSuccess: (data) => setExports((prev) => [data, ...prev]),
+    onSuccess: (data) => addExportToQueue(data),
   });
 
   const animationMutation = useMutation({
@@ -88,7 +91,7 @@ export function ExportCenter() {
         end_date: endDate,
         frame_duration_ms: 500,
       }),
-    onSuccess: (data) => setExports((prev) => [data, ...prev]),
+    onSuccess: (data) => addExportToQueue(data),
   });
 
   // Poll for export status updates
@@ -96,7 +99,7 @@ export function ExportCenter() {
 
   useEffect(() => {
     // Check if any exports are pending or processing
-    const pendingExports = exports.filter(
+    const pendingExports = exportQueue.filter(
       (exp) => exp.status === 'pending' || exp.status === 'processing'
     );
 
@@ -104,7 +107,7 @@ export function ExportCenter() {
       // Start polling
       pollIntervalRef.current = setInterval(async () => {
         const updatedExports = await Promise.all(
-          exports.map(async (exp) => {
+          exportQueue.map(async (exp) => {
             if (exp.status === 'pending' || exp.status === 'processing') {
               try {
                 const updated = await api.getExportStatus(exp.id);
@@ -116,7 +119,7 @@ export function ExportCenter() {
             return exp;
           })
         );
-        setExports(updatedExports);
+        setExportQueue(updatedExports);
       }, 2000); // Poll every 2 seconds
     }
 
@@ -126,7 +129,7 @@ export function ExportCenter() {
         pollIntervalRef.current = null;
       }
     };
-  }, [exports]);
+  }, [exportQueue, setExportQueue]);
 
   const handleExport = () => {
     if (!selectedRegionId) {
@@ -275,14 +278,6 @@ export function ExportCenter() {
                     />
                     GIF
                   </label>
-                  <label>
-                    <input
-                      type="radio"
-                      checked={animationFormat === 'webm'}
-                      onChange={() => setAnimationFormat('webm')}
-                    />
-                    WebM
-                  </label>
                 </div>
               </div>
             </>
@@ -307,44 +302,74 @@ export function ExportCenter() {
         {/* Export History */}
         <div className="export-history card">
           <h2>Recent Exports</h2>
-          {exports.length === 0 ? (
+          {exportQueue.length === 0 ? (
             <p className="no-exports">No exports yet. Generate one above!</p>
           ) : (
             <div className="export-list">
-              {exports.map((exp) => (
-                <div key={exp.id} className="export-item instrument-panel">
-                  <span className="bracket-bl" />
-                  <span className="bracket-br" />
-                  <div className="export-info">
-                    <span className="export-format">
-                      {exp.format === 'pdf' && <FilePdf size={16} weight="duotone" />}
-                      {exp.format === 'csv' && <Table size={16} weight="duotone" />}
-                      {exp.format === 'animation' && <FilmStrip size={16} weight="duotone" />}
-                      {exp.format.toUpperCase()}
-                    </span>
-                    <span className={`export-status ${exp.status}`}>
-                      {exp.status === 'pending' && <Clock size={14} />}
-                      {exp.status === 'processing' && <Spinner size={14} className="spinning" />}
-                      {exp.status === 'completed' && <CheckCircle size={14} />}
-                      {exp.status === 'failed' && <WarningCircle size={14} />}
-                      {exp.status}
-                    </span>
+              {exportQueue.map((exp) => {
+                const isAnimation =
+                  exp.format === 'gif' || exp.format === 'frames';
+                const progress = typeof exp.progress === 'number' ? exp.progress : 0;
+                const clampedProgress = Math.min(100, Math.max(0, progress));
+                const showProgress = exp.status === 'pending' || exp.status === 'processing';
+
+                return (
+                  <div key={exp.id} className="export-item instrument-panel">
+                    <span className="bracket-bl" />
+                    <span className="bracket-br" />
+                    <div className="export-details">
+                      <div className="export-info">
+                        <span className="export-format">
+                          {exp.format === 'pdf' && <FilePdf size={16} weight="duotone" />}
+                          {exp.format === 'csv' && <Table size={16} weight="duotone" />}
+                          {isAnimation && <FilmStrip size={16} weight="duotone" />}
+                          {exp.format.toUpperCase()}
+                        </span>
+                        <span className={`export-status ${exp.status}`}>
+                          {exp.status === 'pending' && <Clock size={14} />}
+                          {exp.status === 'processing' && <Spinner size={14} className="spinning" />}
+                          {exp.status === 'completed' && <CheckCircle size={14} />}
+                          {exp.status === 'failed' && <WarningCircle size={14} />}
+                          {exp.status}
+                        </span>
+                      </div>
+                      <div className="export-meta">
+                        <span>Created: {new Date(exp.created_at).toLocaleString()}</span>
+                        {exp.status !== 'completed' && exp.message && (
+                          <span className="export-message">{exp.message}</span>
+                        )}
+                        {exp.status === 'failed' && exp.error && (
+                          <span className="export-error">{exp.error}</span>
+                        )}
+                        {showProgress && (
+                          <div className="export-progress" aria-label="Export progress">
+                            <div
+                              className={`export-progress-bar ${
+                                exp.status === 'pending' ? 'indeterminate' : ''
+                              }`}
+                              style={
+                                exp.status === 'pending'
+                                  ? undefined
+                                  : { width: `${clampedProgress}%` }
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {exp.status === 'completed' && exp.download_url && (
+                      <a
+                        href={api.getExportDownloadUrl(exp.id)}
+                        className="btn btn-outline btn-sm"
+                        download
+                      >
+                        <DownloadSimple size={14} />
+                        Download
+                      </a>
+                    )}
                   </div>
-                  <div className="export-meta">
-                    <span>Created: {new Date(exp.created_at).toLocaleString()}</span>
-                  </div>
-                  {exp.status === 'completed' && exp.download_url && (
-                    <a
-                      href={api.getExportDownloadUrl(exp.id)}
-                      className="btn btn-outline btn-sm"
-                      download
-                    >
-                      <DownloadSimple size={14} />
-                      Download
-                    </a>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

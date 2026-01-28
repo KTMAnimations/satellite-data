@@ -1,4 +1,6 @@
-from datetime import date
+from collections import defaultdict
+from datetime import date, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -16,6 +18,41 @@ from app.schemas.observation import (
 
 router = APIRouter()
 
+Granularity = Literal["daily", "weekly", "monthly"]
+
+
+def _bucket_date_for_granularity(
+    obs_date: date,
+    granularity: Granularity,
+    *,
+    start_date: date | None,
+) -> date:
+    if granularity == "daily":
+        return obs_date
+
+    if granularity == "monthly":
+        return date(obs_date.year, obs_date.month, 1)
+
+    # weekly
+    if start_date is not None:
+        # Anchor to the requested start_date (consistent with the collection
+        # pipeline, which stores weekly observations at the start of each 7-day period).
+        delta_days = (obs_date - start_date).days
+        week_index = max(0, delta_days // 7)
+        return start_date + timedelta(days=week_index * 7)
+
+    # No start_date provided: fall back to ISO week start (Monday).
+    return obs_date - timedelta(days=obs_date.weekday())
+
+
+def _format_bucket_date(bucket_date: date, granularity: Granularity) -> str:
+    # Frontend expects:
+    # - monthly: "YYYY-MM"
+    # - weekly/daily: "YYYY-MM-DD"
+    if granularity == "monthly":
+        return bucket_date.strftime("%Y-%m")
+    return bucket_date.isoformat()
+
 
 @router.get("/{region_id}", response_model=MetricsResponse)
 async def get_region_metrics(
@@ -24,9 +61,15 @@ async def get_region_metrics(
     start_date: date | None = Query(None, description="Start date"),
     end_date: date | None = Query(None, description="End date"),
     metrics: list[str] | None = Query(None, description="Metrics to include"),
-    granularity: str = Query("monthly", description="Temporal granularity"),
+    granularity: Granularity = Query("monthly", description="Temporal granularity"),
 ) -> MetricsResponse:
     """Get time series metrics for a region."""
+    if granularity not in {"daily", "weekly", "monthly"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="granularity must be one of: daily, weekly, monthly",
+        )
+
     # Verify region exists
     result = await db.execute(select(Region).where(Region.id == region_id))
     region = result.scalar_one_or_none()
@@ -51,32 +94,59 @@ async def get_region_metrics(
     result = await db.execute(query)
     observations = result.scalars().all()
 
-    # Group by metric
+    # Aggregate into requested granularity buckets.
+    values_by_metric_and_bucket: dict[str, dict[date, list[float]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for obs in observations:
+        bucket_date = _bucket_date_for_granularity(
+            obs.date, granularity, start_date=start_date
+        )
+        values_by_metric_and_bucket[obs.metric][bucket_date].append(obs.value)
+
     metric_data: dict[str, MetricData] = {}
     metric_units = {
+        # Original metrics
         "ndvi": "index (-1 to 1)",
-        "nightlights": "nW/cm\u00b2/sr",
+        "nightlights": "nW/cm²/sr",
         "urban_density": "ratio (0 to 1)",
         "parking": "occupancy ratio",
+        # Phase 1: Core datasets
+        "land_cover": "probability (0 to 1)",
+        "surface_water": "ratio (0 to 1)",
+        "active_fire": "MW",
+        # Phase 2: Air quality & weather
+        "no2": "mol/m²",
+        "temperature": "°C",
+        "precipitation": "mm",
+        "aerosol": "index",
+        # Phase 3: Agriculture
+        "cropland": "class code",
+        "evapotranspiration": "mm",
+        "soil_moisture": "m³/m³",
+        # Phase 4: Historical & specialized
+        "impervious": "ratio (0 to 1)",
+        "fire_historical": "MW",
+        "canopy_height": "m",
     }
 
-    for obs in observations:
-        if obs.metric not in metric_data:
-            metric_data[obs.metric] = MetricData(
-                unit=metric_units.get(obs.metric, "unknown"),
-                data=[],
+    for metric, buckets in values_by_metric_and_bucket.items():
+        points: list[MetricDataPoint] = []
+        for bucket_date in sorted(buckets.keys()):
+            values = buckets[bucket_date]
+            if not values:
+                continue
+            avg_value = sum(values) / len(values)
+            points.append(
+                MetricDataPoint(
+                    date=_format_bucket_date(bucket_date, granularity),
+                    value=avg_value,
+                )
             )
 
-        # Format date based on granularity
-        if granularity == "monthly":
-            date_str = obs.date.strftime("%Y-%m")
-        elif granularity == "weekly":
-            date_str = obs.date.strftime("%Y-W%W")
-        else:
-            date_str = obs.date.isoformat()
-
-        metric_data[obs.metric].data.append(
-            MetricDataPoint(date=date_str, value=obs.value)
+        metric_data[metric] = MetricData(
+            unit=metric_units.get(metric, "unknown"),
+            data=points,
         )
 
     # Calculate seasonal summary within the requested time range

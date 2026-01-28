@@ -178,21 +178,28 @@ export interface ExportResponse {
   id: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   format: string;
+  progress?: number;
+  message?: string | null;
+  frame_count?: number | null;
   download_url: string | null;
   file_size: number | null;
   created_at: string;
   completed_at: string | null;
+  error?: string | null;
 }
 
 export interface AnimationRequest {
   region_id: string;
   metric: string;
-  format: 'gif' | 'webm' | 'frames';
+  format: 'gif' | 'frames';
   start_date: string;
   end_date: string;
   frame_duration_ms?: number;
   width?: number;
   height?: number;
+  lock_view?: boolean;
+  view_center?: [number, number]; // [lat, lon]
+  view_zoom?: number;
 }
 
 // API Key types

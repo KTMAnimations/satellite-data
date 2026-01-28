@@ -488,6 +488,63 @@ class TestMetricsAPI:
 
         assert response.status_code == 200
 
+    def test_get_region_metrics_weekly_aggregates_and_formats_dates(
+        self,
+        client: TestClient,
+        mock_db: AsyncMock,
+    ):
+        """Weekly granularity should bucket by week and return ISO dates (YYYY-MM-DD)."""
+        region_id = "550e8400-e29b-41d4-a716-446655440000"
+        mock_region = create_mock_region(region_id=region_id)
+
+        # Multiple observations within the same week should be averaged.
+        mock_observations = [
+            create_mock_observation(region_id, date(2024, 1, 2), "ndvi", 0.4),
+            create_mock_observation(region_id, date(2024, 1, 5), "ndvi", 0.6),
+            create_mock_observation(region_id, date(2024, 1, 10), "ndvi", 0.5),
+        ]
+
+        region_result = MagicMock()
+        region_result.scalar_one_or_none = MagicMock(return_value=mock_region)
+
+        obs_result = MagicMock()
+        obs_scalars = MagicMock()
+        obs_scalars.all = MagicMock(return_value=mock_observations)
+        obs_result.scalars = MagicMock(return_value=obs_scalars)
+
+        empty_result = MagicMock()
+        empty_result.all = MagicMock(return_value=[])
+
+        call_count = [0]
+
+        async def mock_execute(query):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return region_result
+            if call_count[0] == 2:
+                return obs_result
+            return empty_result
+
+        mock_db.execute = mock_execute
+
+        response = client.get(
+            f"/api/v1/metrics/{region_id}",
+            params={
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-31",
+                "granularity": "weekly",
+                "metrics": ["ndvi"],
+            },
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        ndvi_points = payload["metrics"]["ndvi"]["data"]
+
+        assert [p["date"] for p in ndvi_points] == ["2024-01-01", "2024-01-08"]
+        assert ndvi_points[0]["value"] == pytest.approx(0.5)
+        assert ndvi_points[1]["value"] == pytest.approx(0.5)
+
 
 # ============================================================================
 # Exports API Tests

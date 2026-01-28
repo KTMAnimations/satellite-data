@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Region, MetricType, DateRange, MapState } from '../types';
+import type { Region, MetricType, DateRange, MapState, ExportResponse } from '../types';
 
 interface AppState {
   // Selected region
@@ -38,6 +38,12 @@ interface AppState {
   // API key
   apiKey: string | null;
   setApiKey: (key: string | null) => void;
+
+  // Export queue (in-memory; not persisted)
+  exportQueue: ExportResponse[];
+  addExportToQueue: (exportItem: ExportResponse) => void;
+  setExportQueue: (exports: ExportResponse[]) => void;
+  clearExportQueue: () => void;
 }
 
 // Default to last 2 years of data for meaningful analysis
@@ -96,6 +102,13 @@ export const useStore = create<AppState>()(
       // API key
       apiKey: null,
       setApiKey: (key) => set({ apiKey: key }),
+
+      // Export queue (in-memory; not persisted)
+      exportQueue: [],
+      addExportToQueue: (exportItem) =>
+        set((state) => ({ exportQueue: [exportItem, ...state.exportQueue] })),
+      setExportQueue: (exports) => set({ exportQueue: exports }),
+      clearExportQueue: () => set({ exportQueue: [] }),
     }),
     {
       name: 'satellite-migration-storage',

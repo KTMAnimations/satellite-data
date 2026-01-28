@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricType } from '../../types';
+import { parseMetricDate } from '../../utils/dates';
 import './SmallMultiples.css';
 
 interface RegionData {
@@ -84,7 +85,9 @@ export function SmallMultiples({
 
     regions.forEach((region) => {
       region.data.forEach((d) => {
-        allDates.push(new Date(d.date));
+        const parsed = parseMetricDate(d.date);
+        if (!parsed) return;
+        allDates.push(parsed);
         allValues.push(d.value);
       });
     });
@@ -149,7 +152,7 @@ export function SmallMultiples({
       // Area
       const area = d3
         .area<{ date: string; value: number }>()
-        .x((d) => xScale(new Date(d.date)))
+        .x((d) => xScale(parseMetricDate(d.date) ?? new Date(0)))
         .y0(innerHeight)
         .y1((d) => yScale(d.value))
         .curve(d3.curveMonotoneX);
@@ -163,7 +166,7 @@ export function SmallMultiples({
       // Line
       const line = d3
         .line<{ date: string; value: number }>()
-        .x((d) => xScale(new Date(d.date)))
+        .x((d) => xScale(parseMetricDate(d.date) ?? new Date(0)))
         .y((d) => yScale(d.value))
         .curve(d3.curveMonotoneX);
 
@@ -181,14 +184,14 @@ export function SmallMultiples({
 
       // Min point
       g.append('circle')
-        .attr('cx', xScale(new Date(min.date)))
+        .attr('cx', xScale(parseMetricDate(min.date) ?? new Date(0)))
         .attr('cy', yScale(min.value))
         .attr('r', 3)
         .attr('fill', 'var(--metric-alert)');
 
       // Max point
       g.append('circle')
-        .attr('cx', xScale(new Date(max.date)))
+        .attr('cx', xScale(parseMetricDate(max.date) ?? new Date(0)))
         .attr('cy', yScale(max.value))
         .attr('r', 3)
         .attr('fill', 'var(--metric-quaternary)');

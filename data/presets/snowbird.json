@@ -1,0 +1,62 @@
+{
+  "id": "snowbird",
+  "name": "Snowbird Migration Pattern",
+  "description": "Track how winter populations swell in Sun Belt cities like Phoenix, Miami, and Tampa. This analysis compares nighttime light intensity between December-February and June-August.",
+  "category": "migration",
+  "regions": [
+    {
+      "name": "Phoenix, AZ",
+      "lat": 33.4484,
+      "lng": -112.074,
+      "winter_increase_pct": 42
+    },
+    {
+      "name": "Miami, FL",
+      "lat": 25.7617,
+      "lng": -80.1918,
+      "winter_increase_pct": 38
+    },
+    {
+      "name": "Tampa, FL",
+      "lat": 27.9506,
+      "lng": -82.4572,
+      "winter_increase_pct": 35
+    },
+    {
+      "name": "Tucson, AZ",
+      "lat": 32.2226,
+      "lng": -110.9747,
+      "winter_increase_pct": 28
+    }
+  ],
+  "comparison": {
+    "period_a": {
+      "name": "Winter",
+      "months": [12, 1, 2],
+      "start_date": "2023-12-01",
+      "end_date": "2024-02-29"
+    },
+    "period_b": {
+      "name": "Summer",
+      "months": [6, 7, 8],
+      "start_date": "2023-06-01",
+      "end_date": "2023-08-31"
+    }
+  },
+  "metrics": ["nightlights", "parking"],
+  "key_findings": [
+    "Phoenix shows +42% winter activity increase compared to summer",
+    "Miami sees +38% seasonal population proxy increase",
+    "Tampa records +35% winter nightlight intensity",
+    "Pattern correlates with known snowbird migration routes"
+  ],
+  "visualization": {
+    "primary_chart": "seasonal_bar",
+    "map_focus": {
+      "center": [30.0, -95.0],
+      "zoom": 5
+    },
+    "color_scheme": "warm"
+  },
+  "methodology_notes": "Activity proxy based on VIIRS nighttime lights monthly composites. Change calculated as (winter_avg - summer_avg) / summer_avg * 100."
+}

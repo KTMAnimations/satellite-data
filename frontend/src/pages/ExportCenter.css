@@ -203,11 +203,20 @@
 .export-item {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 0.75rem;
   padding: 1rem;
   background: var(--surface-recessed);
   border-radius: 4px;
+}
+
+.export-details {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .export-info {
@@ -262,9 +271,44 @@
 }
 
 .export-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   color: var(--text-tertiary);
+}
+
+.export-message {
+  color: var(--text-secondary);
+}
+
+.export-error {
+  color: #991b1b;
+  word-break: break-word;
+}
+
+.export-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.export-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent-primary);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.export-progress-bar.indeterminate {
+  width: 35%;
+  transition: none;
+  animation: export-progress-indeterminate 1.2s ease-in-out infinite;
 }
 
 .btn-sm {
@@ -282,6 +326,11 @@
 
 .spinning {
   animation: spin 1s linear infinite;
+}
+
+@keyframes export-progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
 }
 
 @media (max-width: 768px) {

@@ -1,0 +1,91 @@
+{
+  "id": "covid",
+  "name": "COVID-19 Impact Analysis",
+  "description": "Examine how urban activity collapsed in 2020 and recovered through 2022. This preset compares major metropolitan areas across the pandemic timeline.",
+  "category": "temporal",
+  "regions": [
+    {
+      "name": "New York, NY",
+      "lat": 40.7128,
+      "lng": -74.006,
+      "peak_drop_pct": -25,
+      "drop_month": "2020-04"
+    },
+    {
+      "name": "San Francisco, CA",
+      "lat": 37.7749,
+      "lng": -122.4194,
+      "peak_drop_pct": -35,
+      "drop_month": "2020-04"
+    },
+    {
+      "name": "Las Vegas, NV",
+      "lat": 36.1699,
+      "lng": -115.1398,
+      "peak_drop_pct": -45,
+      "drop_month": "2020-04"
+    }
+  ],
+  "comparison": {
+    "baseline": {
+      "name": "Pre-COVID",
+      "year": 2019,
+      "start_date": "2019-01-01",
+      "end_date": "2019-12-31"
+    },
+    "periods": [
+      {
+        "name": "COVID Year 1",
+        "year": 2020,
+        "start_date": "2020-01-01",
+        "end_date": "2020-12-31"
+      },
+      {
+        "name": "COVID Year 2",
+        "year": 2021,
+        "start_date": "2021-01-01",
+        "end_date": "2021-12-31"
+      },
+      {
+        "name": "Recovery",
+        "year": 2022,
+        "start_date": "2022-01-01",
+        "end_date": "2022-12-31"
+      }
+    ]
+  },
+  "metrics": ["nightlights", "parking", "urban_density"],
+  "key_findings": [
+    "Las Vegas: -45% activity drop in April 2020 (casino/entertainment shutdown)",
+    "NYC: Nightlights down 25% at pandemic peak",
+    "San Francisco: Prolonged depression due to tech remote work",
+    "Recovery to pre-pandemic levels by mid-2022 for most metros"
+  ],
+  "notable_events": [
+    {
+      "date": "2020-03-11",
+      "event": "WHO declares COVID-19 pandemic"
+    },
+    {
+      "date": "2020-03-19",
+      "event": "California stay-at-home order"
+    },
+    {
+      "date": "2020-03-22",
+      "event": "New York PAUSE order"
+    },
+    {
+      "date": "2021-01-20",
+      "event": "Biden inauguration, vaccine rollout accelerates"
+    }
+  ],
+  "visualization": {
+    "primary_chart": "year_over_year",
+    "map_focus": {
+      "center": [39.0, -98.0],
+      "zoom": 4
+    },
+    "color_scheme": "diverging"
+  },
+  "methodology_notes": "Year-over-year comparison using January values for consistency. Drop calculated relative to same month in 2019 baseline."
+}

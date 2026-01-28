@@ -76,10 +76,28 @@ class CSVExporter:
 
             # Data
             unit_map = {
+                # Original metrics
                 "ndvi": "index (-1 to 1)",
                 "nightlights": "nW/cm²/sr",
                 "urban_density": "ratio (0 to 1)",
                 "parking": "occupancy ratio",
+                # Phase 1: Core datasets
+                "land_cover": "probability (0 to 1)",
+                "surface_water": "ratio (0 to 1)",
+                "active_fire": "MW",
+                # Phase 2: Air quality & weather
+                "no2": "mol/m²",
+                "temperature": "°C",
+                "precipitation": "mm",
+                "aerosol": "index",
+                # Phase 3: Agriculture
+                "cropland": "class code",
+                "evapotranspiration": "mm",
+                "soil_moisture": "m³/m³",
+                # Phase 4: Historical & specialized
+                "impervious": "ratio (0 to 1)",
+                "fire_historical": "MW",
+                "canopy_height": "m",
             }
 
             for row in rows:
