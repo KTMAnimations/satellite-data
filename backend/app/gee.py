@@ -488,15 +488,29 @@ def build_metric_image(metric: MetricId, start, end, geom):
 
     if metric == "canopy_height":
         # GEDI gridded vegetation structure: use RH98 (proxy for canopy height).
-        # The EE asset is an ImageCollection with multiple variables; select the
-        # global RH98 composite and use the median height statistic.
-        rh98 = (
+        # Note: GEDI is mounted on the ISS (inclination ~51.6°), so the gridded
+        # product has no coverage north of ~51.6°N / south of ~51.6°S.
+        #
+        # To avoid a hard "break" line at the GEDI swath edge, fall back to the
+        # global 1km canopy height (2005) product where GEDI has no data.
+        gedi_rh98 = (
             ee.ImageCollection("LARSE/GEDI/GRIDDEDVEG_002/V1/1KM")
             .filter(ee.Filter.stringContains("system:index", "rh-98-a0_vf_20190417_20230316"))
         )
-        has_images = rh98.size().gt(0)
-        image = ee.Image(rh98.first()).select(["median"]).rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+        has_gedi = gedi_rh98.size().gt(0)
+        gedi = ee.Image(
+            ee.Algorithms.If(
+                has_gedi,
+                ee.Image(gedi_rh98.first()).select(["median"]).rename([band]),
+                _empty_masked_image(band),
+            )
+        )
+
+        simard = ee.Image("NASA/JPL/global_forest_canopy_height_2005").select(["1"]).rename([band])
+        # Prefer GEDI where present, fall back to Simard elsewhere. Mosaic unions
+        # footprints; unmask alone won't expand the GEDI swath footprint.
+        image = ee.ImageCollection.fromImages([gedi, simard]).mosaic()
+        return image.clip(geom)
 
     raise ValueError(f"Unsupported metric: {metric}")
 
@@ -626,6 +640,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
+_tile_cache_version = 3
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
@@ -640,7 +655,7 @@ def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularit
     import ee
 
     settings = get_settings()
-    cache_key = f"{metric}:{granularity}:{date_bucket}"
+    cache_key = f"v{_tile_cache_version}:{metric}:{granularity}:{date_bucket}"
     now = time.time()
     cached = _tile_fetcher_cache.get(cache_key)
     if cached and now - cached[0] < settings.tile_token_ttl_seconds:
@@ -689,7 +704,7 @@ def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granulari
     # Ensure the tile fetcher exists (and is cached) before returning the client template.
     get_tile_fetcher(metric, date_bucket, granularity)
 
-    cache_key = f"{metric}:{granularity}:{date_bucket}:{opacity}"
+    cache_key = f"v{_tile_cache_version}:{metric}:{granularity}:{date_bucket}:{opacity}"
     now = time.time()
     cached = _tile_template_cache.get(cache_key)
     if cached and now - cached[0] < settings.tile_token_ttl_seconds:
@@ -698,7 +713,10 @@ def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granulari
     vmin, vmax = metric_def.value_range
     # Add a small cache-buster query param so browser caches don't pin previously
     # bad tiles (e.g. from earlier antimeridian rendering issues).
-    tile_url = f"{settings.api_v1_prefix}/tiles/{metric}/{granularity}/{date_bucket}/{{z}}/{{x}}/{{y}}.png?v=1"
+    tile_url = (
+        f"{settings.api_v1_prefix}/tiles/{metric}/{granularity}/{date_bucket}/{{z}}/{{x}}/{{y}}.png"
+        f"?v={_tile_cache_version}"
+    )
 
     payload = {
         "metric": metric,
