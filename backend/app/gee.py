@@ -625,26 +625,28 @@ def compute_time_series(
 
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+_tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
 
 
-def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granularity, *, opacity: float | None = None) -> dict[str, Any]:
+def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
     """
-    Return an Earth Engine tile URL template for the requested metric/date bucket.
+    Return an ee.data.TileFetcher for fetching PNG tiles server-side.
 
-    Cached in-process with a TTL (tokens expire).
+    Newer Earth Engine Python API versions often return an empty `token` for
+    service account credentials, which prevents browsers from fetching tiles
+    directly from earthengine.googleapis.com. We proxy tiles through the API.
     """
     initialize_ee()
     import ee
 
     settings = get_settings()
-    metric_def = METRICS[metric]
-    opacity = settings.default_tile_opacity if opacity is None else float(opacity)
-
-    cache_key = f"{metric}:{granularity}:{date_bucket}:{opacity}"
+    cache_key = f"{metric}:{granularity}:{date_bucket}"
     now = time.time()
-    cached = _tile_template_cache.get(cache_key)
+    cached = _tile_fetcher_cache.get(cache_key)
     if cached and now - cached[0] < settings.tile_token_ttl_seconds:
         return cached[1]
+
+    metric_def = METRICS[metric]
 
     # Parse date bucket
     if granularity == "monthly":
@@ -662,8 +664,37 @@ def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granulari
     threshold = vmin + metric_def.transparent_below_normalized * (vmax - vmin)
     img = img.updateMask(img.gt(threshold))
 
-    mapid = img.getMapId({"min": vmin, "max": vmax, "palette": metric_def.palette, "opacity": opacity})
-    tile_url = f"https://earthengine.googleapis.com/map/{mapid['mapid']}/{{z}}/{{x}}/{{y}}?token={mapid['token']}"
+    # Keep EE tiles fully opaque; Leaflet controls opacity client-side.
+    mapid = img.getMapId({"min": vmin, "max": vmax, "palette": metric_def.palette, "opacity": 1.0})
+    tile_fetcher = mapid.get("tile_fetcher")
+    if not tile_fetcher:
+        raise RuntimeError("Earth Engine TileFetcher unavailable for this environment.")
+
+    _tile_fetcher_cache[cache_key] = (now, tile_fetcher)
+    return tile_fetcher
+
+
+def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granularity, *, opacity: float | None = None) -> dict[str, Any]:
+    """
+    Return an Earth Engine tile URL template for the requested metric/date bucket.
+
+    Cached in-process with a TTL (tokens expire).
+    """
+    settings = get_settings()
+    metric_def = METRICS[metric]
+    opacity = settings.default_tile_opacity if opacity is None else float(opacity)
+
+    # Ensure the tile fetcher exists (and is cached) before returning the client template.
+    get_tile_fetcher(metric, date_bucket, granularity)
+
+    cache_key = f"{metric}:{granularity}:{date_bucket}:{opacity}"
+    now = time.time()
+    cached = _tile_template_cache.get(cache_key)
+    if cached and now - cached[0] < settings.tile_token_ttl_seconds:
+        return cached[1]
+
+    vmin, vmax = metric_def.value_range
+    tile_url = f"{settings.api_v1_prefix}/tiles/{metric}/{granularity}/{date_bucket}/{{z}}/{{x}}/{{y}}.png"
 
     payload = {
         "metric": metric,
