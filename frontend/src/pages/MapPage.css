@@ -84,11 +84,23 @@
   position: relative;
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 1rem;
 }
 
 .map-page-map .map-wrapper {
+  flex: 1;
   min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-page-map .map-container {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: auto;
 }
 
 .map-page-legend {
@@ -132,4 +144,3 @@
     max-width: 100%;
   }
 }
-
