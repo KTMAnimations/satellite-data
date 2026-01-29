@@ -696,7 +696,9 @@ def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granulari
         return cached[1]
 
     vmin, vmax = metric_def.value_range
-    tile_url = f"{settings.api_v1_prefix}/tiles/{metric}/{granularity}/{date_bucket}/{{z}}/{{x}}/{{y}}.png"
+    # Add a small cache-buster query param so browser caches don't pin previously
+    # bad tiles (e.g. from earlier antimeridian rendering issues).
+    tile_url = f"{settings.api_v1_prefix}/tiles/{metric}/{granularity}/{date_bucket}/{{z}}/{{x}}/{{y}}.png?v=1"
 
     payload = {
         "metric": metric,

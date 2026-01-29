@@ -10,6 +10,14 @@ from app.schemas import MetricId, TileTemplateResponse
 
 router = APIRouter()
 
+def _wrap_x(x: int, z: int) -> int:
+    """
+    Leaflet can request tiles outside the global x-range when world-wrapping.
+    Earth Engine expects x within [0, 2^z - 1], so wrap it.
+    """
+    world = 1 << z
+    return x % world
+
 
 @router.get("/template", response_model=TileTemplateResponse)
 async def tile_template(
@@ -58,10 +66,21 @@ async def tile_png(
         raise HTTPException(status_code=400, detail="Invalid metric")
     if granularity not in {"daily", "weekly", "monthly"}:
         raise HTTPException(status_code=400, detail="Invalid granularity")
+    if z < 0:
+        raise HTTPException(status_code=400, detail="Invalid zoom")
+
+    world = 1 << z
+    if y < 0 or y >= world:
+        # Leaflet doesn't wrap y; out-of-range tiles are empty.
+        raise HTTPException(status_code=404, detail="Tile out of range")
+
+    x = _wrap_x(x, z)
 
     try:
         fetcher = await asyncio.to_thread(get_tile_fetcher, metric, date_bucket, granularity)  # type: ignore[arg-type]
         png_bytes: bytes = await asyncio.to_thread(fetcher.fetch_tile, x, y, z)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=503,
