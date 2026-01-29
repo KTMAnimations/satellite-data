@@ -37,6 +37,7 @@ export function MapPage() {
   const { dateRange, setDateRange } = useStore();
 
   const [selectedMapMetric, setSelectedMapMetric] = useState<MetricType>('nightlights');
+  const [overlayMinZoom, setOverlayMinZoom] = useState<number>(9);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [currentTimelineDate, setCurrentTimelineDate] = useState<Date | null>(null);
 
@@ -123,6 +124,24 @@ export function MapPage() {
             ))}
           </select>
 
+          <div className="map-page-overlay-controls">
+            <span className="map-page-overlay-label">Overlay cutoff</span>
+            <input
+              className="map-page-overlay-input"
+              type="number"
+              min={4}
+              max={11}
+              step={1}
+              value={overlayMinZoom}
+              aria-label="Overlay cutoff zoom"
+              onChange={(e) => {
+                const next = e.target.valueAsNumber;
+                if (Number.isNaN(next)) return;
+                setOverlayMinZoom(Math.min(11, Math.max(4, Math.round(next))));
+              }}
+            />
+          </div>
+
           <div className="map-page-dates">
             <input
               type="date"
@@ -149,6 +168,7 @@ export function MapPage() {
             <MapView
               regions={[region]}
               selectedMetric={selectedMapMetric}
+              overlayMinZoom={overlayMinZoom}
               tileGranularity={granularity}
               tileDate={
                 formatDateYYYYMMDD(currentTimelineDate)
@@ -186,4 +206,3 @@ export function MapPage() {
     </div>
   );
 }
-

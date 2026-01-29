@@ -20,6 +20,13 @@ import type { FlowPoint } from './FlowLayer';
 import './MapContainer.css';
 
 const METRIC_OVERLAY_MIN_ZOOM = 9;
+const MIN_MAP_ZOOM = 4;
+const MAX_MAP_ZOOM = 11;
+
+function clampZoom(zoom: number, min: number, max: number): number {
+  if (!Number.isFinite(zoom)) return min;
+  return Math.min(max, Math.max(min, zoom));
+}
 
 function toDateBucket(dateStr: string, granularity: Granularity): string {
   return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
@@ -42,6 +49,7 @@ interface MapContainerProps {
   tileGranularity?: Granularity;
   overlayEnabled?: boolean;
   overlayAllowNetwork?: boolean;
+  overlayMinZoom?: number;
   onOverlayTileEvent?: (event: CompositeTileEvent) => void;
   viewLocked?: boolean;
   selectedRegion?: Region | null; // Optional prop to override store's selectedRegion
@@ -108,7 +116,7 @@ function MapController({
         ] as unknown as LatLngBounds;
 
         // Fit bounds to show the region.
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 11, animate: false });
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: MAX_MAP_ZOOM, animate: false });
 
         // Sync store state immediately so zoom-gated overlays render on first load.
         const center = map.getCenter();
@@ -148,6 +156,7 @@ export function MapView({
   tileGranularity,
   overlayEnabled = true,
   overlayAllowNetwork = true,
+  overlayMinZoom,
   viewLocked = false,
   selectedRegion: selectedRegionProp,
   flowPoints,
@@ -165,9 +174,14 @@ export function MapView({
   // Use prop if provided, otherwise fall back to store
   const selectedRegion = selectedRegionProp !== undefined ? selectedRegionProp : storeSelectedRegion;
   const focusRegion = selectedRegion ?? (regions.length === 1 ? regions[0] : null);
+  const effectiveOverlayMinZoom = clampZoom(
+    typeof overlayMinZoom === 'number' ? Math.round(overlayMinZoom) : METRIC_OVERLAY_MIN_ZOOM,
+    MIN_MAP_ZOOM,
+    MAX_MAP_ZOOM
+  );
   const metricLayerMounted = Boolean(selectedMetric && tileDate);
   const metricLayerVisible = Boolean(
-    overlayEnabled && overlayAllowNetwork && mapState.zoom >= METRIC_OVERLAY_MIN_ZOOM
+    overlayEnabled && overlayAllowNetwork && mapState.zoom >= effectiveOverlayMinZoom
   );
 
   const effectiveGranularity = selectedMetric
@@ -218,8 +232,8 @@ export function MapView({
       <LeafletMapContainer
         center={mapState.center}
         zoom={mapState.zoom}
-        minZoom={4}
-        maxZoom={11}
+        minZoom={MIN_MAP_ZOOM}
+        maxZoom={MAX_MAP_ZOOM}
         className="map-container"
         ref={mapRef}
       >
@@ -304,9 +318,9 @@ export function MapView({
 
       {/* Map controls overlay */}
       <div className="map-controls">
-        {overlayEnabled && selectedMetric && mapState.zoom < METRIC_OVERLAY_MIN_ZOOM && (
+        {overlayEnabled && selectedMetric && mapState.zoom < effectiveOverlayMinZoom && (
           <div className="map-overlay-hint">
-            Zoom in to see overlay (z≥{METRIC_OVERLAY_MIN_ZOOM})
+            Zoom in to see overlay (z≥{effectiveOverlayMinZoom})
           </div>
         )}
         {overlayEnabled && selectedMetric && metricLayerMounted && metricLayerVisible && tileTemplateIsLoading && (

@@ -55,6 +55,29 @@
   justify-content: flex-end;
 }
 
+.map-page-overlay-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.map-page-overlay-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.map-page-overlay-input {
+  width: 72px;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
 .map-page-dates {
   display: flex;
   align-items: center;
