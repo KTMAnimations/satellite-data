@@ -657,7 +657,9 @@ def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularit
 
     start = ee.Date(start_py.isoformat())
     end = ee.Date(end_py.isoformat())
-    geom = ee.Geometry.Rectangle([-180, -85, 180, 85], proj="EPSG:4326", geodesic=False)
+    # Avoid using +/-180 exactly: the antimeridian can produce half-world tiles
+    # (western hemisphere only) depending on EE tile rendering internals.
+    geom = ee.Geometry.Rectangle([-179.999, -85, 179.999, 85], proj="EPSG:4326", geodesic=False)
     img = build_metric_image(metric, start, end, geom)
 
     vmin, vmax = metric_def.value_range
