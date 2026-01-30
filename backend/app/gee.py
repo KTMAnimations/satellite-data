@@ -274,22 +274,47 @@ def build_metric_image(metric: MetricId, start, end, geom):
     band = metric
 
     if metric == "ndvi":
-        collection = (
+        # High-resolution NDVI from Sentinel-2 where available. At low zoom
+        # levels a single week can have sparse overpasses / clouds, producing
+        # visible striping. Fill masked gaps with a lightweight MODIS NDVI
+        # composite to keep the overlay visually continuous.
+        s2 = (
             ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
             .filterBounds(geom)
             .filterDate(start, end)
             .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 40))
         )
-        has_images = collection.size().gt(0)
+        s2_has_images = s2.size().gt(0)
 
-        def mask_clouds(image):
+        def mask_s2_clouds(image):
             scl = image.select("SCL")
             mask = scl.neq(3).And(scl.neq(8)).And(scl.neq(9)).And(scl.neq(10))
             return image.updateMask(mask)
 
-        composite = collection.map(mask_clouds).median()
-        ndvi = composite.normalizedDifference(["B8", "B4"]).rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, ndvi, _empty_masked_image(band))).clip(geom)
+        s2_composite = s2.map(mask_s2_clouds).median()
+        s2_ndvi = s2_composite.normalizedDifference(["B8", "B4"]).rename([band])
+
+        modis_buffer_days = 16
+        modis = (
+            ee.ImageCollection("MODIS/061/MOD13Q1")
+            .filterBounds(geom)
+            .filterDate(start.advance(-modis_buffer_days, "day"), end.advance(modis_buffer_days, "day"))
+        )
+        modis_has_images = modis.size().gt(0)
+
+        land_cover = ee.ImageCollection("MODIS/061/MCD12Q1").sort("system:time_start", False).first()
+        land_mask = land_cover.select(["LC_Type1"]).neq(0)
+
+        modis_median = modis.median()
+        modis_ndvi_raw = modis_median.select(["NDVI"]).multiply(0.0001).clamp(-1, 1).rename([band])
+        # SummaryQA: 0=good, 1=marginal, 2=snow/ice, 3=cloudy. Since MODIS is
+        # used only as a fill layer, keep everything except cloudy.
+        modis_qa_mask = modis_median.select(["SummaryQA"]).lt(3)
+        modis_ndvi = modis_ndvi_raw.updateMask(modis_qa_mask).updateMask(land_mask)
+        modis_ndvi = ee.Image(ee.Algorithms.If(modis_has_images, modis_ndvi, _empty_masked_image(band)))
+
+        filled = ee.Image(ee.Algorithms.If(s2_has_images, s2_ndvi.unmask(modis_ndvi), modis_ndvi))
+        return filled.clip(geom)
 
     if metric == "nightlights":
         # Daily: NASA Black Marble VNP46A2. Monthly: NOAA composites.
@@ -653,7 +678,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
-_tile_cache_version = 4
+_tile_cache_version = 7
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
