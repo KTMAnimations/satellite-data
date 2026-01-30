@@ -16,6 +16,11 @@ from app.schemas import MetricData, MetricDataPoint, MetricsResponse, MetricId, 
 
 router = APIRouter()
 
+# Used to invalidate cached metric observations in SQLite when computation logic changes.
+# Bump this when making non-backwards-compatible changes to `compute_time_series` inputs
+# or any metric implementation in `app/gee.py`.
+METRICS_CACHE_SOURCE = "earth_engine:v2"
+
 
 def _parse_month_from_bucket(bucket: str) -> int | None:
     try:
@@ -135,7 +140,7 @@ async def get_region_metrics(
         )
         rows = (await db.execute(q)).scalars().all()
         existing = {r.date_bucket: r for r in rows}
-        needs_compute = any(b not in existing for b in buckets)
+        needs_compute = any((b not in existing) or (existing[b].source != METRICS_CACHE_SOURCE) for b in buckets)
 
         per_metric[metric] = {
             "metric_def": metric_def,
@@ -194,7 +199,7 @@ async def get_region_metrics(
                     date_bucket=bucket,
                     value=value,
                     unit=metric_def.unit,
-                    source="earth_engine",
+                    source=METRICS_CACHE_SOURCE,
                     computed_at=computed_at,
                 )
                 db.add(row)
@@ -202,7 +207,7 @@ async def get_region_metrics(
             else:
                 row.value = value
                 row.unit = metric_def.unit
-                row.source = "earth_engine"
+                row.source = METRICS_CACHE_SOURCE
                 row.computed_at = computed_at
 
         # Mark the dict back (mutated in place)

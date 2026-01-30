@@ -60,6 +60,7 @@ htmlcov/
 
 # Playwright / E2E artifacts
 .playwright-mcp/
+playwright-mcp-screenshots/
 frontend/e2e/playwright-report/
 frontend/test-results/
 

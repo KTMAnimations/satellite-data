@@ -171,6 +171,19 @@ export function MapView({
   );
   const mapRef = useRef<LeafletMap | null>(null);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    // Expose the Leaflet map instance for debugging / Playwright-driven checks.
+    // react-leaflet assigns refs asynchronously; poll briefly until available.
+    const handle = window.setInterval(() => {
+      if (!mapRef.current) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__satelliteLeafletMap = mapRef.current;
+      window.clearInterval(handle);
+    }, 50);
+    return () => window.clearInterval(handle);
+  }, []);
+
   // Use prop if provided, otherwise fall back to store
   const selectedRegion = selectedRegionProp !== undefined ? selectedRegionProp : storeSelectedRegion;
   const focusRegion = selectedRegion ?? (regions.length === 1 ? regions[0] : null);

@@ -378,12 +378,25 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "surface_water":
-        target_month = start.format("YYYY-MM")
-        collection = ee.ImageCollection("JRC/GSW1_4/MonthlyHistory").filterBounds(geom)
-        filtered = collection.filter(ee.Filter.eq("system:index", target_month))
-        image = ee.Image(ee.Algorithms.If(filtered.size().gt(0), filtered.first(), _empty_masked_image("water").rename(["water"])))
-        water_mask = image.select(["water"]).eq(2).rename([band])
-        return water_mask.clip(geom)
+        # Primary: JRC MonthlyHistory (ends at 2021-12). system:index uses YYYY_MM.
+        # Fallback: JRC GlobalSurfaceWater occurrence (static), so recent date ranges
+        # still render meaningful water signal instead of an empty layer.
+        target_month = start.format("YYYY_MM")
+        monthly = ee.ImageCollection("JRC/GSW1_4/MonthlyHistory").filterBounds(geom).select(["water"])
+        filtered = monthly.filter(ee.Filter.eq("system:index", target_month))
+        has_month = filtered.size().gt(0)
+
+        monthly_img = ee.Image(
+            ee.Algorithms.If(
+                has_month,
+                filtered.first(),
+                _empty_masked_image("water").rename(["water"]),
+            )
+        )
+        monthly_mask = monthly_img.select(["water"]).eq(2).rename([band])
+
+        occurrence = ee.Image("JRC/GSW1_4/GlobalSurfaceWater").select(["occurrence"]).divide(100).rename([band])
+        return ee.Image(ee.Algorithms.If(has_month, monthly_mask, occurrence)).clip(geom)
 
     if metric == "active_fire":
         collection = (
@@ -640,7 +653,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
-_tile_cache_version = 3
+_tile_cache_version = 4
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
