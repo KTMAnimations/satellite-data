@@ -716,7 +716,6 @@ date,region,metric,value,unit
 3. **Analysis View** - Deep dive into metrics, charts, comparisons
 4. **Animation Studio** - Create and export time-lapse animations
 5. **Export Center** - Generate PDF reports, download data
-6. **Example Gallery** - Curated analyses (COVID, snowbirds, etc.)
 
 ### 7.3 Component Architecture
 
@@ -747,7 +746,7 @@ Pages
 ├── AnimationStudio (GIF export with live preview)
 ├── CompareView (two-period comparison)
 ├── ExportCenter (PDF report generation)
-└── Gallery (curated analysis presets)
+└── (Presets are loaded via RegionExplorer/Dashboard)
 ```
 
 ---

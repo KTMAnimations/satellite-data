@@ -54,6 +54,7 @@ export function AnalysisView() {
   const [correlationMetricY, setCorrelationMetricY] = useState<MetricType>('ndvi');
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [currentTimelineDate, setCurrentTimelineDate] = useState<Date | null>(null);
+  const [overlayIsLoading, setOverlayIsLoading] = useState(false);
 
   const { data: region } = useQuery({
     queryKey: ['region', regionId],
@@ -320,6 +321,7 @@ export function AnalysisView() {
                       selectedMetric={selectedMapMetric}
                       tileGranularity={granularity}
                       tileDate={tileDate}
+                      onOverlayLoadingChange={setOverlayIsLoading}
                     />
                   )}
                   <div className="map-legend-overlay">
@@ -340,6 +342,7 @@ export function AnalysisView() {
                   selectedDate={currentTimelineDate}
                   onDateChange={setCurrentTimelineDate}
                   isPlaying={isTimelinePlaying}
+                  playbackBlocked={overlayIsLoading}
                   onPlayPause={() => setIsTimelinePlaying(!isTimelinePlaying)}
                   width={280}
                 />

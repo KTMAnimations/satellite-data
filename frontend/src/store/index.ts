@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Region, MetricType, DateRange, MapState, ExportResponse } from '../types';
 
-export type NavSection = 'dashboard' | 'regions' | 'animations' | 'exports' | 'gallery';
+export type NavSection = 'dashboard' | 'regions' | 'animations' | 'exports';
 
 interface AppState {
   // Selected region
@@ -33,8 +33,6 @@ interface AppState {
   // UI state
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
-  activeTab: 'regions' | 'analysis' | 'exports' | 'gallery';
-  setActiveTab: (tab: 'regions' | 'analysis' | 'exports' | 'gallery') => void;
   navLastPath: Record<NavSection, string>;
   setNavLastPath: (section: NavSection, path: string) => void;
 
@@ -95,14 +93,11 @@ export const useStore = create<AppState>()(
       // Closed by default (especially important on mobile where the nav is an overlay).
       sidebarOpen: false,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
-      activeTab: 'regions',
-      setActiveTab: (tab) => set({ activeTab: tab }),
       navLastPath: {
         dashboard: '/',
         regions: '/regions',
         animations: '/animations',
         exports: '/exports',
-        gallery: '/gallery',
       },
       setNavLastPath: (section, path) =>
         set((state) => ({ navLastPath: { ...state.navLastPath, [section]: path } })),

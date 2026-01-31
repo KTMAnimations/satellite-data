@@ -133,6 +133,15 @@
   padding: 1rem;
 }
 
+.map-page-fullscreen-btn {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  z-index: 1400;
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-md);
+}
+
 .map-page-map .map-wrapper {
   flex: 1;
   min-height: 0;
@@ -145,6 +154,25 @@
   flex: 1 1 0%;
   min-height: 0;
   height: auto;
+}
+
+.map-page-map:fullscreen {
+  padding: 0;
+  background: var(--surface-page);
+}
+
+.map-page-map:fullscreen .map-container {
+  border-radius: 0;
+}
+
+.map-page-map:fullscreen .map-page-fullscreen-btn {
+  top: 1rem;
+  right: 1rem;
+}
+
+.map-page-map:fullscreen .map-page-legend {
+  bottom: 1rem;
+  left: 1rem;
 }
 
 .map-page-legend {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapView } from '../components/Map/MapContainer';
@@ -6,6 +6,7 @@ import { HeatmapLegend } from '../components/Map/HeatmapLegend';
 import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
 import api from '../services/api';
+import type { Map as LeafletMap } from 'leaflet';
 import type { Granularity, MetricType } from '../types';
 import {
   estimateBucketCount,
@@ -42,12 +43,17 @@ export function MapPage() {
   const { regionId } = useParams<{ regionId: string }>();
   const { dateRange, setDateRange } = useStore();
   const queryClient = useQueryClient();
+  const fullscreenTargetRef = useRef<HTMLDivElement | null>(null);
 
   const [selectedMapMetric, setSelectedMapMetric] = useState<MetricType>('nightlights');
   const [selectedGranularity, setSelectedGranularity] = useState<Granularity | null>(null);
   const [overlayMinZoom, setOverlayMinZoom] = useState<number>(4);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [currentTimelineDate, setCurrentTimelineDate] = useState<Date | null>(null);
+  const [overlayIsLoading, setOverlayIsLoading] = useState(false);
+  const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullscreenEnabled = typeof document !== 'undefined' && document.fullscreenEnabled;
 
   const { data: region, isError: regionIsError, error: regionError } = useQuery({
     queryKey: ['region', regionId],
@@ -107,6 +113,45 @@ export function MapPage() {
     queryClient.resetQueries({ queryKey: ['tiles'] });
     if (regionId) queryClient.resetQueries({ queryKey: ['metrics', regionId] });
   };
+
+  const handleToggleFullscreen = useCallback(async () => {
+    const target = fullscreenTargetRef.current;
+    if (!target) return;
+
+    try {
+      if (document.fullscreenElement && document.fullscreenElement !== target) {
+        await document.exitFullscreen();
+      }
+
+      if (document.fullscreenElement === target) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await target.requestFullscreen();
+    } catch (err) {
+      console.warn('Failed to toggle fullscreen:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!fullscreenEnabled) return;
+
+    const handleFullscreenChange = () => {
+      const target = fullscreenTargetRef.current;
+      const nowFullscreen = Boolean(target && document.fullscreenElement === target);
+      setIsFullscreen(nowFullscreen);
+
+      if (mapInstance) {
+        requestAnimationFrame(() => mapInstance.invalidateSize({ animate: false }));
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [fullscreenEnabled, mapInstance]);
 
   if (!regionId) {
     return (
@@ -226,7 +271,7 @@ export function MapPage() {
       </div>
 
       <div className="map-page-body">
-        <div className="map-page-map">
+        <div className="map-page-map" ref={fullscreenTargetRef}>
           {region && (
             <MapView
               regions={[region]}
@@ -234,7 +279,35 @@ export function MapPage() {
               overlayMinZoom={overlayMinZoom}
               tileGranularity={granularity}
               tileDate={tileDate}
+              onOverlayLoadingChange={setOverlayIsLoading}
+              onMapReady={setMapInstance}
             />
+          )}
+
+          {fullscreenEnabled && (
+            <button
+              type="button"
+              className="btn btn-outline btn-icon map-page-fullscreen-btn"
+              onClick={handleToggleFullscreen}
+              aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              {isFullscreen ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9h5V4" />
+                  <path d="M21 9h-5V4" />
+                  <path d="M3 15h5v5" />
+                  <path d="M21 15h-5v5" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M8 3H3v5" />
+                  <path d="M16 3h5v5" />
+                  <path d="M8 21H3v-5" />
+                  <path d="M16 21h5v-5" />
+                </svg>
+              )}
+            </button>
           )}
 
           <div className="map-page-legend">
@@ -258,6 +331,7 @@ export function MapPage() {
               selectedDate={currentTimelineDate}
               onDateChange={setCurrentTimelineDate}
               isPlaying={isTimelinePlaying}
+              playbackBlocked={overlayIsLoading}
               onPlayPause={() => setIsTimelinePlaying(!isTimelinePlaying)}
               width={720}
             />

@@ -145,7 +145,9 @@ Generate downloadable reports and data.
 
 ---
 
-## Example Gallery
+## Preset Examples
+
+These presets can be opened from the Dashboard (“View Presets”) or directly via `/regions?preset=<id>`.
 
 ### Snowbird Migration Pattern
 

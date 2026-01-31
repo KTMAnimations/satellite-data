@@ -18,9 +18,6 @@ const CompareView = lazy(async () => ({
 const ExportCenter = lazy(async () => ({
   default: (await import('./pages/ExportCenter')).ExportCenter,
 }));
-const Gallery = lazy(async () => ({
-  default: (await import('./pages/Gallery')).Gallery,
-}));
 const AnimationStudio = lazy(async () => ({
   default: (await import('./pages/AnimationStudio')).AnimationStudio,
 }));
@@ -36,7 +33,6 @@ function App() {
         <Route path="map/:regionId" element={<MapPage />} />
         <Route path="compare/:regionId" element={<CompareView />} />
         <Route path="exports" element={<ExportCenter />} />
-        <Route path="gallery" element={<Gallery />} />
         <Route path="animations" element={<AnimationStudio />} />
       </Route>
     </Routes>

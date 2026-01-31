@@ -9,6 +9,7 @@ interface TimeSliderProps {
   selectedDate: Date;
   onDateChange: (date: Date) => void;
   isPlaying?: boolean;
+  playbackBlocked?: boolean;
   onPlayPause?: () => void;
   playbackSpeed?: number;
   onSpeedChange?: (speed: number) => void;
@@ -20,6 +21,7 @@ export function TimeSlider({
   selectedDate,
   onDateChange,
   isPlaying = false,
+  playbackBlocked = false,
   onPlayPause,
   playbackSpeed = 1,
   onSpeedChange,
@@ -222,6 +224,7 @@ export function TimeSlider({
     if (!isPlaying) return;
 
     const interval = setInterval(() => {
+      if (playbackBlocked) return;
       const currentIndex = sortedDates.findIndex(
         (d) => d.getTime() === selectedDate.getTime()
       );
@@ -230,7 +233,7 @@ export function TimeSlider({
     }, 1000 / playbackSpeed);
 
     return () => clearInterval(interval);
-  }, [isPlaying, selectedDate, sortedDates, playbackSpeed, onDateChange]);
+  }, [isPlaying, playbackBlocked, selectedDate, sortedDates, playbackSpeed, onDateChange]);
 
   return (
     <div className="time-slider">

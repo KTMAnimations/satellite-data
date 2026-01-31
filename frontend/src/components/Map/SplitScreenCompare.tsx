@@ -267,18 +267,6 @@ export function SplitScreenCompare({
           {mapA && <SyncedMap targetMap={mapA} onMove={handleMapMove} />}
         </LeafletMapContainer>
       </div>
-
-      {/* Legend */}
-      <div className="comparison-legend">
-        <div className="legend-item decrease">
-          <span className="color-swatch" />
-          <span>Decrease</span>
-        </div>
-        <div className="legend-item increase">
-          <span className="color-swatch" />
-          <span>Increase</span>
-        </div>
-      </div>
     </div>
   );
 }

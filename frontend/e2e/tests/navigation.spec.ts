@@ -26,7 +26,6 @@ test.describe('Navigation', () => {
       { path: '/regions', title: 'Region' },
       { path: '/animations', title: 'Animation' },
       { path: '/exports', title: 'Export' },
-      { path: '/gallery', title: 'Gallery' },
     ];
 
     for (const route of routes) {

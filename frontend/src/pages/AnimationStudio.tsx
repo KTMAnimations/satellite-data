@@ -66,6 +66,7 @@ export function AnimationStudio() {
   const [currentDate, setCurrentDate] = useState<Date>(dateRange.start);
   const [livePreview, setLivePreview] = useState(false);
   const [previewDate, setPreviewDate] = useState<Date | null>(null);
+  const [previewOverlayIsLoading, setPreviewOverlayIsLoading] = useState(false);
   const [viewLocked, setViewLocked] = useState(false);
   const [exportFormat, setExportFormat] = useState<'gif'>('gif');
   const [frameDuration, setFrameDuration] = useState(500);
@@ -500,6 +501,7 @@ export function AnimationStudio() {
                       ? (formatDateYYYYMMDD(previewDate) ?? previewDate.toISOString().split('T')[0])
                       : undefined}
                     overlayEnabled={Boolean(previewDate)}
+                    onOverlayLoadingChange={setPreviewOverlayIsLoading}
                     viewLocked={viewLocked}
                   />
                 </div>
@@ -550,6 +552,7 @@ export function AnimationStudio() {
                 selectedDate={currentDate}
                 onDateChange={handleTimelineDateChange}
                 isPlaying={isPlaying}
+                playbackBlocked={previewOverlayIsLoading}
                 onPlayPause={handlePlayPause}
                 playbackSpeed={playbackSpeed}
                 onSpeedChange={setPlaybackSpeed}

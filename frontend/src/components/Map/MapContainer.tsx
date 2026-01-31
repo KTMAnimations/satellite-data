@@ -50,11 +50,13 @@ interface MapContainerProps {
   overlayEnabled?: boolean;
   overlayAllowNetwork?: boolean;
   overlayMinZoom?: number;
+  onOverlayLoadingChange?: (isLoading: boolean) => void;
   onOverlayTileEvent?: (event: CompositeTileEvent) => void;
   viewLocked?: boolean;
   selectedRegion?: Region | null; // Optional prop to override store's selectedRegion
   flowPoints?: FlowPoint[]; // Optional migration flow visualization points
   flowColor?: string; // Color for flow particles
+  onMapReady?: (map: LeafletMap | null) => void;
 }
 
 function MapInteractionLock({ locked }: { locked: boolean }) {
@@ -160,10 +162,12 @@ export function MapView({
   overlayEnabled = true,
   overlayAllowNetwork = true,
   overlayMinZoom,
+  onOverlayLoadingChange,
   viewLocked = false,
   selectedRegion: selectedRegionProp,
   flowPoints,
   flowColor = '#3b82f6',
+  onMapReady,
 }: MapContainerProps) {
   const { mapState, storeSelectedRegion } = useStore(
     (state) => ({
@@ -174,18 +178,17 @@ export function MapView({
   );
   const mapRef = useRef<LeafletMap | null>(null);
 
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    // Expose the Leaflet map instance for debugging / Playwright-driven checks.
-    // react-leaflet assigns refs asynchronously; poll briefly until available.
-    const handle = window.setInterval(() => {
-      if (!mapRef.current) return;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).__satelliteLeafletMap = mapRef.current;
-      window.clearInterval(handle);
-    }, 50);
-    return () => window.clearInterval(handle);
-  }, []);
+  const handleMapRef = useCallback(
+    (map: LeafletMap | null) => {
+      mapRef.current = map;
+      if (import.meta.env.DEV && map) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).__satelliteLeafletMap = map;
+      }
+      onMapReady?.(map);
+    },
+    [onMapReady]
+  );
 
   // Use prop if provided, otherwise fall back to store
   const selectedRegion = selectedRegionProp !== undefined ? selectedRegionProp : storeSelectedRegion;
@@ -321,6 +324,30 @@ export function MapView({
     setPendingTileTemplate(null);
   }, []);
 
+  const overlayHasUnappliedTemplate = Boolean(
+    metricLayerMounted &&
+      metricLayerVisible &&
+      activeTileTemplate?.tile_url &&
+      tileTemplate?.tile_url &&
+      activeTileTemplate.metric === tileTemplate.metric &&
+      activeTileTemplate.granularity === tileTemplate.granularity &&
+      activeTileTemplate.tile_url !== tileTemplate.tile_url
+  );
+  const overlayIsLoading = Boolean(
+    overlayEnabled &&
+      selectedMetric &&
+      metricLayerMounted &&
+      metricLayerVisible &&
+      (tileTemplateIsLoading || tileTemplateIsFetching || Boolean(pendingTileTemplate) || overlayHasUnappliedTemplate)
+  );
+
+  useEffect(() => {
+    onOverlayLoadingChange?.(overlayIsLoading);
+  }, [onOverlayLoadingChange, overlayIsLoading]);
+  useEffect(() => {
+    return () => onOverlayLoadingChange?.(false);
+  }, [onOverlayLoadingChange]);
+
   const legendGradientStyle =
     tileTemplate?.palette?.length
       ? { background: `linear-gradient(to right, ${tileTemplate.palette.join(', ')})` }
@@ -358,7 +385,7 @@ export function MapView({
         maxZoom={MAX_MAP_ZOOM}
         fadeAnimation={false}
         className="map-container"
-        ref={mapRef}
+        ref={handleMapRef}
       >
         <TileLayer
           attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'

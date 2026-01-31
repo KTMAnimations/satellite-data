@@ -40,10 +40,10 @@ test.describe('Dashboard', () => {
     await page.getByRole('link', { name: 'Explore Regions' }).click();
     await expect(page).toHaveURL('/regions');
 
-    // Go back and click View Examples
+    // Go back and click View Presets
     await page.goto('/');
-    await page.getByRole('link', { name: 'View Examples' }).click();
-    await expect(page).toHaveURL('/gallery');
+    await page.getByRole('link', { name: 'View Presets' }).click();
+    await expect(page).toHaveURL('/regions?preset=snowbird');
   });
 
   test('displays map component', async ({ page }) => {

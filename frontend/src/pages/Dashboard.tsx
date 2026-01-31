@@ -76,8 +76,8 @@ export function Dashboard() {
             <Link to="/regions" className="btn btn-primary">
               Explore Regions
             </Link>
-            <Link to="/gallery" className="btn btn-outline">
-              View Examples
+            <Link to={`/regions?preset=${FEATURED_PRESET_ORDER[0]}`} className="btn btn-outline">
+              View Presets
             </Link>
           </div>
         </div>
@@ -112,7 +112,7 @@ export function Dashboard() {
             return (
               <Link
                 key={preset.id}
-                to={`/gallery?preset=${preset.id}`}
+                to={`/regions?preset=${preset.id}`}
                 className="featured-card instrument-panel"
               >
                 <span className="bracket-bl" />

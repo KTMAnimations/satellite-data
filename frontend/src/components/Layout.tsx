@@ -5,7 +5,6 @@ import {
   MapTrifold,
   FilmStrip,
   DownloadSimple,
-  Images,
   List,
   Planet,
 } from '@phosphor-icons/react';
@@ -24,7 +23,6 @@ function navSectionForPath(pathname: string): NavSection {
   }
   if (pathname.startsWith('/animations')) return 'animations';
   if (pathname.startsWith('/exports')) return 'exports';
-  if (pathname.startsWith('/gallery')) return 'gallery';
   return 'dashboard';
 }
 
@@ -45,7 +43,6 @@ export function Layout() {
     { section: 'regions' as const, path: '/regions', label: 'Regions', icon: MapTrifold },
     { section: 'animations' as const, path: '/animations', label: 'Animations', icon: FilmStrip },
     { section: 'exports' as const, path: '/exports', label: 'Exports', icon: DownloadSimple },
-    { section: 'gallery' as const, path: '/gallery', label: 'Gallery', icon: Images },
   ];
 
   const activeSection = navSectionForPath(location.pathname);
