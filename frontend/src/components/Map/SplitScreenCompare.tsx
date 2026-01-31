@@ -9,6 +9,7 @@ import {
 import type { Granularity, Region, MetricType } from '../../types';
 import api from '../../services/api';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
+import { MAX_MAP_ZOOM } from '../../config/map';
 import './SplitScreenCompare.css';
 
 function toDateBucket(dateStr: string, granularity: Granularity): string {
@@ -143,7 +144,7 @@ export function SplitScreenCompare({
     color: '#06b6d4',
     weight: 2,
     fillColor: '#06b6d4',
-    fillOpacity: 0.1,
+    fillOpacity: 0,
   };
 
   const handleMapMove = useCallback(() => {
@@ -193,7 +194,8 @@ export function SplitScreenCompare({
           center={center}
           zoom={10}
           minZoom={9}
-          maxZoom={11}
+          maxZoom={MAX_MAP_ZOOM}
+          fadeAnimation={false}
           className="leaflet-map"
           ref={(m) => setMapA(m || null)}
           zoomControl={false}
@@ -243,7 +245,8 @@ export function SplitScreenCompare({
           center={center}
           zoom={10}
           minZoom={9}
-          maxZoom={11}
+          maxZoom={MAX_MAP_ZOOM}
+          fadeAnimation={false}
           className="leaflet-map"
           ref={(m) => setMapB(m || null)}
           zoomControl={false}

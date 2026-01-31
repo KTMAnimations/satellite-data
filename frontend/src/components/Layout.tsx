@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   SquaresFour,
@@ -9,20 +9,53 @@ import {
   List,
   Planet,
 } from '@phosphor-icons/react';
-import { useStore } from '../store';
+import { shallow } from 'zustand/shallow';
+import { useStore, type NavSection } from '../store';
 import './Layout.css';
+
+function navSectionForPath(pathname: string): NavSection {
+  if (
+    pathname.startsWith('/regions')
+    || pathname.startsWith('/analysis')
+    || pathname.startsWith('/map')
+    || pathname.startsWith('/compare')
+  ) {
+    return 'regions';
+  }
+  if (pathname.startsWith('/animations')) return 'animations';
+  if (pathname.startsWith('/exports')) return 'exports';
+  if (pathname.startsWith('/gallery')) return 'gallery';
+  return 'dashboard';
+}
 
 export function Layout() {
   const location = useLocation();
-  const { sidebarOpen, setSidebarOpen } = useStore();
+  const { sidebarOpen, setSidebarOpen, navLastPath, setNavLastPath } = useStore(
+    (state) => ({
+      sidebarOpen: state.sidebarOpen,
+      setSidebarOpen: state.setSidebarOpen,
+      navLastPath: state.navLastPath,
+      setNavLastPath: state.setNavLastPath,
+    }),
+    shallow
+  );
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: SquaresFour },
-    { path: '/regions', label: 'Regions', icon: MapTrifold },
-    { path: '/animations', label: 'Animations', icon: FilmStrip },
-    { path: '/exports', label: 'Exports', icon: DownloadSimple },
-    { path: '/gallery', label: 'Gallery', icon: Images },
+    { section: 'dashboard' as const, path: '/', label: 'Dashboard', icon: SquaresFour },
+    { section: 'regions' as const, path: '/regions', label: 'Regions', icon: MapTrifold },
+    { section: 'animations' as const, path: '/animations', label: 'Animations', icon: FilmStrip },
+    { section: 'exports' as const, path: '/exports', label: 'Exports', icon: DownloadSimple },
+    { section: 'gallery' as const, path: '/gallery', label: 'Gallery', icon: Images },
   ];
+
+  const activeSection = navSectionForPath(location.pathname);
+
+  useEffect(() => {
+    const section = navSectionForPath(location.pathname);
+    const fullPath = `${location.pathname}${location.search}`;
+    if (navLastPath[section] === fullPath) return;
+    setNavLastPath(section, fullPath);
+  }, [location.pathname, location.search, navLastPath, setNavLastPath]);
 
   return (
     <div className="layout">
@@ -51,10 +84,10 @@ export function Layout() {
                 <div key={item.path} className="nav-item">
                   {index > 0 && <div className="nav-divider" />}
                   <Link
-                    to={item.path}
-                    className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+                    to={navLastPath[item.section] ?? item.path}
+                    className={`nav-link ${activeSection === item.section ? 'active' : ''}`}
                   >
-                    <Icon size={16} weight={location.pathname === item.path ? 'fill' : 'regular'} />
+                    <Icon size={16} weight={activeSection === item.section ? 'fill' : 'regular'} />
                     <span className="nav-label">{item.label}</span>
                   </Link>
                 </div>

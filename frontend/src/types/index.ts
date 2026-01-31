@@ -184,7 +184,7 @@ export interface DateRange {
 export interface MapState {
   center: [number, number];
   zoom: number;
-  selectedRegionId: string | null;
+  contextRegionId: string | null;
 }
 
 // Presets

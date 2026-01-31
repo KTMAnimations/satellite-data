@@ -71,6 +71,8 @@ build/
 
 # Frontend
 frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
 
 # Docker
 .docker/

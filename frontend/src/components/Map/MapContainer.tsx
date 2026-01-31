@@ -14,14 +14,14 @@ import { useStore } from '../../store';
 import type { Granularity, Region, GeoJSONPolygon, MetricType } from '../../types';
 import api from '../../services/api';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
+import { DEFAULT_METRIC_OVERLAY_MIN_ZOOM, MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
 import { formatApiError } from '../../utils/errors';
 import type { CompositeTileEvent } from './CompositeTileLayer';
 import type { FlowPoint } from './FlowLayer';
 import './MapContainer.css';
 
-const METRIC_OVERLAY_MIN_ZOOM = 9;
-const MIN_MAP_ZOOM = 4;
-const MAX_MAP_ZOOM = 11;
+const MAPTILER_KEY = (import.meta.env.VITE_MAPTILER_KEY ?? '').trim();
+const MAPTILER_OMT_RASTER_URL = `https://api.maptiler.com/maps/openstreetmap/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`;
 
 function clampZoom(zoom: number, min: number, max: number): number {
   if (!Number.isFinite(zoom)) return min;
@@ -99,12 +99,13 @@ function MapController({
   lockView: boolean;
 }) {
   const map = useMap();
-  const setMapCenter = useStore((state) => state.setMapCenter);
-  const setMapZoom = useStore((state) => state.setMapZoom);
+  const mapContextRegionId = useStore((state) => state.mapState.contextRegionId);
+  const updateMapState = useStore((state) => state.updateMapState);
 
   useEffect(() => {
     if (lockView) return;
     if (focusRegion) {
+      if (mapContextRegionId === focusRegion.id) return;
       // Use geometry if available, otherwise use bounds
       if (focusRegion.geometry?.coordinates?.[0]) {
         const coords = focusRegion.geometry.coordinates[0];
@@ -120,26 +121,28 @@ function MapController({
 
         // Sync store state immediately so zoom-gated overlays render on first load.
         const center = map.getCenter();
-        setMapCenter([center.lat, center.lng]);
-        setMapZoom(map.getZoom());
+        updateMapState({
+          center: [center.lat, center.lng],
+          zoom: map.getZoom(),
+          contextRegionId: focusRegion.id,
+        });
       }
     }
-  }, [focusRegion, lockView, map, setMapCenter, setMapZoom]);
+  }, [focusRegion, lockView, map, mapContextRegionId, updateMapState]);
 
   return null;
 }
 
-function MapEvents() {
-  const setMapCenter = useStore((state) => state.setMapCenter);
-  const setMapZoom = useStore((state) => state.setMapZoom);
+function MapEvents({ contextRegionId }: { contextRegionId: string | null }) {
+  const updateMapState = useStore((state) => state.updateMapState);
 
   useMapEvents({
     moveend: (e) => {
       const center = e.target.getCenter();
-      setMapCenter([center.lat, center.lng]);
+      updateMapState({ center: [center.lat, center.lng], contextRegionId });
     },
     zoomend: (e) => {
-      setMapZoom(e.target.getZoom());
+      updateMapState({ zoom: e.target.getZoom(), contextRegionId });
     },
   });
 
@@ -186,9 +189,15 @@ export function MapView({
 
   // Use prop if provided, otherwise fall back to store
   const selectedRegion = selectedRegionProp !== undefined ? selectedRegionProp : storeSelectedRegion;
-  const focusRegion = selectedRegion ?? (regions.length === 1 ? regions[0] : null);
+  const focusRegion = regions.length === 1 ? regions[0] : selectedRegion ?? null;
+  const interactionContextRegionId =
+    regions.length === 1
+      ? regions[0].id
+      : showDrawControls
+        ? (selectedRegion?.id ?? null)
+        : null;
   const effectiveOverlayMinZoom = clampZoom(
-    typeof overlayMinZoom === 'number' ? Math.round(overlayMinZoom) : METRIC_OVERLAY_MIN_ZOOM,
+    typeof overlayMinZoom === 'number' ? Math.round(overlayMinZoom) : DEFAULT_METRIC_OVERLAY_MIN_ZOOM,
     MIN_MAP_ZOOM,
     MAX_MAP_ZOOM
   );
@@ -218,9 +227,23 @@ export function MapView({
         date_bucket: dateBucket!,
         granularity: effectiveGranularity!,
       }),
-    enabled: Boolean(metricLayerMounted && metricLayerVisible && selectedMetric && dateBucket && effectiveGranularity),
+    // Prefetch the tile template as soon as we know the metric+date, so that when
+    // the user zooms in past the cutoff the overlay appears immediately.
+    enabled: Boolean(
+      metricLayerMounted &&
+        overlayEnabled &&
+        overlayAllowNetwork &&
+        selectedMetric &&
+        dateBucket &&
+        effectiveGranularity
+    ),
     staleTime: 1000 * 60 * 60, // tokens are short-lived; keep cache bounded
   });
+
+  const legendGradientStyle =
+    tileTemplate?.palette?.length
+      ? { background: `linear-gradient(to right, ${tileTemplate.palette.join(', ')})` }
+      : undefined;
 
   const handleCreated = (e: unknown) => {
     if (onRegionCreate) {
@@ -232,11 +255,16 @@ export function MapView({
 
   const getRegionStyle = (region: Region) => {
     const isSelected = selectedRegion?.id === region.id;
+    // Scale stroke width down when zoomed out so small regions don't collapse into thick, boxy markers.
+    const zoomT =
+      (mapState.zoom - MIN_MAP_ZOOM) / Math.max(1, MAX_MAP_ZOOM - MIN_MAP_ZOOM);
+    const zoomScale = 0.25 + Math.min(1, Math.max(0, zoomT)) * 0.75;
+    const baseWeight = isSelected ? 3 : 2;
     return {
       color: isSelected ? '#2563eb' : '#64748b',
-      weight: isSelected ? 3 : 2,
+      weight: baseWeight * zoomScale,
       fillColor: isSelected ? '#2563eb' : '#64748b',
-      fillOpacity: isSelected ? 0.2 : 0.1,
+      fillOpacity: 0,
     };
   };
 
@@ -247,12 +275,16 @@ export function MapView({
         zoom={mapState.zoom}
         minZoom={MIN_MAP_ZOOM}
         maxZoom={MAX_MAP_ZOOM}
+        fadeAnimation={false}
         className="map-container"
         ref={mapRef}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
+          url={MAPTILER_OMT_RASTER_URL}
+          tileSize={512}
+          zoomOffset={-1}
+          crossOrigin
         />
 
         {/* Metric tile overlay (Earth Engine URL template) */}
@@ -311,7 +343,7 @@ export function MapView({
                     shapeOptions: {
                       color: '#2563eb',
                       fillColor: '#2563eb',
-                      fillOpacity: 0.2,
+                      fillOpacity: 0,
                     },
                   },
                 }}
@@ -326,7 +358,7 @@ export function MapView({
 
         <MapInteractionLock locked={viewLocked} />
         <MapController focusRegion={focusRegion} lockView={viewLocked} />
-        <MapEvents />
+        <MapEvents contextRegionId={interactionContextRegionId} />
       </LeafletMapContainer>
 
       {/* Map controls overlay */}
@@ -356,7 +388,11 @@ export function MapView({
         {selectedMetric && (
           <div className="map-legend">
             <span className="legend-title">{selectedMetric}</span>
-            <div className="legend-gradient" data-metric={selectedMetric} />
+            <div
+              className="legend-gradient"
+              data-metric={selectedMetric}
+              style={legendGradientStyle}
+            />
             <div className="legend-labels">
               <span>Low</span>
               <span>High</span>

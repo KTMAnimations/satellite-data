@@ -3,10 +3,8 @@
 ## Complete Specification Document
 
 **Project Name:** SatelliteMigration
-**Last Updated:** 2026-01-26
+**Last Updated:** 2026-01-31
 **Status:** Dockerless local-first implementation (SQLite + Earth Engine)
-
-> Implementation note (2026-01-28): the repo was rebuilt for personal/local use. Docker/PostGIS/Redis/Celery were removed; the backend now uses SQLite and Earth Engine for server-side compute + tile URL templates.
 
 ---
 
@@ -41,7 +39,6 @@ Detecting individual cars requires **5-30cm resolution**, but free satellite dat
 **Region Selection:**
 - Predefined cities/regions (curated list)
 - Draw polygons on map
-- Upload GeoJSON/Shapefile
 
 **Temporal Analysis:**
 - Full Sentinel-2 archive (2015+)
@@ -49,33 +46,33 @@ Detecting individual cars requires **5-30cm resolution**, but free satellite dat
 - Seasonal comparisons (winter vs summer)
 
 **Temporal Resolution by Metric (17 total):**
-| Metric | Data Source | Resolution | Granularity | Notes |
-|--------|-------------|------------|-------------|-------|
-| NDVI | Sentinel-2 | 10m | Weekly | Vegetation health |
-| Nightlights | VIIRS Black Marble | 375m | Daily | Activity proxy |
-| Urban Density | GHSL SMOD | 10m | Monthly | Built-up fraction |
-| Parking | Sentinel-2 (NDBI) | 10m | Weekly | Occupancy proxy |
-| Land Cover | Dynamic World | 10m | Monthly | Land use classification |
-| Surface Water | JRC GSW | 30m | Monthly | Water extent |
-| Active Fire | VIIRS 375m | 375m | Daily | Fire hotspots |
-| NO2 | Sentinel-5P | 7km | Monthly | Air quality |
-| Temperature | ERA5-Land | 11km | Monthly | Weather context |
-| Precipitation | ERA5-Land | 11km | Monthly | Rainfall |
-| Aerosol | Sentinel-5P | 7km | Monthly | Smoke/dust |
-| Cropland | USDA CDL | 30m | Yearly | Crop types (US) |
-| Evapotranspiration | OpenET | 30m | Monthly | Water use (US) |
-| Soil Moisture | SMAP | 10km | Monthly | Drought indicator |
-| Impervious | GAIA | 30m | Yearly | Urban footprint |
-| Fire Historical | MODIS FIRMS | 1km | Monthly | Fire archive |
-| Canopy Height | GEDI | 1km | Static | Forest structure |
+| Metric | Data Source (GEE Collection) | Resolution | Default Granularity | Supported | Notes |
+|--------|------------------------------|------------|---------------------|-----------|-------|
+| NDVI | Sentinel-2 + MODIS fill | 10m | Weekly | weekly, monthly | Vegetation health |
+| Nightlights | VIIRS Black Marble / NOAA monthly | 375m | Monthly | daily, monthly | Activity proxy |
+| Urban Density | GHSL SMOD | 10m | Monthly | monthly | Built-up fraction |
+| Parking | Sentinel-2 (NDBI) | 10m | Weekly | weekly, monthly | Occupancy proxy |
+| Land Cover | Dynamic World | 10m | Weekly | weekly, monthly | Built-up probability |
+| Surface Water | JRC GSW | 30m | Monthly | monthly | Water extent |
+| Active Fire | VIIRS 375m | 375m | Daily | daily, monthly | Fire hotspots |
+| NO2 | Sentinel-5P | 7km | Daily | daily, monthly | Air quality |
+| Temperature | ERA5-Land Daily Agg | 11km | Daily | daily, monthly | 2m air temperature |
+| Precipitation | CHIRPS Daily | ~5km | Daily | daily, monthly | Rainfall |
+| Aerosol | Sentinel-5P | 7km | Daily | daily, monthly | UV aerosol index |
+| Cropland | ESA WorldCover | 10m | Monthly | monthly | Cropland fraction (global) |
+| Evapotranspiration | MODIS MOD16A2GF | ~500m | Monthly | monthly | Water use (global) |
+| Soil Moisture | SMAP L4 | ~11km | Weekly | weekly, monthly | Root-zone moisture (m³/m³) |
+| Impervious | GAIA | 30m | Monthly | monthly | Urban footprint |
+| Fire Historical | MODIS FIRMS | 1km | Monthly | monthly | Fire archive (2000+) |
+| Canopy Height | GEDI / Simard | 1km | Monthly | monthly | Forest structure (static dataset) |
 
 See `docs/GEE_DATASETS.md` for detailed dataset specifications.
 
 **Visualization Outputs:**
 - Interactive heatmaps (zoomable, time-slider)
-- Time-lapse animations (GIF/video)
-- Comparative charts (line/bar)
-- Downloadable reports (PDF/CSV)
+- Time-lapse animations (GIF export)
+- Comparative charts (line/bar/scatter)
+- Downloadable reports (PDF)
 
 ### 2.3 Use Cases
 1. **Seasonal migration patterns** - Track population shifts (snowbirds, tourists)
@@ -91,37 +88,46 @@ See `docs/GEE_DATASETS.md` for detailed dataset specifications.
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | React + TypeScript |
+| Frontend | React + TypeScript (Vite) |
 | Maps | Leaflet (open source, free) |
 | Charts | D3.js |
 | State Management | Zustand |
 | Backend | FastAPI (Python, fully async) |
-| Database | PostgreSQL + PostGIS |
-| Region Storage | PMTiles (cloud-optimized) |
-| Auth | Simple API keys |
-| Logging | Structured JSON (structlog) |
-| Containers | Docker Compose |
+| Database | SQLite (aiosqlite) |
+| Region Storage | GeoJSON in SQLite TEXT columns |
+| Satellite Compute | Google Earth Engine (server-side) |
+| Auth | None (local/personal use) |
+| Logging | Standard Python `logging` |
+| Containers | None (dockerless, local-first) |
+| Background Tasks | In-process (FastAPI BackgroundTasks) |
 | Hosting | Local initially |
 | Offline | Online only (no PWA) |
 
-### 3.2 Data Sources (Multi-Provider Strategy)
+### 3.2 Data Sources (Google Earth Engine)
 
-**Primary Sources:**
-| Source | Data Type | Spatial Res | Temporal Res | Access Method |
-|--------|-----------|-------------|--------------|---------------|
-| Sentinel-2 | Optical imagery | 10m | 5 days | GEE, Copernicus, Planetary Computer |
-| VIIRS | Nighttime lights | 375m-750m | Monthly composite | GEE, NOAA |
-| Global Human Settlement Layer | Built-up areas | 10m | Multi-year epochs | GEE |
-| OpenStreetMap | Road networks, POIs | Vector | Continuous | Overpass API |
-| WorldPop | Population density | 100m | Annual | Direct download |
+All satellite data is accessed exclusively through Google Earth Engine. GEE handles server-side compute, compositing, and tile generation — no local geospatial libraries (rasterio, GDAL, etc.) are needed.
 
-**Alternative/Supplementary Platforms (to reduce GEE dependency):**
-| Platform | Access | Notes |
-|----------|--------|-------|
-| [Microsoft Planetary Computer](https://planetarycomputer.microsoft.com/) | Free (Azure) | STAC-based, Sentinel-2, Landsat |
-| [AWS Open Data](https://aws.amazon.com/earth/) | Free (S3) | Sentinel-2, Landsat-8, CBERS |
-| [Copernicus Data Space](https://dataspace.copernicus.eu/) | Free (EU) | Direct Sentinel access |
-| [Sentinel Hub](https://www.sentinel-hub.com/) | Freemium | 30-day free trial, good API |
+**Primary GEE Collections:**
+| Source | Data Type | Spatial Res | Temporal Res |
+|--------|-----------|-------------|--------------|
+| Sentinel-2 (COPERNICUS/S2_SR_HARMONIZED) | Optical imagery (NDVI) | 10m | 5 days |
+| MODIS (MODIS/061/MOD13A2) | NDVI fill layer | 1km | 16 days |
+| VIIRS Black Marble (NASA/VIIRS/002/VNP46A2) | Daily nighttime lights | 375m | Daily |
+| NOAA Monthly (NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG) | Monthly nightlight composites | 375m | Monthly |
+| GHSL SMOD (JRC/GHSL/P2023A/GHS_SMOD_V1_0) | Built-up areas | 10m | Multi-year |
+| Dynamic World (GOOGLE/DYNAMICWORLD/V1) | Land cover | 10m | Near real-time |
+| JRC GSW (JRC/GSW1_4/MonthlyHistory) | Surface water | 30m | Monthly |
+| VIIRS FIRMS (NASA/FIRMS) | Active fire | 375m | Daily |
+| Sentinel-5P (COPERNICUS/S5P/OFFL/L3_NO2) | NO2 pollution | 7km | Daily |
+| ERA5-Land Daily (ECMWF/ERA5_LAND/DAILY_AGGR) | Temperature | 11km | Daily |
+| CHIRPS (UCSB-CHG/CHIRPS/DAILY) | Precipitation | ~5km | Daily |
+| Sentinel-5P (COPERNICUS/S5P/OFFL/L3_AER_AI) | Aerosol index | 7km | Daily |
+| ESA WorldCover (ESA/WorldCover/v200) | Cropland fraction | 10m | Annual |
+| MODIS (MODIS/061/MOD16A2GF) | Evapotranspiration | ~500m | 8-day |
+| SMAP L4 (NASA/SMAP/SPL4SMGP/008) | Soil moisture | ~11km | 3-hourly |
+| GAIA (Tsinghua/FROM-GLC/GAIA/v10) | Impervious surface | 30m | Annual |
+| MODIS (MODIS/061/MOD14A1) | Historical fire | 1km | Daily |
+| GEDI + Simard (NASA/JPL/global_forest_canopy_height_2005) | Canopy height | 1km | Static |
 
 ### 3.3 Project Structure
 
@@ -204,7 +210,7 @@ satellite-data/
    ├── Calculate change metrics
    ├── Identify anomalies
    ├── Estimate migration proxies
-   └── Store results in PostGIS
+   └── Return results via API (stateless, no persistent storage)
 
 6. VISUALIZATION
    ├── Generate tile layers for map
@@ -213,51 +219,40 @@ satellite-data/
    └── Serve via API
 ```
 
-### 4.3 Database Schema (PostGIS)
+### 4.3 Database Schema (SQLite via SQLAlchemy)
 
-```sql
--- Regions table
-CREATE TABLE regions (
-    id UUID PRIMARY KEY,
-    name VARCHAR(255),
-    geometry GEOMETRY(POLYGON, 4326),
-    type VARCHAR(50), -- 'predefined', 'custom'
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
-);
+The backend uses SQLite with two tables managed by SQLAlchemy ORM (`backend/app/models.py`):
 
--- Temporal data
-CREATE TABLE observations (
-    id UUID PRIMARY KEY,
-    region_id UUID REFERENCES regions(id),
-    date DATE,
-    metric VARCHAR(50), -- 'ndvi', 'nightlights', 'urban_density', 'parking'
-    value FLOAT,
-    raster_path VARCHAR(500),
-    metadata JSONB
-);
+```python
+# Region — stores predefined and custom regions
+class Region:
+    id: str (UUID, primary key)
+    name: str
+    description: str | None
+    geometry: str  # GeoJSON text (Polygon)
+    type: str      # 'predefined' | 'custom'
+    country: str | None
+    state_province: str | None
+    category: str | None  # 'major_city' | 'megacity' | 'migration_hotspot'
+    created_at: datetime
+    updated_at: datetime
 
--- Pre-computed results
-CREATE TABLE analysis_results (
-    id UUID PRIMARY KEY,
-    region_id UUID REFERENCES regions(id),
-    analysis_type VARCHAR(50), -- 'seasonal_change', 'urban_growth', 'migration'
-    start_date DATE,
-    end_date DATE,
-    results JSONB,
-    created_at TIMESTAMP
-);
-
--- API keys
-CREATE TABLE api_keys (
-    id UUID PRIMARY KEY,
-    key_hash VARCHAR(255),
-    name VARCHAR(100),
-    created_at TIMESTAMP,
-    last_used TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE
-);
+# ExportJob — tracks PDF/GIF export background tasks
+class ExportJob:
+    id: str (UUID, primary key)
+    region_id: str (FK → Region)
+    format: str         # 'pdf' | 'gif'
+    status: str         # 'pending' | 'processing' | 'completed' | 'failed'
+    progress: float | None
+    message: str | None
+    file_path: str | None
+    file_size: int | None
+    parameters: str | None  # JSON text
+    created_at: datetime
+    completed_at: datetime | None
 ```
+
+There is no observations or analysis_results table — metric data is computed on-the-fly by Earth Engine and returned directly through the API.
 
 ---
 
@@ -322,23 +317,26 @@ DELETE /api/v1/regions/{id}               # Delete custom region
 # Analysis
 GET    /api/v1/analysis/{region_id}       # Get cached analysis
 POST   /api/v1/analysis                   # Request new analysis
-GET    /api/v1/analysis/{id}/status       # Check processing status
 
 # Metrics
 GET    /api/v1/metrics/{region_id}        # Get time series data
 GET    /api/v1/metrics/{region_id}/compare # Compare two periods
 
+# Tiles (EE-generated, served via URL template)
+GET    /api/v1/tiles/template             # Get EE tile URL for metric/date/granularity
+
 # Exports
 POST   /api/v1/exports/pdf                # Generate PDF report
-POST   /api/v1/exports/csv                # Export data as CSV
-POST   /api/v1/exports/animation          # Generate time-lapse
+POST   /api/v1/exports/animation          # Generate GIF time-lapse
+GET    /api/v1/exports/{id}               # Check export status
+GET    /api/v1/exports/{id}/download      # Download completed export
 
-# Tiles (for map rendering)
-GET    /api/v1/tiles/{region_id}/{metric}/{z}/{x}/{y}.png
+# Presets
+GET    /api/v1/presets                    # List curated analysis presets
+GET    /api/v1/presets/{id}               # Get preset details
 
-# Auth
-POST   /api/v1/auth/keys                  # Generate new API key
-DELETE /api/v1/auth/keys/{id}             # Revoke API key
+# Health
+GET    /api/v1/status                     # Health check
 ```
 
 ### 6.2 Response Examples
@@ -697,22 +695,7 @@ This section details every visualization the platform will produce.
 └─────────────────────────────────────────┘
 ```
 
-**5.2 Interactive HTML Report**
-```
-┌─────────────────────────────────────────┐
-│  🌐 INTERACTIVE REPORT (HTML)           │
-│                                         │
-│  Same content as PDF, but:              │
-│  - Charts are interactive (D3.js)       │
-│  - Maps can be panned/zoomed            │
-│  - Time slider works                    │
-│  - Click to drill down                  │
-│                                         │
-│  Can be hosted or shared as single file │
-└─────────────────────────────────────────┘
-```
-
-**5.3 Data Export (CSV)**
+**5.2 Data Export (CSV)**
 ```
 date,region,metric,value,unit
 2023-01,phoenix,nightlights,58.2,nW/cm²/sr
@@ -722,6 +705,8 @@ date,region,metric,value,unit
 ...
 ```
 
+> Note: Interactive HTML reports and WebM video exports are not currently implemented. Only PDF and GIF exports are available.
+
 ---
 
 ### 7.2 Main Application Views
@@ -730,48 +715,39 @@ date,region,metric,value,unit
 2. **Region Explorer** - Select/create regions, view details
 3. **Analysis View** - Deep dive into metrics, charts, comparisons
 4. **Animation Studio** - Create and export time-lapse animations
-5. **Export Center** - Generate PDF/HTML reports, download data
+5. **Export Center** - Generate PDF reports, download data
 6. **Example Gallery** - Curated analyses (COVID, snowbirds, etc.)
 
 ### 7.3 Component Architecture
 
 ```
-MapContainer
-├── BaseMap (Leaflet + OpenStreetMap tiles)
-├── HeatmapLayer (activity intensity raster)
-├── RegionLayer (PMTiles boundaries)
-├── ParkingOverlay (detected lots with occupancy)
+MapContainer (components/Map/MapContainer.tsx)
+├── BaseMap (Leaflet + MapTiler OSM tiles)
+├── CompositeTileLayer (EE-generated metric overlay)
+├── HeatmapLegend (color scale + values)
+├── MetricOverlay (metric raster via EE tile URLs)
 ├── FlowLayer (migration arrows/particles)
-├── TimeSlider (scrub through dates)
-├── DrawControls (polygon drawing)
-└── CompareControls (split view, swipe)
+├── SplitScreenCompare (side-by-side temporal compare)
+└── DrawControls (polygon drawing for custom regions)
 
-ChartPanel (D3.js)
-├── TimeSeriesChart (multi-metric line chart)
+Charts (components/Charts/)
+├── TimeSeriesChart (multi-metric line chart, D3.js)
 ├── SeasonalBarChart (side-by-side comparison)
 ├── YearOverYearChart (horizontal bars)
-├── RankingChart (sorted region comparison)
-├── ScatterPlot (correlation visualization)
-└── SmallMultiples (grid of mini-charts)
+├── RegionalRankingChart (sorted region comparison)
+├── CorrelationScatter (scatter plot with R²)
+├── SmallMultiples (grid of mini-charts)
+└── TimeSlider (scrub through dates with playback)
 
-AnimationPanel
-├── FramePreview (current frame display)
-├── PlaybackControls (play, pause, speed)
-├── Timeline (scrubber with frame markers)
-├── ExportOptions (GIF, WebM, frame sequence)
-└── FlowAnimator (migration particle system)
-
-ControlPanel
-├── RegionSelector (dropdown + search + draw)
-├── DateRangePicker (calendar + presets)
-├── MetricToggle (checkboxes for each metric)
-├── CompareSelector (period A vs period B)
-└── ExportButtons (PDF, HTML, CSV, Animation)
-
-ReportGenerator
-├── PDFBuilder (ReportLab/WeasyPrint)
-├── HTMLExporter (Jinja2 templates + D3)
-└── CSVExporter (pandas to CSV)
+Pages
+├── Dashboard (overview with global map, quick stats)
+├── RegionExplorer (select/create regions)
+├── AnalysisView (deep dive: charts + map + granularity toggle)
+├── MapPage (full-screen map with timeline)
+├── AnimationStudio (GIF export with live preview)
+├── CompareView (two-period comparison)
+├── ExportCenter (PDF report generation)
+└── Gallery (curated analysis presets)
 ```
 
 ---
@@ -779,57 +755,54 @@ ReportGenerator
 ## 8. Development Plan (Layer by Layer)
 
 ### Layer 1: Infrastructure
-1. Set up Docker Compose (PostgreSQL + PostGIS, Redis, API)
-2. Initialize FastAPI project with basic structure
-3. Initialize React + TypeScript project
-4. Set up database migrations (Alembic)
-5. Configure CI/CD basics
+1. Initialize FastAPI project with SQLite + aiosqlite
+2. Initialize React + TypeScript + Vite project
+3. Set up GEE service account authentication
+4. Seed predefined regions into SQLite
+5. Configure GitHub Actions for deployment
 
-### Layer 2: Data Pipeline
-1. Implement GEE client with authentication
-2. Add Planetary Computer client as fallback
-3. Implement Sentinel-2 downloader with cloud masking
-4. Add VIIRS nighttime lights processing
-5. Implement caching layer for downloaded data
-6. Write comprehensive tests for data pipeline
+### Layer 2: Data Pipeline (GEE Server-Side)
+1. Implement GEE client with service account auth
+2. Define all 17 metric computations in `gee.py`
+3. Implement EE tile URL template generation
+4. Add local tile caching layer (`data/cache/`)
+5. Write tests for metric query params
 
-### Layer 3: Feature Extraction
-1. Implement NDVI calculation
-2. Implement nighttime light intensity extraction
-3. Implement urban density estimation (GHSL integration)
-4. Implement parking lot detection
-5. Implement temporal aggregation (weekly/monthly composites)
-6. Tests for all feature extractors
+### Layer 3: Feature Extraction (EE Compute)
+1. Implement NDVI (Sentinel-2 + MODIS fill)
+2. Implement nighttime light intensity (VIIRS)
+3. Implement all Phase 1-4 metrics
+4. Implement temporal aggregation (daily/weekly/monthly bucketing)
+5. Tests for value ranges and units
 
 ### Layer 4: Analysis Engine
 1. Implement seasonal change detection
 2. Implement trend analysis
-3. Implement migration proxy calculation
-4. Store results in PostGIS
-5. API endpoints for analysis results
-6. Tests for analysis modules
+3. Implement period comparison (compare endpoint)
+4. API endpoints for analysis results
+5. Tests for analysis modules
 
 ### Layer 5: API Layer
-1. Implement all REST endpoints
-2. Add API key authentication
-3. Implement tile server for map layers
-4. Add rate limiting
-5. OpenAPI documentation
-6. API integration tests
+1. Implement all REST endpoints (regions, metrics, tiles, exports, presets)
+2. Implement EE tile URL template endpoint
+3. Implement PDF and GIF export as background tasks
+4. OpenAPI documentation (auto-generated by FastAPI)
+5. API integration tests
 
 ### Layer 6: Frontend
-1. Set up React project with Leaflet
-2. Implement map with region display
-3. Add drawing controls
-4. Implement time series charts
-5. Add export functionality
-6. Polish UI/UX
-7. E2E tests with Playwright
+1. Set up React project with Leaflet + Zustand
+2. Implement map with EE tile overlay and legend
+3. Add region explorer with drawing controls
+4. Implement all chart types (time series, seasonal, YoY, scatter, rankings, small multiples)
+5. Add Animation Studio with live preview and GIF export
+6. Add granularity toggle for multi-granularity metrics
+7. Polish UI/UX
+8. E2E tests with Playwright
 
 ### Layer 7: Pre-computation & Launch
-1. Script to pre-compute initial regions
-2. Performance optimization
-3. Documentation (user guide, methodology)
+1. Script to seed predefined regions
+2. Pre-cache tiles for common regions
+3. Documentation (user guide, methodology, GEE datasets)
 4. Final testing
 5. Prepare for public access
 
@@ -841,10 +814,9 @@ ReportGenerator
 
 | Level | Framework | Focus |
 |-------|-----------|-------|
-| Unit | pytest | Individual functions, classes |
-| Integration | pytest + testcontainers | Service interactions |
+| Unit (backend) | pytest + pytest-asyncio | Individual functions, route handlers |
+| Unit (frontend) | vitest | Components, utilities, services |
 | E2E | Playwright | Full user flows |
-| Performance | locust | API load testing |
 
 ### 9.2 Critical Test Cases
 
@@ -852,7 +824,7 @@ ReportGenerator
 - Cloud masking correctly removes cloudy pixels
 - Multiple tiles mosaic without gaps
 - Date range queries return expected data
-- Fallback to alternative provider works
+- GEE queries return valid tile URLs
 
 **Feature Extraction:**
 - NDVI values in expected range (-1 to 1)
@@ -867,8 +839,7 @@ ReportGenerator
 **API:**
 - All endpoints return expected schemas
 - Invalid inputs return appropriate errors
-- API key auth works correctly
-- Rate limiting functions
+- Export jobs complete successfully
 
 **Frontend:**
 - Map renders with correct layers
@@ -887,15 +858,13 @@ ReportGenerator
 | Category | User Message | Log Level |
 |----------|--------------|-----------|
 | Data unavailable | "No cloud-free imagery for this period. Try a different date range." | INFO |
-| Processing failed | "Analysis failed. Our team has been notified." | ERROR |
-| Rate limit | "Too many requests. Please wait." | WARN |
+| Processing failed | "Analysis failed. Please try again." | ERROR |
 | Invalid input | "Invalid region geometry. Please check your input." | INFO |
-| Provider outage | "Satellite data temporarily unavailable. Please try again later." | ERROR |
+| GEE outage | "Satellite data temporarily unavailable. Please try again later." | ERROR |
 
 ### 10.2 Retry Strategy
-- Data downloads: 3 retries with exponential backoff
-- Processing tasks: 2 retries
-- Provider failover: Try GEE → Planetary Computer → Sentinel Hub
+- GEE tile requests: 3 retries with exponential backoff
+- Export background tasks: 2 retries
 
 ---
 
@@ -929,92 +898,45 @@ ReportGenerator
 ## 12. Dependencies
 
 ### Backend (Python)
+
+See `backend/requirements.txt` for exact versions. Key dependencies:
+
 ```
 # Core
 fastapi>=0.109.0
-uvicorn>=0.27.0
+uvicorn[standard]>=0.27.0
 pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Storage
 sqlalchemy>=2.0.0
-alembic>=1.13.0
-asyncpg>=0.29.0
-geoalchemy2>=0.14.0
+aiosqlite>=0.20.0
+
+# HTTP + exports
 httpx>=0.26.0
-aiofiles>=23.2.0
-
-# Logging
-structlog>=24.1.0
-python-json-logger>=2.0.0
-
-# Satellite data
-earthengine-api>=0.1.380
-planetary-computer>=1.0.0
-pystac-client>=0.7.0
-stackstac>=0.5.0
-
-# Geospatial
-rasterio>=1.3.0
-geopandas>=0.14.0
-shapely>=2.0.0
-pyproj>=3.6.0
-pmtiles>=3.2.0
-rio-tiler>=6.2.0
-
-# Processing
-numpy>=1.26.0
-pandas>=2.1.0
-xarray>=2024.1.0
-dask>=2024.1.0
-scikit-image>=0.22.0
-
-# Visualization
-matplotlib>=3.8.0
 pillow>=10.2.0
 imageio>=2.33.0
-
-# Export
 reportlab>=4.0.0
-weasyprint>=60.0
-jinja2>=3.1.0
 
-# Task queue
-celery>=5.3.0
-redis>=5.0.0
+# Satellite compute
+earthengine-api>=0.1.380
 
 # Testing
 pytest>=7.4.0
 pytest-asyncio>=0.23.0
-httpx>=0.26.0
-testcontainers>=3.7.0
 ```
 
 ### Frontend (Node.js)
-```json
-{
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0",
-    "leaflet": "^1.9.4",
-    "react-leaflet": "^4.2.1",
-    "@react-leaflet/core": "^2.1.0",
-    "d3": "^7.8.0",
-    "axios": "^1.6.0",
-    "date-fns": "^3.2.0",
-    "zustand": "^4.4.0",
-    "pmtiles": "^3.0.0",
-    "protomaps-leaflet": "^3.0.0",
-    "file-saver": "^2.0.5"
-  },
-  "devDependencies": {
-    "typescript": "^5.3.0",
-    "vite": "^5.0.0",
-    "@types/react": "^18.2.0",
-    "@types/leaflet": "^1.9.0",
-    "@types/d3": "^7.4.0",
-    "vitest": "^1.2.0",
-    "@playwright/test": "^1.41.0"
-  }
-}
+
+See `frontend/package.json` for exact versions. Key dependencies:
+
+```
+react, react-dom, react-router-dom  # UI framework
+leaflet, react-leaflet               # Interactive maps
+d3                                   # Chart visualizations
+zustand                              # State management
+@tanstack/react-query                # Data fetching
+@phosphor-icons/react                # Icons
 ```
 
 ---
@@ -1024,9 +946,9 @@ testcontainers>=3.7.0
 ### 13.1 Milestone Checkpoints
 
 **M1: Infrastructure Ready**
-- [ ] Docker Compose starts all services
-- [ ] Database accepts connections
-- [ ] API returns health check
+- [x] SQLite database initialized
+- [x] API returns health check (`/api/v1/status`)
+- [x] GEE service account authenticated
 
 **M2: Data Pipeline Working**
 - [ ] Can download Sentinel-2 for a test region
@@ -1076,12 +998,12 @@ testcontainers>=3.7.0
 - **Region size limits:** No hard limit (users can draw any size)
 - **Hemisphere handling:** Auto-detect Southern Hemisphere, flip winter/summer labels
 - **Units:** SI/metric only throughout
-- **Provider selection:** User-selectable (GEE, Planetary Computer, Sentinel Hub)
+- **Data provider:** Google Earth Engine (sole provider)
 
 ### 14.3 Frontend Specifics
 - **Date picker:** Both calendar picker + predefined presets (Last year, Winter 2023, etc.)
 - **Animations:** Client-side JavaScript (instant preview)
-- **Reports:** Both PDF and HTML export options
+- **Reports:** PDF export (GIF for animations)
 - **Example presets:** Include curated examples (COVID impact, snowbird patterns) + custom creation
 
 ### 14.4 Documentation Style
@@ -1146,7 +1068,6 @@ For detailed information on specific topics, see:
 - **`docs/GEE_DATASETS.md`** - Complete GEE dataset specifications, colormaps, value ranges, and implementation guide for all 17 metrics
 - **`docs/METHODOLOGY.md`** - Technical methodology for proxy metrics and analysis
 - **`docs/USER_GUIDE.md`** - End-user documentation for the platform
-- **`CHECKLIST.md`** - Shipping checklist with current implementation status
 
 ---
 

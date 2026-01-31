@@ -1,4 +1,6 @@
-import type { MetricType } from '../../types';
+import { useQuery } from '@tanstack/react-query';
+import api from '../../services/api';
+import type { Granularity, MetricType } from '../../types';
 import './HeatmapLegend.css';
 
 interface HeatmapLegendProps {
@@ -6,6 +8,12 @@ interface HeatmapLegendProps {
   min?: number;
   max?: number;
   showValues?: boolean;
+  tileDate?: string;
+  tileGranularity?: Granularity;
+}
+
+function toDateBucket(dateStr: string, granularity: Granularity): string {
+  return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
 }
 
 const METRIC_CONFIG: Record<
@@ -144,8 +152,26 @@ export function HeatmapLegend({
   min,
   max,
   showValues = true,
+  tileDate,
+  tileGranularity,
 }: HeatmapLegendProps) {
   const config = METRIC_CONFIG[metric];
+  const dateBucket = tileDate && tileGranularity ? toDateBucket(tileDate, tileGranularity) : undefined;
+
+  const { data: tileTemplate } = useQuery({
+    queryKey: ['tiles', 'template', metric, dateBucket, tileGranularity],
+    queryFn: () =>
+      api.getTileTemplate({
+        metric,
+        date_bucket: dateBucket!,
+        granularity: tileGranularity!,
+      }),
+    enabled: Boolean(metric && dateBucket && tileGranularity),
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const gradient =
+    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : config.gradient;
 
   return (
     <div className="heatmap-legend">
@@ -161,7 +187,7 @@ export function HeatmapLegend({
       <div className="legend-bar-container">
         <div
           className="legend-gradient-bar"
-          style={{ background: config.gradient }}
+          style={{ background: gradient }}
         />
         <div className="legend-ticks">
           <span>{config.lowLabel}</span>
@@ -173,15 +199,39 @@ export function HeatmapLegend({
 }
 
 // Compact version for map overlays
-export function HeatmapLegendCompact({ metric }: { metric: MetricType }) {
+export function HeatmapLegendCompact({
+  metric,
+  tileDate,
+  tileGranularity,
+}: {
+  metric: MetricType;
+  tileDate?: string;
+  tileGranularity?: Granularity;
+}) {
   const config = METRIC_CONFIG[metric];
+  const dateBucket = tileDate && tileGranularity ? toDateBucket(tileDate, tileGranularity) : undefined;
+
+  const { data: tileTemplate } = useQuery({
+    queryKey: ['tiles', 'template', metric, dateBucket, tileGranularity],
+    queryFn: () =>
+      api.getTileTemplate({
+        metric,
+        date_bucket: dateBucket!,
+        granularity: tileGranularity!,
+      }),
+    enabled: Boolean(metric && dateBucket && tileGranularity),
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const gradient =
+    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : config.gradient;
 
   return (
     <div className="heatmap-legend-compact">
       <span className="legend-label">{config.label}</span>
       <div
         className="legend-bar-mini"
-        style={{ background: config.gradient }}
+        style={{ background: gradient }}
       />
       <div className="legend-labels-mini">
         <span>{config.lowLabel}</span>

@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapView } from '../components/Map/MapContainer';
 import { HeatmapLegend } from '../components/Map/HeatmapLegend';
 import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
 import api from '../services/api';
-import type { MetricType } from '../types';
-import { METRIC_DEFAULT_GRANULARITY } from '../config/metrics';
+import type { Granularity, MetricType } from '../types';
+import {
+  estimateBucketCount,
+  getRecommendedGranularity,
+  METRICS_MAX_TIMESERIES_POINTS_DEFAULT,
+  METRIC_SUPPORTED_GRANULARITIES,
+} from '../config/metrics';
+import { MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../config/map';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
 import './MapPage.css';
@@ -35,9 +41,11 @@ const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
 export function MapPage() {
   const { regionId } = useParams<{ regionId: string }>();
   const { dateRange, setDateRange } = useStore();
+  const queryClient = useQueryClient();
 
   const [selectedMapMetric, setSelectedMapMetric] = useState<MetricType>('nightlights');
-  const [overlayMinZoom, setOverlayMinZoom] = useState<number>(9);
+  const [selectedGranularity, setSelectedGranularity] = useState<Granularity | null>(null);
+  const [overlayMinZoom, setOverlayMinZoom] = useState<number>(4);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [currentTimelineDate, setCurrentTimelineDate] = useState<Date | null>(null);
 
@@ -47,7 +55,16 @@ export function MapPage() {
     enabled: !!regionId,
   });
 
-  const granularity = METRIC_DEFAULT_GRANULARITY[selectedMapMetric];
+  const supportedGranularities = METRIC_SUPPORTED_GRANULARITIES[selectedMapMetric];
+  const recommendedGranularity = getRecommendedGranularity(selectedMapMetric, dateRange);
+  const selectedGranularityAllowed = Boolean(
+    selectedGranularity
+      && supportedGranularities.includes(selectedGranularity)
+      && estimateBucketCount(dateRange.start, dateRange.end, selectedGranularity) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT
+  );
+  const granularity = selectedGranularityAllowed
+    ? (selectedGranularity as Granularity)
+    : recommendedGranularity;
 
   const {
     data: metrics,
@@ -79,11 +96,17 @@ export function MapPage() {
   useEffect(() => {
     setCurrentTimelineDate(null);
     setIsTimelinePlaying(false);
+    setSelectedGranularity(null);
   }, [selectedMapMetric]);
 
   useEffect(() => {
     if (timelineDates.length > 0) setCurrentTimelineDate(timelineDates[0]);
   }, [timelineDates]);
+
+  const handleClearCache = () => {
+    queryClient.resetQueries({ queryKey: ['tiles'] });
+    if (regionId) queryClient.resetQueries({ queryKey: ['metrics', regionId] });
+  };
 
   if (!regionId) {
     return (
@@ -97,16 +120,33 @@ export function MapPage() {
     );
   }
 
+  const tileDate =
+    formatDateYYYYMMDD(currentTimelineDate)
+    ?? formatDateYYYYMMDD(dateRange.start)
+    ?? formatDateYYYYMMDD(new Date())
+    ?? new Date().toISOString().split('T')[0];
+
   return (
     <div className="map-page">
       <div className="map-page-toolbar">
         <div className="map-page-toolbar-left">
           <Link to={`/analysis/${regionId}`} className="btn btn-outline">Back to Analysis</Link>
           <div className="map-page-title">
+            <Link to="/regions" className="map-page-breadcrumb">
+              Regions
+            </Link>
             <div className="map-page-kicker">Full Map</div>
             <div className="map-page-name">
               {regionIsError ? `Error: ${formatApiError(regionError)}` : (region?.name ?? 'Loading…')}
             </div>
+            <button
+              type="button"
+              className="btn btn-outline map-page-cache-btn"
+              onClick={handleClearCache}
+              title="Clear cached tiles + metrics"
+            >
+              Clear cache
+            </button>
           </div>
         </div>
 
@@ -124,20 +164,43 @@ export function MapPage() {
             ))}
           </select>
 
+          {supportedGranularities.length > 1 && (
+            <div className="map-page-granularity">
+              {supportedGranularities.map((g) => {
+                const withinLimit =
+                  estimateBucketCount(dateRange.start, dateRange.end, g) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT;
+                const label = g.charAt(0).toUpperCase() + g.slice(1);
+
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    className={`granularity-btn ${granularity === g ? 'active' : ''}`}
+                    onClick={() => setSelectedGranularity(g)}
+                    disabled={!withinLimit}
+                    title={withinLimit ? undefined : `Date range too large for ${label.toLowerCase()} granularity`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="map-page-overlay-controls">
             <span className="map-page-overlay-label">Overlay cutoff</span>
             <input
               className="map-page-overlay-input"
               type="number"
-              min={4}
-              max={11}
+              min={MIN_MAP_ZOOM}
+              max={MAX_MAP_ZOOM}
               step={1}
               value={overlayMinZoom}
               aria-label="Overlay cutoff zoom"
               onChange={(e) => {
                 const next = e.target.valueAsNumber;
                 if (Number.isNaN(next)) return;
-                setOverlayMinZoom(Math.min(11, Math.max(4, Math.round(next))));
+                setOverlayMinZoom(Math.min(MAX_MAP_ZOOM, Math.max(MIN_MAP_ZOOM, Math.round(next))));
               }}
             />
           </div>
@@ -170,17 +233,17 @@ export function MapPage() {
               selectedMetric={selectedMapMetric}
               overlayMinZoom={overlayMinZoom}
               tileGranularity={granularity}
-              tileDate={
-                formatDateYYYYMMDD(currentTimelineDate)
-                  ?? formatDateYYYYMMDD(dateRange.start)
-                  ?? formatDateYYYYMMDD(new Date())
-                  ?? new Date().toISOString().split('T')[0]
-              }
+              tileDate={tileDate}
             />
           )}
 
           <div className="map-page-legend">
-            <HeatmapLegend metric={selectedMapMetric} showValues={false} />
+            <HeatmapLegend
+              metric={selectedMapMetric}
+              showValues={false}
+              tileDate={tileDate}
+              tileGranularity={granularity}
+            />
           </div>
         </div>
 

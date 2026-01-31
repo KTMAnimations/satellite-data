@@ -10,8 +10,13 @@ import { CorrelationScatter } from '../components/Charts/CorrelationScatter';
 import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
 import api from '../services/api';
-import type { MetricType } from '../types';
-import { METRIC_DEFAULT_GRANULARITY } from '../config/metrics';
+import type { Granularity, MetricType } from '../types';
+import {
+  estimateBucketCount,
+  getRecommendedGranularity,
+  METRICS_MAX_TIMESERIES_POINTS_DEFAULT,
+  METRIC_SUPPORTED_GRANULARITIES,
+} from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
 import './AnalysisView.css';
@@ -43,6 +48,7 @@ export function AnalysisView() {
   const { selectedMetrics, toggleMetric, dateRange, setDateRange } = useStore();
 
   const [selectedMapMetric, setSelectedMapMetric] = useState<MetricType>('nightlights');
+  const [selectedGranularity, setSelectedGranularity] = useState<Granularity | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('charts');
   const [correlationMetricX, setCorrelationMetricX] = useState<MetricType>('nightlights');
   const [correlationMetricY, setCorrelationMetricY] = useState<MetricType>('ndvi');
@@ -55,8 +61,16 @@ export function AnalysisView() {
     enabled: !!regionId,
   });
 
-  // Use finest granularity based on selected map metric
-  const granularity = METRIC_DEFAULT_GRANULARITY[selectedMapMetric];
+  const supportedGranularities = METRIC_SUPPORTED_GRANULARITIES[selectedMapMetric];
+  const recommendedGranularity = getRecommendedGranularity(selectedMapMetric, dateRange);
+  const selectedGranularityAllowed = Boolean(
+    selectedGranularity
+      && supportedGranularities.includes(selectedGranularity)
+      && estimateBucketCount(dateRange.start, dateRange.end, selectedGranularity) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT
+  );
+  const granularity = selectedGranularityAllowed
+    ? (selectedGranularity as Granularity)
+    : recommendedGranularity;
   const requestedMetrics = useMemo(() => {
     const metricsSet = new Set<MetricType>();
     metricsSet.add(selectedMapMetric);
@@ -168,9 +182,10 @@ export function AnalysisView() {
     });
   }, [metrics, correlationMetricX, correlationMetricY, viewMode]);
 
-  // Reset timeline date when metric changes to prevent stale dates
+  // Reset timeline date and granularity when metric changes
   useEffect(() => {
     setCurrentTimelineDate(null);
+    setSelectedGranularity(null);
   }, [selectedMapMetric]);
 
   // Initialize and reset timeline date when dates change
@@ -200,6 +215,12 @@ export function AnalysisView() {
       </div>
     );
   }
+
+  const tileDate =
+    formatDateYYYYMMDD(currentTimelineDate)
+    ?? formatDateYYYYMMDD(dateRange.start)
+    ?? formatDateYYYYMMDD(new Date())
+    ?? new Date().toISOString().split('T')[0];
 
   return (
     <div className="analysis-view">
@@ -270,25 +291,46 @@ export function AnalysisView() {
                   </option>
                 ))}
               </select>
+              {supportedGranularities.length > 1 && (
+                <div className="granularity-toggle">
+                  {supportedGranularities.map((g) => {
+                    const withinLimit =
+                      estimateBucketCount(dateRange.start, dateRange.end, g) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT;
+                    const label = g.charAt(0).toUpperCase() + g.slice(1);
+
+                    return (
+                      <button
+                        key={g}
+                        className={`granularity-btn ${granularity === g ? 'active' : ''}`}
+                        onClick={() => setSelectedGranularity(g)}
+                        disabled={!withinLimit}
+                        title={withinLimit ? undefined : `Date range too large for ${label.toLowerCase()} granularity`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div className="map-container-wrapper">
-              {region && (
-                <MapView
-                  regions={[region]}
-                  selectedMetric={selectedMapMetric}
-                  tileGranularity={granularity}
-                  tileDate={
-                    formatDateYYYYMMDD(currentTimelineDate)
-                      ?? formatDateYYYYMMDD(dateRange.start)
-                      ?? formatDateYYYYMMDD(new Date())
-                      ?? new Date().toISOString().split('T')[0]
-                  }
-                />
-              )}
-              <div className="map-legend-overlay">
-                <HeatmapLegend metric={selectedMapMetric} showValues={false} />
-              </div>
-            </div>
+                  {region && (
+                    <MapView
+                      regions={[region]}
+                      selectedMetric={selectedMapMetric}
+                      tileGranularity={granularity}
+                      tileDate={tileDate}
+                    />
+                  )}
+                  <div className="map-legend-overlay">
+                    <HeatmapLegend
+                      metric={selectedMapMetric}
+                      showValues={false}
+                      tileDate={tileDate}
+                      tileGranularity={granularity}
+                    />
+                  </div>
+                </div>
 
             {/* Timeline Slider */}
             {timelineDates.length > 0 && currentTimelineDate && !isNaN(currentTimelineDate.getTime()) && (
@@ -455,7 +497,7 @@ export function AnalysisView() {
                   <div className="chart-card">
                     <div className="chart-card-header">
                       <h3>Activity Over Time</h3>
-                      <span className="chart-subtitle">Monthly averages for selected metrics</span>
+                      <span className="chart-subtitle">Auto granularity by metric (daily/weekly/monthly)</span>
                     </div>
                     <TimeSeriesChart
                       data={metrics.metrics}

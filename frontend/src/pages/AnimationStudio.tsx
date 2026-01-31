@@ -9,70 +9,54 @@ import {
 import { MapView } from '../components/Map/MapContainer';
 import { TimeSlider } from '../components/Charts/TimeSlider';
 import api from '../services/api';
-import type { Region, MetricType } from '../types';
+import type { Granularity, Region, MetricType } from '../types';
+import {
+  estimateBucketCount,
+  getRecommendedGranularity,
+  METRICS_MAX_TIMESERIES_POINTS_DEFAULT,
+  METRIC_SUPPORTED_GRANULARITIES,
+} from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
 import './AnimationStudio.css';
 
-const METRIC_OPTIONS: { value: MetricType; label: string; description: string; granularity: string }[] = [
+function formatGranularityLabel(granularity: string): string {
+  return granularity ? `${granularity.slice(0, 1).toUpperCase()}${granularity.slice(1)}` : granularity;
+}
+
+const METRIC_OPTIONS: { value: MetricType; label: string; description: string }[] = [
   // Original metrics
-  { value: 'nightlights', label: 'Nighttime Lights', description: 'Urban activity proxy (daily available)', granularity: 'Daily' },
-  { value: 'ndvi', label: 'NDVI', description: 'Vegetation index showing greenness', granularity: 'Weekly' },
-  { value: 'urban_density', label: 'Urban Density', description: 'Built-up area estimation', granularity: 'Monthly' },
-  { value: 'parking', label: 'Parking Occupancy', description: 'Parking lot fill levels', granularity: 'Weekly' },
+  { value: 'nightlights', label: 'Nighttime Lights', description: 'Urban activity proxy (daily available)' },
+  { value: 'ndvi', label: 'NDVI', description: 'Vegetation index showing greenness' },
+  { value: 'urban_density', label: 'Urban Density', description: 'Built-up area estimation' },
+  { value: 'parking', label: 'Parking Occupancy', description: 'Parking lot fill levels' },
   // Phase 1: Core datasets
-  { value: 'land_cover', label: 'Land Cover', description: 'Dynamic World built-up probability', granularity: 'Monthly' },
-  { value: 'surface_water', label: 'Surface Water', description: 'JRC water extent mapping', granularity: 'Monthly' },
-  { value: 'active_fire', label: 'Active Fire', description: 'VIIRS 375m fire detections (daily)', granularity: 'Daily' },
+  { value: 'land_cover', label: 'Land Cover', description: 'Dynamic World built-up probability' },
+  { value: 'surface_water', label: 'Surface Water', description: 'JRC water extent mapping' },
+  { value: 'active_fire', label: 'Active Fire', description: 'VIIRS 375m fire detections (daily)' },
   // Phase 2: Air quality & weather
-  { value: 'no2', label: 'NO₂', description: 'Tropospheric nitrogen dioxide', granularity: 'Monthly' },
-  { value: 'temperature', label: 'Temperature', description: 'ERA5-Land 2m air temperature', granularity: 'Monthly' },
-  { value: 'precipitation', label: 'Precipitation', description: 'ERA5-Land total precipitation', granularity: 'Monthly' },
-  { value: 'aerosol', label: 'Aerosol', description: 'UV Aerosol Index (smoke/dust)', granularity: 'Monthly' },
+  { value: 'no2', label: 'NO₂', description: 'Tropospheric nitrogen dioxide' },
+  { value: 'temperature', label: 'Temperature', description: 'ERA5-Land 2m air temperature' },
+  { value: 'precipitation', label: 'Precipitation', description: 'ERA5-Land total precipitation' },
+  { value: 'aerosol', label: 'Aerosol', description: 'UV Aerosol Index (smoke/dust)' },
   // Phase 3: Agriculture
-  { value: 'cropland', label: 'Cropland', description: 'ESA WorldCover cropland fraction', granularity: 'Static' },
-  { value: 'evapotranspiration', label: 'Evapotranspiration', description: 'OpenET water use', granularity: 'Monthly' },
-  { value: 'soil_moisture', label: 'Soil Moisture', description: 'SMAP root-zone moisture', granularity: 'Monthly' },
+  { value: 'cropland', label: 'Cropland', description: 'ESA WorldCover cropland fraction' },
+  { value: 'evapotranspiration', label: 'Evapotranspiration', description: 'OpenET water use' },
+  { value: 'soil_moisture', label: 'Soil Moisture', description: 'SMAP root-zone moisture' },
   // Phase 4: Historical & specialized
-  { value: 'impervious', label: 'Impervious Surface', description: 'GAIA urban expansion', granularity: 'Yearly' },
-  { value: 'fire_historical', label: 'Historical Fire', description: 'MODIS FIRMS archive (2000+)', granularity: 'Monthly' },
-  { value: 'canopy_height', label: 'Canopy Height', description: 'GEDI forest structure', granularity: 'Static' },
+  { value: 'impervious', label: 'Impervious Surface', description: 'GAIA urban expansion' },
+  { value: 'fire_historical', label: 'Historical Fire', description: 'MODIS FIRMS archive (2000+)' },
+  { value: 'canopy_height', label: 'Canopy Height', description: 'GEDI forest structure' },
 ];
 
 const FORMAT_OPTIONS: Array<{ value: 'gif'; label: string; description: string }> = [
   { value: 'gif', label: 'GIF', description: 'Animated image, widely compatible' },
 ];
 
-// Finest available granularity per metric (based on data source limitations)
-// nightlights now supports daily via NASA Black Marble VNP46A2
-const METRIC_GRANULARITY: Record<MetricType, 'daily' | 'weekly' | 'monthly'> = {
-  // Original metrics
-  ndvi: 'weekly',           // Sentinel-2: 5-day revisit
-  parking: 'weekly',        // Sentinel-2: 5-day revisit
-  nightlights: 'daily',     // VIIRS: daily via NASA Black Marble, monthly via NOAA composites
-  urban_density: 'monthly', // GHSL: static epochs
-  // Phase 1: Core datasets
-  land_cover: 'monthly',    // Dynamic World: near real-time but monthly composites
-  surface_water: 'monthly', // JRC: monthly from 1984-2021
-  active_fire: 'daily',     // VIIRS 375m: near real-time daily
-  // Phase 2: Air quality & weather
-  no2: 'monthly',           // S5P: daily available but monthly composites for visualization
-  temperature: 'monthly',   // ERA5-Land: hourly but monthly averages
-  precipitation: 'monthly', // ERA5-Land: hourly but monthly totals
-  aerosol: 'monthly',       // S5P: daily but monthly composites
-  // Phase 3: Agriculture
-  cropland: 'monthly',      // WorldCover: static (bucketed monthly for UI)
-  evapotranspiration: 'monthly', // OpenET: monthly
-  soil_moisture: 'monthly', // SMAP: 3-day revisit, monthly composites
-  // Phase 4: Historical & specialized
-  impervious: 'monthly',    // GAIA: annual snapshots 1985-2018
-  fire_historical: 'monthly', // MODIS FIRMS: daily but monthly composites
-  canopy_height: 'monthly', // GEDI: static dataset
-};
-
 export function AnimationStudio() {
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('nightlights');
+  const [selectedGranularity, setSelectedGranularity] = useState<Granularity | null>(null);
   const [dateRange, setDateRange] = useState({
     start: new Date(2023, 0, 1),   // Jan 1, 2023 - start of available data
     end: new Date(),               // Today - end of available data
@@ -101,8 +85,17 @@ export function AnimationStudio() {
     queryFn: () => api.listRegions({ type: 'predefined', page_size: 50 }),
   });
 
-  // Fetch metrics for date generation - use finest granularity per metric
-  const granularity = METRIC_GRANULARITY[selectedMetric];
+  // Keep metric/tile bucketing consistent with the Region "Full Map" view.
+  const supportedGranularities = METRIC_SUPPORTED_GRANULARITIES[selectedMetric];
+  const recommendedGranularity = getRecommendedGranularity(selectedMetric, dateRange);
+  const selectedGranularityAllowed = Boolean(
+    selectedGranularity
+      && supportedGranularities.includes(selectedGranularity)
+      && estimateBucketCount(dateRange.start, dateRange.end, selectedGranularity) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT
+  );
+  const granularity = selectedGranularityAllowed
+    ? (selectedGranularity as Granularity)
+    : recommendedGranularity;
   const { data: metrics } = useQuery({
     queryKey: ['metrics', selectedRegion?.id, selectedMetric, granularity, dateRange],
     queryFn: () =>
@@ -174,6 +167,11 @@ export function AnimationStudio() {
       setPreviewDate(dateRange.start);
     }
   }, [availableDatesKey, availableDates, dateRange.start, selectedMetric]);
+
+  // Reset granularity when metric changes
+  useEffect(() => {
+    setSelectedGranularity(null);
+  }, [selectedMetric]);
 
   // If preview is paused, ensure playback doesn't keep advancing dates invisibly.
   useEffect(() => {
@@ -277,7 +275,13 @@ export function AnimationStudio() {
           <section className="control-section">
             <h4>Metric</h4>
             <div className="metric-cards">
-              {METRIC_OPTIONS.map((option) => (
+              {METRIC_OPTIONS.map((option) => {
+                const optionGranularity = option.value === selectedMetric
+                  ? granularity
+                  : getRecommendedGranularity(option.value, dateRange);
+                const optionGranularityLabel = formatGranularityLabel(optionGranularity);
+
+                return (
                 <button
                   key={option.value}
                   className={`metric-card ${selectedMetric === option.value ? 'active' : ''}`}
@@ -287,15 +291,43 @@ export function AnimationStudio() {
                   <div className="metric-info">
                     <span className="metric-label">
                       {option.label}
-                      <span className={`granularity-badge ${option.granularity.toLowerCase()}`}>
-                        {option.granularity}
+                      <span className={`granularity-badge ${optionGranularity}`}>
+                        {optionGranularityLabel}
                       </span>
                     </span>
                     <span className="metric-desc">{option.description}</span>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
+
+            {supportedGranularities.length > 1 && (
+              <div className="granularity-toggle">
+                <label>Granularity</label>
+                <div className="granularity-buttons">
+                  {supportedGranularities.map((g) => {
+                    const withinLimit =
+                      estimateBucketCount(dateRange.start, dateRange.end, g) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT;
+                    const labelText = g.charAt(0).toUpperCase() + g.slice(1);
+
+                    return (
+                      <button
+                        key={g}
+                        className={`granularity-btn ${granularity === g ? 'active' : ''}`}
+                        onClick={() => setSelectedGranularity(g)}
+                        disabled={!withinLimit}
+                        title={
+                          withinLimit ? undefined : `Date range too large for ${labelText.toLowerCase()} granularity`
+                        }
+                      >
+                        {labelText}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Date Range */}

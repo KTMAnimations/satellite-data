@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Region, MetricType, DateRange, MapState, ExportResponse } from '../types';
 
+export type NavSection = 'dashboard' | 'regions' | 'animations' | 'exports' | 'gallery';
+
 interface AppState {
   // Selected region
   selectedRegion: Region | null;
@@ -9,8 +11,7 @@ interface AppState {
 
   // Map state
   mapState: MapState;
-  setMapCenter: (center: [number, number]) => void;
-  setMapZoom: (zoom: number) => void;
+  updateMapState: (patch: Partial<MapState>) => void;
 
   // Date range
   dateRange: DateRange;
@@ -34,6 +35,8 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   activeTab: 'regions' | 'analysis' | 'exports' | 'gallery';
   setActiveTab: (tab: 'regions' | 'analysis' | 'exports' | 'gallery') => void;
+  navLastPath: Record<NavSection, string>;
+  setNavLastPath: (section: NavSection, path: string) => void;
 
   // Export queue (in-memory; not persisted)
   exportQueue: ExportResponse[];
@@ -61,12 +64,10 @@ export const useStore = create<AppState>()(
       mapState: {
         center: [39.8283, -98.5795], // Center of US
         zoom: 4,
-        selectedRegionId: null,
+        contextRegionId: null,
       },
-      setMapCenter: (center) =>
-        set((state) => ({ mapState: { ...state.mapState, center } })),
-      setMapZoom: (zoom) =>
-        set((state) => ({ mapState: { ...state.mapState, zoom } })),
+      updateMapState: (patch) =>
+        set((state) => ({ mapState: { ...state.mapState, ...patch } })),
 
       // Date range
       dateRange: defaultDateRange,
@@ -96,6 +97,15 @@ export const useStore = create<AppState>()(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       activeTab: 'regions',
       setActiveTab: (tab) => set({ activeTab: tab }),
+      navLastPath: {
+        dashboard: '/',
+        regions: '/regions',
+        animations: '/animations',
+        exports: '/exports',
+        gallery: '/gallery',
+      },
+      setNavLastPath: (section, path) =>
+        set((state) => ({ navLastPath: { ...state.navLastPath, [section]: path } })),
 
       // Export queue (in-memory; not persisted)
       exportQueue: [],

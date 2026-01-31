@@ -1,6 +1,6 @@
 # GEE Dataset Integration Guide
 
-**Last Updated:** 2026-01-26
+**Last Updated:** 2026-01-31
 **Status:** 17 metrics implemented, tested, and verified
 
 This document consolidates the GEE dataset research and test verification for the Satellite Migration Analysis Platform.
@@ -11,25 +11,25 @@ This document consolidates the GEE dataset research and test verification for th
 
 ### Implemented Metrics (17 total)
 
-| Metric | GEE Dataset | Resolution | Granularity | Status |
-|--------|-------------|------------|-------------|--------|
-| `ndvi` | Sentinel-2 | 10m | Weekly | Verified |
-| `nightlights` | VIIRS Black Marble | 375m | Daily | Verified |
-| `urban_density` | GHSL SMOD | 10m | Monthly | Verified |
-| `parking` | Sentinel-2 (NDBI) | 10m | Weekly | Verified |
-| `land_cover` | Dynamic World | 10m | Monthly | Verified |
-| `surface_water` | JRC GSW | 30m | Monthly | Verified |
-| `active_fire` | VIIRS 375m | 375m | Daily | Verified |
-| `no2` | Sentinel-5P | 7km | Monthly | Verified |
-| `temperature` | ERA5-Land | 11km | Monthly | Verified |
-| `precipitation` | ERA5-Land | 11km | Monthly | Verified |
-| `aerosol` | Sentinel-5P | 7km | Monthly | Verified |
-| `cropland` | USDA CDL | 30m | Yearly | Verified |
-| `evapotranspiration` | OpenET SSEBop | 30m | Monthly | Verified |
-| `soil_moisture` | SMAP | 10km | Monthly | Verified |
-| `impervious` | GAIA | 30m | Yearly | Verified |
-| `fire_historical` | MODIS FIRMS | 1km | Monthly | Verified |
-| `canopy_height` | GEDI | 1km | Static | Verified |
+| Metric | GEE Dataset | Resolution | Default | Supported | Status |
+|--------|-------------|------------|---------|-----------|--------|
+| `ndvi` | Sentinel-2 + MODIS fill | 10m | Weekly | weekly, monthly | Verified |
+| `nightlights` | VIIRS Black Marble + NOAA monthly | 375m | Monthly | daily, monthly | Verified |
+| `urban_density` | GHSL SMOD | 10m | Monthly | monthly | Verified |
+| `parking` | Sentinel-2 (NDBI) | 10m | Weekly | weekly, monthly | Verified |
+| `land_cover` | Dynamic World | 10m | Weekly | weekly, monthly | Verified |
+| `surface_water` | JRC GSW | 30m | Monthly | monthly | Verified |
+| `active_fire` | VIIRS 375m | 375m | Daily | daily, monthly | Verified |
+| `no2` | Sentinel-5P | 7km | Daily | daily, monthly | Verified |
+| `temperature` | ERA5-Land Daily Agg | 11km | Daily | daily, monthly | Verified |
+| `precipitation` | CHIRPS Daily | ~5km | Daily | daily, monthly | Verified |
+| `aerosol` | Sentinel-5P | 7km | Daily | daily, monthly | Verified |
+| `cropland` | ESA WorldCover | 10m | Monthly | monthly | Verified |
+| `evapotranspiration` | MODIS MOD16A2GF | ~500m | Monthly | monthly | Verified |
+| `soil_moisture` | SMAP L4 | ~11km | Weekly | weekly, monthly | Verified |
+| `impervious` | GAIA | 30m | Monthly | monthly | Verified |
+| `fire_historical` | MODIS FIRMS | 1km | Monthly | monthly | Verified |
+| `canopy_height` | GEDI + Simard | 1km | Monthly | monthly | Verified |
 
 ---
 
@@ -91,17 +91,17 @@ This document consolidates the GEE dataset research and test verification for th
 - **Value Range:** 0-0.0002
 - **Use Cases:** Industrial activity, metro pollution, shipping lanes
 
-#### Temperature (`ECMWF/ERA5_LAND/HOURLY`)
-- **Description:** 2-meter air temperature reanalysis
+#### Temperature (`ECMWF/ERA5_LAND/DAILY_AGGR`)
+- **Description:** 2-meter air temperature from ERA5-Land daily aggregates
 - **Band:** `temperature_2m`
 - **Unit:** Celsius (after conversion from Kelvin)
 - **Value Range:** -30 to +45°C
 - **Use Cases:** Weather context, heatwave detection
 
-#### Precipitation (`ECMWF/ERA5_LAND/HOURLY`)
-- **Description:** Total precipitation reanalysis
-- **Band:** `total_precipitation`
-- **Unit:** mm (after conversion from m)
+#### Precipitation (`UCSB-CHG/CHIRPS/DAILY`)
+- **Description:** Climate Hazards Group InfraRed Precipitation (CHIRPS) daily estimates
+- **Band:** `precipitation`
+- **Unit:** mm/day
 - **Value Range:** 0-500mm
 - **Use Cases:** Flood risk, drought context, agriculture
 
@@ -112,24 +112,24 @@ This document consolidates the GEE dataset research and test verification for th
 
 ### 1.4 Phase 3: Agriculture
 
-#### Cropland (`USDA/NASS/CDL`)
-- **Description:** Annual crop type classification (US only)
-- **Resolution:** 30m
-- **Value Range:** 0-255 (categorical crop codes)
-- **Use Cases:** Crop-specific analysis, rotation detection
+#### Cropland (`ESA/WorldCover/v200`)
+- **Description:** ESA WorldCover cropland fraction (global)
+- **Resolution:** 10m
+- **Value Range:** 0-1 (fraction of cropland within area)
+- **Use Cases:** Cropland extent monitoring, agricultural land use
 
-#### Evapotranspiration (`OpenET/SSEBOP/CONUS/GRIDMET/MONTHLY/v2_0`)
-- **Description:** Monthly ET estimates (US only)
-- **Band:** `et`
-- **Unit:** mm/month
+#### Evapotranspiration (`MODIS/061/MOD16A2GF`)
+- **Description:** MODIS 8-day gap-filled evapotranspiration (global)
+- **Band:** `ET`
+- **Unit:** kg/m²/8day (scaled)
 - **Value Range:** 0-300
 - **Use Cases:** Water stress detection, irrigation monitoring
 
-#### Soil Moisture (`NASA/USDA/HSL/SMAP10KM_soil_moisture`)
-- **Description:** Root-zone soil moisture
-- **Bands:** `ssm` (surface), `susm` (subsurface)
-- **Unit:** mm
-- **Value Range:** 0-50mm
+#### Soil Moisture (`NASA/SMAP/SPL4SMGP/008`)
+- **Description:** SMAP L4 Global Positioning soil moisture
+- **Band:** `sm_surface`
+- **Unit:** m³/m³ (volumetric)
+- **Value Range:** 0-0.5
 - **Use Cases:** Drought onset, flood susceptibility
 
 ### 1.5 Phase 4: Historical & Specialized

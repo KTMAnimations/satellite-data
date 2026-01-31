@@ -409,6 +409,52 @@ select {
   cursor: pointer;
 }
 
+/* ── Granularity toggle (shared across pages) ── */
+.granularity-toggle,
+.map-page-granularity,
+.granularity-buttons {
+  display: flex;
+  gap: 0;
+}
+
+.granularity-btn {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 0.3125rem 0.625rem;
+  border: 1px solid var(--border-panel);
+  background: var(--surface-page);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-in-out);
+  text-transform: capitalize;
+}
+
+.granularity-btn:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.granularity-btn:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.granularity-btn:not(:first-child) {
+  border-left: none;
+}
+
+.granularity-btn.active {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-primary);
+}
+
+.granularity-btn.active + .granularity-btn {
+  border-left-color: var(--accent-primary);
+}
+
+.granularity-btn:hover:not(.active) {
+  background: var(--surface-recessed);
+}
+
 label {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
