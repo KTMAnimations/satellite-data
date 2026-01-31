@@ -79,6 +79,8 @@ async def tile_png(
     try:
         fetcher = await asyncio.to_thread(get_tile_fetcher, metric, date_bucket, granularity)  # type: ignore[arg-type]
         png_bytes: bytes = await asyncio.to_thread(fetcher.fetch_tile, x, y, z)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:

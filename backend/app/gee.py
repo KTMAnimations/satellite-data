@@ -665,12 +665,27 @@ def compute_time_series(
     # trigger. Mapping reduceRegion over long date lists can exceed that limit (e.g.
     # NDVI monthly over 2+ years). Chunk the date list to keep requests reliable.
     chunk_size = 20
+
+    def fetch_dates(dates: list[str]) -> list[tuple[str, float]]:
+        """
+        Fetch a chunk of dates, recursively splitting if Earth Engine rejects the
+        request due to concurrent aggregation limits.
+        """
+        ee_dates = ee.List(dates)
+        fc = ee.FeatureCollection(ee_dates.map(per_bucket))
+        try:
+            info = fc.getInfo()
+        except Exception as e:
+            # Common when mapping reduceRegion over many dates.
+            if "Too many concurrent aggregations" in str(e) and len(dates) > 1:
+                mid = len(dates) // 2
+                return fetch_dates(dates[:mid]) + fetch_dates(dates[mid:])
+            raise
+        return _parse_features(info)
+
     out: list[tuple[str, float]] = []
     for i in range(0, len(date_strings), chunk_size):
-        ee_dates = ee.List(date_strings[i : i + chunk_size])
-        fc = ee.FeatureCollection(ee_dates.map(per_bucket))
-        info = fc.getInfo()
-        out.extend(_parse_features(info))
+        out.extend(fetch_dates(date_strings[i : i + chunk_size]))
 
     out.sort(key=lambda x: x[0])
     return out

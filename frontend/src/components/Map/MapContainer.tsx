@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   MapContainer as LeafletMapContainer,
@@ -18,6 +18,7 @@ import { DEFAULT_METRIC_OVERLAY_MIN_ZOOM, MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../
 import { formatApiError } from '../../utils/errors';
 import type { CompositeTileEvent } from './CompositeTileLayer';
 import type { FlowPoint } from './FlowLayer';
+import { AbortableTileLayer } from './AbortableTileLayer';
 import './MapContainer.css';
 
 const MAPTILER_KEY = (import.meta.env.VITE_MAPTILER_KEY ?? '').trim();
@@ -246,6 +247,7 @@ export function MapView({
   const [activeTileTemplate, setActiveTileTemplate] = useState<TileTemplateResponse | null>(null);
   const [pendingTileTemplate, setPendingTileTemplate] = useState<TileTemplateResponse | null>(null);
   const pendingTileTemplateRef = useRef<TileTemplateResponse | null>(null);
+  const [activeTilesLoading, setActiveTilesLoading] = useState(false);
 
   useEffect(() => {
     pendingTileTemplateRef.current = pendingTileTemplate;
@@ -313,6 +315,29 @@ export function MapView({
     setPendingTileTemplate(null);
   }, []);
 
+  const activeOverlayEventHandlers = useMemo(
+    () => ({
+      loading: () => setActiveTilesLoading(true),
+      load: () => setActiveTilesLoading(false),
+      remove: () => setActiveTilesLoading(false),
+    }),
+    [setActiveTilesLoading]
+  );
+
+  const pendingOverlayEventHandlers = useMemo(() => {
+    if (!pendingTileTemplate?.tile_url) return undefined;
+    const tileUrl = pendingTileTemplate.tile_url;
+    return {
+      load: () => promotePendingLayer(tileUrl),
+    };
+  }, [pendingTileTemplate?.tile_url, promotePendingLayer]);
+
+  useEffect(() => {
+    if (!metricLayerMounted || !metricLayerVisible) {
+      setActiveTilesLoading(false);
+    }
+  }, [metricLayerMounted, metricLayerVisible]);
+
   const overlayHasUnappliedTemplate = Boolean(
     metricLayerMounted &&
       metricLayerVisible &&
@@ -327,7 +352,13 @@ export function MapView({
       selectedMetric &&
       metricLayerMounted &&
       metricLayerVisible &&
-      (tileTemplateIsLoading || tileTemplateIsFetching || Boolean(pendingTileTemplate) || overlayHasUnappliedTemplate)
+      (
+        tileTemplateIsLoading ||
+        tileTemplateIsFetching ||
+        Boolean(pendingTileTemplate) ||
+        overlayHasUnappliedTemplate ||
+        activeTilesLoading
+      )
   );
 
   useEffect(() => {
@@ -386,23 +417,28 @@ export function MapView({
 
         {/* Metric tile overlay (Earth Engine URL template) */}
         {metricLayerMounted && metricLayerVisible && activeTileTemplate?.tile_url && (
-          <TileLayer
+          <AbortableTileLayer
             key={activeTileTemplate.tile_url}
             url={activeTileTemplate.tile_url}
             opacity={activeTileTemplate.opacity}
             attribution={activeTileTemplate.attribution ?? undefined}
+            updateWhenIdle
+            updateWhenZooming={false}
+            keepBuffer={0}
+            eventHandlers={activeOverlayEventHandlers}
           />
         )}
         {metricLayerMounted && metricLayerVisible && pendingTileTemplate?.tile_url && (
-          <TileLayer
+          <AbortableTileLayer
             key={pendingTileTemplate.tile_url}
             url={pendingTileTemplate.tile_url}
             opacity={0}
             // Avoid duplicate attributions while the pending layer is hidden.
             attribution={undefined}
-            eventHandlers={{
-              load: () => promotePendingLayer(pendingTileTemplate.tile_url),
-            }}
+            updateWhenIdle
+            updateWhenZooming={false}
+            keepBuffer={0}
+            eventHandlers={pendingOverlayEventHandlers}
           />
         )}
 
