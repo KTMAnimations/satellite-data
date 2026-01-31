@@ -161,53 +161,40 @@ This document consolidates the GEE dataset research and test verification for th
 
 | File | Purpose |
 |------|---------|
-| `backend/app/api/routes/tiles.py` | Tile endpoint with valid_metrics list |
-| `backend/app/services/satellite/us_data_service.py` | `get_{metric}()` methods for each metric |
-| `backend/app/services/tiles/us_tile_generator.py` | COLORMAPS and VALUE_RANGES |
+| `backend/app/gee.py` | All metric definitions, EE compute logic, tile URL generation |
+| `backend/app/routes/tiles.py` | Tile URL template endpoint |
+| `backend/app/routes/metrics.py` | Time series metrics endpoint |
 
 ### 2.2 Frontend Files
 
 | File | Purpose |
 |------|---------|
-| `frontend/src/types/index.ts` | `MetricType` union type |
-| `frontend/src/services/api.ts` | Daily metrics list for granularity |
-| `frontend/src/pages/AnimationStudio.tsx` | METRIC_OPTIONS and METRIC_GRANULARITY |
+| `frontend/src/types/index.ts` | `MetricType` and `Granularity` type definitions |
+| `frontend/src/config/metrics.ts` | Default granularities, supported granularities, helpers |
+| `frontend/src/components/Map/metricStyles.ts` | Palette and style definitions per metric |
+| `frontend/src/pages/AnimationStudio.tsx` | METRIC_OPTIONS list |
 
 ### 2.3 Adding a New Metric
 
-1. **Backend - Data Service:**
+1. **Backend - gee.py:** Add a `MetricDefinition` entry to `METRICS`:
 ```python
-# us_data_service.py
-async def get_new_metric(self, year: int, month: int) -> np.ndarray | None:
-    collection = ee.ImageCollection("GEE/DATASET/ID")
-    # Filter and process...
-    return await self._compute_us_raster(image)
+# gee.py
+"new_metric": MetricDefinition(
+    collection="GEE/DATASET/ID",
+    band="band_name",
+    unit="unit",
+    value_range=(min_val, max_val),
+    palette=["#color1", "#color2", ...],
+    default_granularity="monthly",
+    supported_granularities={"monthly"},
+    compute_fn=_compute_new_metric,  # optional custom function
+)
 ```
 
-2. **Backend - Tile Generator:**
-```python
-# us_tile_generator.py
-COLORMAPS["new_metric"] = [(r1,g1,b1), (r2,g2,b2), ...]
-VALUE_RANGES["new_metric"] = (min_val, max_val)
-```
-
-3. **Backend - Routes:**
-```python
-# tiles.py - Add to valid_metrics list
-valid_metrics = [..., "new_metric"]
-```
-
-4. **Frontend - Types:**
-```typescript
-// types/index.ts
-export type MetricType = ... | 'new_metric';
-```
-
-5. **Frontend - Animation Studio:**
-```typescript
-// AnimationStudio.tsx
-const METRIC_OPTIONS = [..., { value: 'new_metric', label: 'New Metric', granularity: 'monthly' }];
-```
+2. **Frontend - types/index.ts:** Add to `MetricType` union and `SeasonalAverage`
+3. **Frontend - config/metrics.ts:** Add to `METRIC_DEFAULT_GRANULARITY` and `METRIC_SUPPORTED_GRANULARITIES`
+4. **Frontend - AnimationStudio.tsx:** Add to `METRIC_OPTIONS` array
+5. **Frontend - AnalysisView.tsx & MapPage.tsx:** Add to their `METRIC_OPTIONS` arrays
 
 ---
 
@@ -250,9 +237,9 @@ VALUE_RANGES = {
     "temperature": (-30.0, 45.0),  # Celsius
     "precipitation": (0.0, 500.0),  # mm
     "aerosol": (-2.0, 5.0),  # index
-    "cropland": (0.0, 255.0),  # categorical
-    "evapotranspiration": (0.0, 300.0),  # mm/month
-    "soil_moisture": (0.0, 50.0),  # mm
+    "cropland": (0.0, 1.0),  # fraction (ESA WorldCover)
+    "evapotranspiration": (0.0, 300.0),  # kg/m²/8day (MODIS)
+    "soil_moisture": (0.0, 0.5),  # m³/m³ (SMAP L4)
     "impervious": (0.0, 1.0),  # binary
     "fire_historical": (0.0, 500.0),  # FRP in MW
     "canopy_height": (0.0, 60.0),  # meters
@@ -263,37 +250,22 @@ VALUE_RANGES = {
 
 ## 4. Granularity & Date Formats
 
-### 4.1 Daily Metrics
-These metrics support daily date format (YYYY-MM-DD):
-- `nightlights` - VIIRS daily data
-- `active_fire` - Real-time fire detection
+### 4.1 Multi-Granularity Metrics
+These metrics support user-selectable granularity via a toggle in the UI:
+- `nightlights` - daily (VIIRS Black Marble) or monthly (NOAA composites)
+- `active_fire` - daily or monthly
+- `no2`, `temperature`, `precipitation`, `aerosol` - daily or monthly
+- `ndvi`, `parking`, `land_cover`, `soil_moisture` - weekly or monthly
 
-### 4.2 Monthly Metrics
-All other metrics use monthly format (YYYY-MM) or auto-convert from daily requests.
+### 4.2 Single-Granularity Metrics
+These metrics only support monthly: `urban_density`, `surface_water`, `cropland`, `evapotranspiration`, `impervious`, `fire_historical`, `canopy_height`.
 
-### 4.3 Frontend Mapping
+### 4.3 Frontend Config
 
-```typescript
-const METRIC_GRANULARITY: Record<string, string> = {
-  nightlights: 'daily',
-  ndvi: 'weekly',
-  urban_density: 'monthly',
-  parking: 'weekly',
-  land_cover: 'monthly',
-  surface_water: 'monthly',
-  active_fire: 'daily',
-  no2: 'monthly',
-  temperature: 'monthly',
-  precipitation: 'monthly',
-  aerosol: 'monthly',
-  cropland: 'yearly',
-  evapotranspiration: 'monthly',
-  soil_moisture: 'monthly',
-  impervious: 'yearly',
-  fire_historical: 'monthly',
-  canopy_height: 'static',
-};
-```
+See `frontend/src/config/metrics.ts` for the canonical mapping:
+- `METRIC_DEFAULT_GRANULARITY` — default granularity per metric
+- `METRIC_SUPPORTED_GRANULARITIES` — all supported granularities per metric
+- `getRecommendedGranularity()` — auto-selects finest granularity that fits within the backend's max time-series points
 
 ---
 
@@ -327,12 +299,10 @@ Visual verification completed via Playwright MCP browser:
 - Each metric displays correct granularity badge
 - Map overlays render with appropriate colormaps
 
-### 6.3 Known Discrepancies
+### 6.3 Known Notes
 
-| Issue | SOT Spec | Implementation | Impact |
-|-------|----------|----------------|--------|
-| soil_moisture unit | % (0-100) | mm (0-50) | Low - display conversion |
-| active_fire range | 0-1000 MW | 0-500 MW | Low - covers typical fires |
+All metrics are now consistent between SOT.md, this document, and the implementation.
+Soil moisture uses SMAP L4 with m³/m³ units (range 0-0.5).
 
 ---
 
@@ -343,7 +313,7 @@ Visual verification completed via Playwright MCP browser:
 | Dataset | GEE ID | Use Case | Effort |
 |---------|--------|----------|--------|
 | GOES-16 FDCC | `NOAA/GOES/16/FDCC` | Real-time fire (10-min) | Medium |
-| SMAP L4 | `NASA/SMAP/SPL4SMGP/007` | Enhanced soil moisture | Low |
+| USDA CDL | `USDA/NASS/CDL` | US-specific crop type classification | Low |
 | CAMS NRT | `ECMWF/CAMS/NRT` | Air quality forecast | Medium |
 
 ### 7.2 Not Recommended

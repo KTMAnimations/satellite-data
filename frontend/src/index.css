@@ -455,6 +455,15 @@ select {
   background: var(--surface-recessed);
 }
 
+.granularity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.granularity-btn:disabled:hover {
+  background: var(--surface-page);
+}
+
 label {
   font-family: var(--font-mono);
   font-size: 0.6875rem;

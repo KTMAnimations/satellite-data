@@ -194,7 +194,7 @@ slope, intercept, lo_slope, hi_slope = theilslopes(values, times)
 | Metric | Categories |
 |--------|------------|
 | Land Cover | Water (blue), Trees (dark green), Grass (light green), Crops (yellow), Built (red), Bare (brown) |
-| Cropland | Per-crop color palette (256 classes) |
+| Cropland | Cropland fraction gradient (ESA WorldCover) |
 
 ---
 
@@ -276,14 +276,12 @@ Where available, compare against:
 ## 8. Reproducibility
 
 All analysis code is available in the repository:
-- `backend/app/services/features/` - Metric extraction
-- `backend/app/services/analysis/` - Temporal analysis
-- `scripts/` - Data collection and preprocessing
+- `backend/app/gee.py` - Metric definitions, GEE compute logic, and tile URL generation
+- `backend/app/routes/metrics.py` - Time series metrics endpoint
+- `backend/app/routes/tiles.py` - Tile URL template endpoint
 
 Data sources are publicly accessible:
-- Google Earth Engine (requires account)
-- Microsoft Planetary Computer (free)
-- Copernicus Data Space (free, EU)
+- Google Earth Engine (requires account) - sole data provider for all 17 metrics
 
 ---
 

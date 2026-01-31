@@ -192,6 +192,10 @@ export function AnimationStudio() {
   };
 
   const isPreviewDirty = !previewDate || previewDate.getTime() !== currentDate.getTime();
+  const dateLabelOptions: Intl.DateTimeFormatOptions =
+    granularity === 'monthly'
+      ? { year: 'numeric', month: 'long' }
+      : { year: 'numeric', month: 'short', day: '2-digit' };
 
   const handleApplyPreview = () => {
     setPreviewDate(currentDate);
@@ -471,8 +475,7 @@ export function AnimationStudio() {
                     <span className="current-date mono">
                       {previewDate && !isNaN(previewDate.getTime())
                         ? `Preview: ${previewDate.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
+                            ...dateLabelOptions,
                           })}`
                         : 'Preview: (not loaded)'}
                     </span>
@@ -480,8 +483,7 @@ export function AnimationStudio() {
                       <span className="pending-date mono">
                         {currentDate && !isNaN(currentDate.getTime())
                           ? `Selected: ${currentDate.toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
+                              ...dateLabelOptions,
                             })}`
                           : 'Selected: Loading...'}
                       </span>

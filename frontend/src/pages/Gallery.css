@@ -1,275 +1,390 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   GALLERY — Exhibition / Observatory Aesthetic
+   Matches the scientific instrument panel design system while feeling
+   distinctly like a curated gallery of satellite studies.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .gallery {
-  padding: 2rem;
+  padding: 3rem 2.5rem 4rem;
   max-width: 1400px;
   margin: 0 auto;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Header — editorial, restrained
+   ───────────────────────────────────────────────────────────────────────── */
+
 .gallery-header {
-  text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
 }
 
-.gallery-header h1 {
-  font-family: var(--font-display, var(--font-body));
-  font-size: 2rem;
-  font-weight: 600;
+.gallery-header__label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-primary);
   margin-bottom: 0.75rem;
+}
+
+.gallery-header__title {
+  font-family: var(--font-body);
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 1rem;
 }
 
-.gallery-header p {
-  font-size: 1.125rem;
+.gallery-header__subtitle {
+  font-size: 1rem;
+  line-height: 1.6;
   color: var(--text-secondary);
-  max-width: 600px;
-  margin: 0 auto;
+  max-width: 540px;
 }
 
-/* Presets Grid */
-.presets-grid {
+/* ─────────────────────────────────────────────────────────────────────────
+   Divider
+   ───────────────────────────────────────────────────────────────────────── */
+
+.gallery-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin-bottom: 2.5rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Grid — asymmetric, gallery-like
+   The first row has a large featured card + smaller card.
+   Remaining cards fill a 3-column grid.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-  gap: 2rem;
-  margin-bottom: 3rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 4rem;
 }
 
-.preset-card {
+/* First card spans 2 columns for featured treatment */
+.gallery-grid .gallery-card:first-child {
+  grid-column: span 2;
+}
+
+/* Second card gets a taller visual to balance the row */
+.gallery-grid .gallery-card:nth-child(2) .gallery-card__visual {
+  height: 220px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Card — the exhibition piece
+   ───────────────────────────────────────────────────────────────────────── */
+
+.gallery-card {
   position: relative;
   background: var(--surface-panel);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: border-color 0.2s ease;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 0;
+  animation: galleryCardIn 0.5s var(--ease-out-expo) forwards;
+  cursor: default;
 }
 
-.preset-card:hover {
-  border-color: var(--accent-primary);
+.gallery-card:hover {
+  border-color: var(--card-accent, var(--border-panel));
+  box-shadow:
+    0 4px 24px rgba(28, 25, 23, 0.06),
+    0 1px 4px rgba(28, 25, 23, 0.04);
+  transform: translateY(-2px);
 }
 
-.preset-card.highlighted {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  animation: highlight-pulse 1s ease-out;
+.gallery-card--highlighted {
+  border-color: var(--card-accent, var(--accent-primary));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--card-accent, var(--accent-primary)) 20%, transparent);
+  animation: galleryCardIn 0.5s var(--ease-out-expo) forwards, galleryHighlight 1.2s ease-out 0.5s;
 }
 
-@keyframes highlight-pulse {
+@keyframes galleryCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes galleryHighlight {
   0% {
-    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--card-accent, var(--accent-primary)) 35%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--card-accent, var(--accent-primary)) 20%, transparent);
   }
 }
 
-/* Corner brackets for preset cards */
-.preset-card::before,
-.preset-card::after {
+/* ─── Visual field (the "artwork") ───────────────────────────────────── */
+
+.gallery-card__visual {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+
+/* Featured (first) card gets a taller visual */
+.gallery-grid .gallery-card:first-child .gallery-card__visual {
+  height: 240px;
+}
+
+.gallery-card__gradient {
+  position: absolute;
+  inset: 0;
+  background: var(--card-gradient);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gallery-card:hover .gallery-card__gradient {
+  transform: scale(1.04);
+}
+
+/* Subtle noise texture over gradient for depth */
+.gallery-card__visual::after {
   content: '';
   position: absolute;
-  width: 16px;
-  height: 16px;
-  border-color: var(--border-bracket, var(--border-panel));
-  border-style: solid;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+/* Catalogue number — top-left, like a specimen tag */
+.gallery-card__number {
+  position: absolute;
+  top: 1rem;
+  left: 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.7);
   z-index: 1;
 }
 
-.preset-card::before {
-  top: 0;
-  left: 0;
-  border-width: 2px 0 0 2px;
+/* Category label — fades in on hover */
+.gallery-card__label {
+  position: absolute;
+  bottom: 1rem;
+  left: 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 0.3rem 0.625rem;
+  border-radius: var(--radius-sm);
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
 }
 
-.preset-card::after {
-  top: 0;
-  right: 0;
-  border-width: 2px 2px 0 0;
+.gallery-card__label--visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.preset-image {
-  height: 160px;
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--metric-tertiary) 100%);
-  position: relative;
-}
+/* ─── Body (the "placard") ───────────────────────────────────────────── */
 
-.preset-image-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.preset-content {
+.gallery-card__body {
   padding: 1.5rem;
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-.preset-content h2 {
+.gallery-card__title {
   font-family: var(--font-body);
   font-size: 1.125rem;
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
 }
 
-.preset-description {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+.gallery-card__description {
+  font-size: 0.8125rem;
   line-height: 1.6;
-  margin-bottom: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
 }
 
-.preset-details {
-  margin-bottom: 1rem;
-}
+/* ─── Meta details ───────────────────────────────────────────────────── */
 
-.detail-row {
+.gallery-card__meta {
   display: flex;
-  font-size: 0.75rem;
-  margin-bottom: 0.375rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
 }
 
-.detail-label {
+.gallery-card__meta-group {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.gallery-card__meta-label {
   font-family: var(--font-mono);
+  font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  width: 70px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  width: 72px;
   flex-shrink: 0;
-  color: var(--text-secondary);
 }
 
-.detail-value {
+.gallery-card__meta-value {
+  font-size: 0.75rem;
   color: var(--text-tertiary);
+  line-height: 1.4;
 }
 
-.preset-findings {
-  background: var(--surface-recessed);
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-  flex: 1;
-}
+/* ─── Link ───────────────────────────────────────────────────────────── */
 
-.preset-findings h4 {
+.gallery-card__link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: auto;
+  padding: 0.5rem 0;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.5rem;
-  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  color: var(--card-accent, var(--accent-primary));
+  text-decoration: none;
+  transition: color 0.15s ease;
+  border: none;
+  background: none;
+  cursor: pointer;
 }
 
-.preset-findings ul {
-  margin: 0;
-  padding-left: 1rem;
+.gallery-card__link::after {
+  content: '\2192';
+  margin-left: 0.5rem;
+  transition: transform 0.2s ease;
+  display: inline-block;
 }
 
-.preset-findings li {
-  font-size: 0.75rem;
+.gallery-card:hover .gallery-card__link::after {
+  transform: translateX(3px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Footer — methodology as quiet footnote
+   ───────────────────────────────────────────────────────────────────────── */
+
+.gallery-footer {
+  margin-top: 2rem;
+}
+
+.gallery-footer__content {
+  max-width: 640px;
+}
+
+.gallery-footer__heading {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.gallery-footer p {
+  font-size: 0.8125rem;
+  line-height: 1.7;
   color: var(--text-tertiary);
-  margin-bottom: 0.25rem;
 }
 
-.preset-findings li::marker {
-  color: var(--accent-primary);
-}
+/* ─────────────────────────────────────────────────────────────────────────
+   Responsive
+   ───────────────────────────────────────────────────────────────────────── */
 
-.preset-content .btn {
-  width: 100%;
-  margin-top: auto;
-}
+@media (max-width: 1024px) {
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-/* Methodology Section */
-.methodology-section {
-  position: relative;
-  background: var(--surface-panel);
-  padding: 2rem;
-  border-radius: 6px;
-  border: 1px solid var(--border-subtle);
-}
-
-/* Corner brackets for methodology section */
-.methodology-section::before,
-.methodology-section::after {
-  content: '';
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border-color: var(--border-bracket, var(--border-panel));
-  border-style: solid;
-}
-
-.methodology-section::before {
-  top: 0;
-  left: 0;
-  border-width: 2px 0 0 2px;
-}
-
-.methodology-section::after {
-  top: 0;
-  right: 0;
-  border-width: 2px 2px 0 0;
-}
-
-.methodology-section h2 {
-  font-family: var(--font-body);
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-}
-
-.methodology-section p {
-  font-size: 0.875rem;
-  line-height: 1.6;
-  margin-bottom: 1rem;
-  color: var(--text-secondary);
-}
-
-.methodology-section ul {
-  margin: 1rem 0;
-  padding-left: 1.5rem;
-}
-
-.methodology-section li {
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.methodology-section li strong {
-  color: var(--text-primary);
-}
-
-.methodology-section li::marker {
-  color: var(--accent-primary);
-}
-
-.disclaimer {
-  background: var(--surface-recessed);
-  padding: 1rem;
-  border-radius: 4px;
-  border-left: 3px solid var(--metric-secondary);
-  margin-top: 1rem;
-}
-
-.disclaimer strong {
-  color: var(--metric-secondary);
+  .gallery-grid .gallery-card:first-child {
+    grid-column: span 2;
+  }
 }
 
 @media (max-width: 768px) {
-  .presets-grid {
-    grid-template-columns: 1fr;
+  .gallery {
+    padding: 2rem 1.25rem 3rem;
   }
 
+  .gallery-header__title {
+    font-size: 2rem;
+  }
+
+  .gallery-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .gallery-grid .gallery-card:first-child {
+    grid-column: span 1;
+  }
+
+  .gallery-grid .gallery-card:first-child .gallery-card__visual,
+  .gallery-grid .gallery-card:nth-child(2) .gallery-card__visual {
+    height: 160px;
+  }
+
+  .gallery-card__visual {
+    height: 140px;
+  }
+}
+
+@media (max-width: 480px) {
   .gallery {
-    padding: 1rem;
+    padding: 1.5rem 1rem 2rem;
+  }
+
+  .gallery-card__body {
+    padding: 1.25rem;
+  }
+
+  .gallery-card__meta-group {
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .gallery-card__meta-label {
+    width: auto;
   }
 }

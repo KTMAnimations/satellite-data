@@ -8,7 +8,7 @@ The Satellite Migration Analysis Platform enables analysis of seasonal migration
 - Analyze 17 different satellite-derived metrics
 - Compare time periods (seasonal, year-over-year)
 - Create time-lapse animations
-- Export reports (PDF, CSV, animations)
+- Export reports (PDF) and animations (GIF)
 
 ---
 
@@ -30,7 +30,6 @@ Navigate to **Region Explorer** to:
 1. **Browse Predefined Regions**: 50+ major US cities and migration hotspots
 2. **Search**: Type a city name to find specific regions
 3. **Draw Custom Regions**: Use the drawing tools to define your own area
-4. **Upload GeoJSON**: Import custom region boundaries
 
 ### 3. Analyzing Metrics
 
@@ -38,9 +37,10 @@ In the **Analysis View**, you can:
 
 1. Select which metrics to display (e.g., NDVI, Nightlights, Urban Density)
 2. Choose a date range using the calendar or presets
-3. View time series charts showing metric trends
-4. See the metric overlay on the map (zoom in for best performance and detail)
-5. Export your analysis
+3. Toggle granularity (e.g., Daily/Monthly) for metrics that support multiple cadences
+4. View time series charts showing metric trends
+5. See the metric overlay on the map (zoom in for best performance and detail)
+6. Export your analysis
 
 ---
 
@@ -50,37 +50,37 @@ In the **Analysis View**, you can:
 
 | Metric | Description | Resolution | Cadence |
 |--------|-------------|------------|---------|
-| **NDVI** | Vegetation health index | 10m | Weekly |
-| **Nightlights** | Nighttime light intensity (activity proxy) | 375m | Monthly |
-| **Urban Density** | Built-up area estimation | 10m | Multi-year |
-| **Parking** | Parking lot occupancy proxy | 10m | Weekly |
+| **NDVI** | Vegetation health index | 10m | Weekly / Monthly |
+| **Nightlights** | Nighttime light intensity (activity proxy) | 375m | Daily / Monthly |
+| **Urban Density** | Built-up area estimation | 10m | Monthly |
+| **Parking** | Parking lot occupancy proxy | 10m | Weekly / Monthly |
 
 ### Land & Water
 
 | Metric | Description | Resolution | Cadence |
 |--------|-------------|------------|---------|
-| **Land Cover** | Dynamic land cover classification | 10m | Near real-time |
+| **Land Cover** | Dynamic land cover classification | 10m | Weekly / Monthly |
 | **Surface Water** | Water extent mapping | 30m | Monthly |
-| **Impervious** | Impervious surface extent (1985-2018) | 30m | Annual |
+| **Impervious** | Impervious surface extent (1985-2018) | 30m | Monthly |
 
 ### Fire & Air Quality
 
 | Metric | Description | Resolution | Cadence |
 |--------|-------------|------------|---------|
-| **Active Fire** | Current fire hotspots | 375m | Daily |
-| **Fire Historical** | Historical fire archive (2000+) | 1km | Daily |
-| **NO₂** | Nitrogen dioxide (air quality) | 7km | Daily |
-| **Aerosol** | Aerosol index (smoke/dust) | 7km | Daily |
+| **Active Fire** | Current fire hotspots | 375m | Daily / Monthly |
+| **Fire Historical** | Historical fire archive (2000+) | 1km | Monthly |
+| **NO₂** | Nitrogen dioxide (air quality) | 7km | Daily / Monthly |
+| **Aerosol** | Aerosol index (smoke/dust) | 7km | Daily / Monthly |
 
 ### Weather & Agriculture
 
 | Metric | Description | Resolution | Cadence |
 |--------|-------------|------------|---------|
-| **Temperature** | Surface temperature | 11km | Hourly |
-| **Precipitation** | Rainfall amounts | 11km | Hourly |
-| **Cropland** | Crop type classification (US only) | 30m | Annual |
-| **Evapotranspiration** | Water loss (US only) | 30m | Monthly |
-| **Soil Moisture** | Root-zone moisture | 10km | 3-day |
+| **Temperature** | Surface temperature | 11km | Daily / Monthly |
+| **Precipitation** | Rainfall amounts | ~5km | Daily / Monthly |
+| **Cropland** | Cropland fraction (ESA WorldCover) | 10m | Monthly |
+| **Evapotranspiration** | Water loss (MODIS global) | ~500m | Monthly |
+| **Soil Moisture** | Surface moisture (SMAP L4) | ~11km | Weekly / Monthly |
 
 ### Vegetation Structure
 
@@ -104,7 +104,7 @@ Create time-lapse animations showing metric changes over time.
    - **Play/Pause**: Start or stop animation
    - **Speed**: Adjust playback speed (0.5x - 4x)
    - **Timeline**: Scrub to specific dates
-5. Export as GIF or WebM
+5. Export as GIF
 
 **Tips:**
 - Use longer date ranges for more frames
@@ -140,14 +140,8 @@ Generate downloadable reports and data.
 - Key metrics table
 - Methodology notes
 
-**CSV Exports Include:**
-- Date-indexed metric values
-- Region metadata
-- Multiple metrics in columns
-
 **Animation Exports:**
-- GIF format (smaller, universal)
-- WebM format (better quality)
+- GIF format (universal, shareable)
 
 ---
 
@@ -242,7 +236,7 @@ At 10-meter resolution (Sentinel-2), we cannot detect individual vehicles or peo
 
 - Try a different date range
 - Some metrics have limited temporal coverage
-- Check if the region is within the data extent (e.g., CDL is US-only)
+- Check if the region is within the data extent (some metrics have regional coverage)
 
 ### Map tiles not loading
 
@@ -269,12 +263,6 @@ At 10-meter resolution (Sentinel-2), we cannot detect individual vehicles or peo
 ## API Access
 
 For programmatic access, see the API documentation at `/docs` (Swagger UI) or `/redoc` (ReDoc).
-
-**Rate Limits:**
-- Anonymous: 100 requests/minute
-- Authenticated: 1000 requests/minute
-
-To get an API key, use the `/api/v1/auth/keys` endpoint.
 
 ---
 

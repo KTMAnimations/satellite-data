@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   MapContainer as LeafletMapContainer,
@@ -11,7 +11,7 @@ import {
 import type { LatLngBounds, Map as LeafletMap } from 'leaflet';
 import { shallow } from 'zustand/shallow';
 import { useStore } from '../../store';
-import type { Granularity, Region, GeoJSONPolygon, MetricType } from '../../types';
+import type { Granularity, Region, GeoJSONPolygon, MetricType, TileTemplateResponse } from '../../types';
 import api from '../../services/api';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
 import { DEFAULT_METRIC_OVERLAY_MIN_ZOOM, MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
@@ -217,6 +217,7 @@ export function MapView({
   const {
     data: tileTemplate,
     isLoading: tileTemplateIsLoading,
+    isFetching: tileTemplateIsFetching,
     isError: tileTemplateIsError,
     error: tileTemplateError,
   } = useQuery({
@@ -237,8 +238,88 @@ export function MapView({
         dateBucket &&
         effectiveGranularity
     ),
+    // Avoid a blank frame while switching dates by keeping the last successful template
+    // for the same metric/granularity until the next one is available.
+    placeholderData: (previousData) => {
+      if (!previousData) return previousData;
+      if (!selectedMetric || !effectiveGranularity) return undefined;
+      if (previousData.metric !== selectedMetric) return undefined;
+      if (previousData.granularity !== effectiveGranularity) return undefined;
+      return previousData;
+    },
     staleTime: 1000 * 60 * 60, // tokens are short-lived; keep cache bounded
   });
+
+  // Double-buffer tile layers so switching dates doesn't briefly remove the overlay while tiles load.
+  const [activeTileTemplate, setActiveTileTemplate] = useState<TileTemplateResponse | null>(null);
+  const [pendingTileTemplate, setPendingTileTemplate] = useState<TileTemplateResponse | null>(null);
+  const pendingTileTemplateRef = useRef<TileTemplateResponse | null>(null);
+
+  useEffect(() => {
+    pendingTileTemplateRef.current = pendingTileTemplate;
+  }, [pendingTileTemplate]);
+
+  useEffect(() => {
+    if (!metricLayerMounted) {
+      setActiveTileTemplate(null);
+      setPendingTileTemplate(null);
+      return;
+    }
+
+    if (!tileTemplate?.tile_url) {
+      setActiveTileTemplate(null);
+      setPendingTileTemplate(null);
+      return;
+    }
+
+    // If the overlay isn't currently visible (zoom-gated), just track the latest template.
+    // Double-buffering is only needed while the overlay is on-screen to prevent flicker.
+    if (!metricLayerVisible) {
+      if (!activeTileTemplate || activeTileTemplate.tile_url !== tileTemplate.tile_url) {
+        setActiveTileTemplate(tileTemplate);
+      }
+      if (pendingTileTemplate) setPendingTileTemplate(null);
+      return;
+    }
+
+    if (!activeTileTemplate) {
+      setActiveTileTemplate(tileTemplate);
+      setPendingTileTemplate(null);
+      return;
+    }
+
+    // Metric/granularity changes are semantic switches; don't keep showing the old overlay.
+    if (
+      activeTileTemplate.metric !== tileTemplate.metric ||
+      activeTileTemplate.granularity !== tileTemplate.granularity
+    ) {
+      setActiveTileTemplate(tileTemplate);
+      setPendingTileTemplate(null);
+      return;
+    }
+
+    if (activeTileTemplate.tile_url === tileTemplate.tile_url) {
+      setPendingTileTemplate(null);
+      return;
+    }
+
+    if (pendingTileTemplate?.tile_url !== tileTemplate.tile_url) {
+      setPendingTileTemplate(tileTemplate);
+    }
+  }, [
+    activeTileTemplate,
+    metricLayerMounted,
+    metricLayerVisible,
+    pendingTileTemplate,
+    tileTemplate,
+  ]);
+
+  const promotePendingLayer = useCallback((tileUrl: string) => {
+    const pending = pendingTileTemplateRef.current;
+    if (!pending || pending.tile_url !== tileUrl) return;
+    setActiveTileTemplate(pending);
+    setPendingTileTemplate(null);
+  }, []);
 
   const legendGradientStyle =
     tileTemplate?.palette?.length
@@ -288,12 +369,24 @@ export function MapView({
         />
 
         {/* Metric tile overlay (Earth Engine URL template) */}
-        {metricLayerMounted && metricLayerVisible && tileTemplate?.tile_url && (
+        {metricLayerMounted && metricLayerVisible && activeTileTemplate?.tile_url && (
           <TileLayer
-            key={`${tileTemplate.metric}:${tileTemplate.granularity}:${tileTemplate.date_bucket}`}
-            url={tileTemplate.tile_url}
-            opacity={tileTemplate.opacity}
-            attribution={tileTemplate.attribution ?? undefined}
+            key={activeTileTemplate.tile_url}
+            url={activeTileTemplate.tile_url}
+            opacity={activeTileTemplate.opacity}
+            attribution={activeTileTemplate.attribution ?? undefined}
+          />
+        )}
+        {metricLayerMounted && metricLayerVisible && pendingTileTemplate?.tile_url && (
+          <TileLayer
+            key={pendingTileTemplate.tile_url}
+            url={pendingTileTemplate.tile_url}
+            opacity={0}
+            // Avoid duplicate attributions while the pending layer is hidden.
+            attribution={undefined}
+            eventHandlers={{
+              load: () => promotePendingLayer(pendingTileTemplate.tile_url),
+            }}
           />
         )}
 
@@ -368,7 +461,11 @@ export function MapView({
             Zoom in to see overlay (z≥{effectiveOverlayMinZoom})
           </div>
         )}
-        {overlayEnabled && selectedMetric && metricLayerMounted && metricLayerVisible && tileTemplateIsLoading && (
+        {overlayEnabled &&
+          selectedMetric &&
+          metricLayerMounted &&
+          metricLayerVisible &&
+          (tileTemplateIsLoading || tileTemplateIsFetching || Boolean(pendingTileTemplate)) && (
           <div className="map-overlay-hint">Loading overlay…</div>
         )}
         {overlayEnabled && selectedMetric && metricLayerMounted && metricLayerVisible && tileTemplateIsError && (
