@@ -83,7 +83,7 @@ export function AnimationStudio() {
     error: regionsError,
   } = useQuery({
     queryKey: ['regions', 'predefined'],
-    queryFn: () => api.listRegions({ type: 'predefined', page_size: 50 }),
+    queryFn: ({ signal }) => api.listRegions({ type: 'predefined', page_size: 50 }, { signal }),
   });
 
   // Keep metric/tile bucketing consistent with the Region "Full Map" view.
@@ -99,13 +99,13 @@ export function AnimationStudio() {
     : recommendedGranularity;
   const { data: metrics } = useQuery({
     queryKey: ['metrics', selectedRegion?.id, selectedMetric, granularity, dateRange],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.getMetrics(selectedRegion!.id, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
         end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
         metrics: [selectedMetric],
         granularity,
-      }),
+      }, { signal }),
     enabled: !!selectedRegion,
   });
 
@@ -140,7 +140,7 @@ export function AnimationStudio() {
   // Poll export status
   const { data: exportStatus } = useQuery({
     queryKey: ['export-status', exportId],
-    queryFn: () => api.getExportStatus(exportId!),
+    queryFn: ({ signal }) => api.getExportStatus(exportId!, { signal }),
     enabled: !!exportId && exportMutation.isSuccess,
     refetchInterval: (query) =>
       query.state.data?.status === 'completed' || query.state.data?.status === 'failed'

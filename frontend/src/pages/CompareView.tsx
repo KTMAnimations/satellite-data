@@ -58,13 +58,13 @@ export function CompareView() {
 
   const { data: region } = useQuery({
     queryKey: ['region', regionId],
-    queryFn: () => api.getRegion(regionId!),
+    queryFn: ({ signal }) => api.getRegion(regionId!, { signal }),
     enabled: !!regionId,
   });
 
   const { data: comparison } = useQuery({
     queryKey: ['comparison', regionId, periodA, periodB, selectedMetric],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.comparePeriods({
         region_id: regionId!,
         period_a_start: periodA.start,
@@ -72,7 +72,7 @@ export function CompareView() {
         period_b_start: periodB.start,
         period_b_end: periodB.end,
         metrics: [selectedMetric],
-      }),
+      }, { signal }),
     enabled: !!regionId,
   });
 

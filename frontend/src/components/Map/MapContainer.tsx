@@ -23,11 +23,6 @@ import './MapContainer.css';
 const MAPTILER_KEY = (import.meta.env.VITE_MAPTILER_KEY ?? '').trim();
 const MAPTILER_OMT_RASTER_URL = `https://api.maptiler.com/maps/openstreetmap/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`;
 
-function clampZoom(zoom: number, min: number, max: number): number {
-  if (!Number.isFinite(zoom)) return min;
-  return Math.min(max, Math.max(min, zoom));
-}
-
 function toDateBucket(dateStr: string, granularity: Granularity): string {
   return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
 }
@@ -49,7 +44,6 @@ interface MapContainerProps {
   tileGranularity?: Granularity;
   overlayEnabled?: boolean;
   overlayAllowNetwork?: boolean;
-  overlayMinZoom?: number;
   onOverlayLoadingChange?: (isLoading: boolean) => void;
   onOverlayTileEvent?: (event: CompositeTileEvent) => void;
   viewLocked?: boolean;
@@ -161,7 +155,6 @@ export function MapView({
   tileGranularity,
   overlayEnabled = true,
   overlayAllowNetwork = true,
-  overlayMinZoom,
   onOverlayLoadingChange,
   viewLocked = false,
   selectedRegion: selectedRegionProp,
@@ -199,11 +192,7 @@ export function MapView({
       : showDrawControls
         ? (selectedRegion?.id ?? null)
         : null;
-  const effectiveOverlayMinZoom = clampZoom(
-    typeof overlayMinZoom === 'number' ? Math.round(overlayMinZoom) : DEFAULT_METRIC_OVERLAY_MIN_ZOOM,
-    MIN_MAP_ZOOM,
-    MAX_MAP_ZOOM
-  );
+  const effectiveOverlayMinZoom = DEFAULT_METRIC_OVERLAY_MIN_ZOOM;
   const metricLayerMounted = Boolean(selectedMetric && tileDate);
   const metricLayerVisible = Boolean(
     overlayEnabled && overlayAllowNetwork && mapState.zoom >= effectiveOverlayMinZoom
@@ -225,14 +214,14 @@ export function MapView({
     error: tileTemplateError,
   } = useQuery({
     queryKey: ['tiles', 'template', selectedMetric, dateBucket, effectiveGranularity],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.getTileTemplate({
         metric: selectedMetric!,
         date_bucket: dateBucket!,
         granularity: effectiveGranularity!,
-      }),
+      }, { signal }),
     // Prefetch the tile template as soon as we know the metric+date, so that when
-    // the user zooms in past the cutoff the overlay appears immediately.
+    // the overlay becomes visible it appears immediately.
     enabled: Boolean(
       metricLayerMounted &&
         overlayEnabled &&
@@ -509,7 +498,7 @@ export function MapView({
           !tileTemplate?.tile_url && (
             <div className="map-overlay-hint">No overlay available for this metric/date.</div>
           )}
-        {selectedMetric && (
+        {overlayEnabled && selectedMetric && (
           <div className="map-legend">
             <span className="legend-title">{selectedMetric}</span>
             <div

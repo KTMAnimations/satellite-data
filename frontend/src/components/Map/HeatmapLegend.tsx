@@ -160,12 +160,12 @@ export function HeatmapLegend({
 
   const { data: tileTemplate } = useQuery({
     queryKey: ['tiles', 'template', metric, dateBucket, tileGranularity],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.getTileTemplate({
         metric,
         date_bucket: dateBucket!,
         granularity: tileGranularity!,
-      }),
+      }, { signal }),
     enabled: Boolean(metric && dateBucket && tileGranularity),
     staleTime: 1000 * 60 * 60,
   });
@@ -213,12 +213,12 @@ export function HeatmapLegendCompact({
 
   const { data: tileTemplate } = useQuery({
     queryKey: ['tiles', 'template', metric, dateBucket, tileGranularity],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.getTileTemplate({
         metric,
         date_bucket: dateBucket!,
         granularity: tileGranularity!,
-      }),
+      }, { signal }),
     enabled: Boolean(metric && dateBucket && tileGranularity),
     staleTime: 1000 * 60 * 60,
   });

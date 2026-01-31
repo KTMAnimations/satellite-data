@@ -29,7 +29,7 @@ export function RegionExplorer() {
 
   const { data: preset, isLoading: presetLoading, isError: presetIsError, error: presetError } = useQuery({
     queryKey: ['preset', presetId],
-    queryFn: () => api.getPreset(presetId!),
+    queryFn: ({ signal }) => api.getPreset(presetId!, { signal }),
     enabled: !!presetId,
   });
 
@@ -56,7 +56,7 @@ export function RegionExplorer() {
 
   const { data: regionsData, isLoading, isError: regionsIsError, error: regionsError } = useQuery({
     queryKey: ['regions', listParams],
-    queryFn: () => api.listRegions(listParams),
+    queryFn: ({ signal }) => api.listRegions(listParams, { signal }),
   });
 
   const visibleRegions = useMemo(() => {

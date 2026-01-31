@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import './TimeSlider.css';
 
 const SLIDER_MARGIN = { left: 40, right: 40, top: 20, bottom: 30 } as const;
+const COMPACT_SLIDER_MARGIN = { left: 28, right: 28, top: 14, bottom: 14 } as const;
 
 interface TimeSliderProps {
   dates: Date[];
@@ -14,6 +15,7 @@ interface TimeSliderProps {
   playbackSpeed?: number;
   onSpeedChange?: (speed: number) => void;
   width?: number;
+  density?: 'regular' | 'compact';
 }
 
 export function TimeSlider({
@@ -26,12 +28,20 @@ export function TimeSlider({
   playbackSpeed = 1,
   onSpeedChange,
   width = 600,
+  density = 'regular',
 }: TimeSliderProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const height = 80;
-  const innerWidth = width - SLIDER_MARGIN.left - SLIDER_MARGIN.right;
+  const isCompact = density === 'compact';
+  const showAxis = !isCompact;
+  const height = isCompact ? 56 : 80;
+  const margin = isCompact ? COMPACT_SLIDER_MARGIN : SLIDER_MARGIN;
+  const innerWidth = width - margin.left - margin.right;
+  const trackY = isCompact ? 12 : 15;
+  const thumbRadius = isCompact ? 8 : 10;
+  const thumbStrokeWidth = isCompact ? 2.5 : 3;
+  const overlayHeight = isCompact ? 28 : 40;
 
   const sortedDates = useMemo(
     () => [...dates].sort((a, b) => a.getTime() - b.getTime()),
@@ -81,13 +91,13 @@ export function TimeSlider({
 
     const g = svg
       .append('g')
-      .attr('transform', `translate(${SLIDER_MARGIN.left},${SLIDER_MARGIN.top})`);
+      .attr('transform', `translate(${margin.left},${margin.top})`);
 
     // Track background
     g.append('rect')
       .attr('class', 'slider-track')
       .attr('x', 0)
-      .attr('y', 15)
+      .attr('y', trackY)
       .attr('width', innerWidth)
       .attr('height', 6)
       .attr('rx', 3)
@@ -98,7 +108,7 @@ export function TimeSlider({
     g.append('rect')
       .attr('class', 'slider-progress')
       .attr('x', 0)
-      .attr('y', 15)
+      .attr('y', trackY)
       .attr('width', selectedX)
       .attr('height', 6)
       .attr('rx', 3)
@@ -114,8 +124,8 @@ export function TimeSlider({
       g.append('line')
         .attr('x1', x)
         .attr('x2', x)
-        .attr('y1', 12)
-        .attr('y2', 24)
+        .attr('y1', trackY - 3)
+        .attr('y2', trackY + 9)
         .attr('stroke', 'var(--border-default)')
         .attr('stroke-width', 1);
     });
@@ -136,16 +146,18 @@ export function TimeSlider({
       ? d3.timeFormat('%b %d, %Y')  // Daily/weekly: "Jan 15, 2024"
       : d3.timeFormat('%b %Y');     // Monthly: "Jan 2024"
 
-    // Axis
-    const xAxis = d3
-      .axisBottom(xScale)
-      .ticks(Math.min(sortedDates.length, 6))
-      .tickFormat((d) => tickFormat(d as Date));
+    if (showAxis) {
+      // Axis
+      const xAxis = d3
+        .axisBottom(xScale)
+        .ticks(Math.min(sortedDates.length, 6))
+        .tickFormat((d) => tickFormat(d as Date));
 
-    g.append('g')
-      .attr('class', 'axis')
-      .attr('transform', `translate(0, 35)`)
-      .call(xAxis);
+      g.append('g')
+        .attr('class', 'axis')
+        .attr('transform', `translate(0, 35)`)
+        .call(xAxis);
+    }
 
     // Thumb
     const thumb = g.append('g').attr('class', 'slider-thumb');
@@ -153,11 +165,11 @@ export function TimeSlider({
     thumb
       .append('circle')
       .attr('cx', selectedX)
-      .attr('cy', 18)
-      .attr('r', 10)
+      .attr('cy', trackY + 3)
+      .attr('r', thumbRadius)
       .attr('fill', 'var(--accent-primary)')
       .attr('stroke', 'var(--surface-panel)')
-      .attr('stroke-width', 3)
+      .attr('stroke-width', thumbStrokeWidth)
       .style('cursor', 'grab')
       .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))');
 
@@ -168,7 +180,7 @@ export function TimeSlider({
       .attr('y', -2)
       .attr('text-anchor', 'middle')
       .attr('font-family', 'var(--font-mono)')
-      .attr('font-size', '11px')
+      .attr('font-size', isCompact ? '10px' : '11px')
       .attr('fill', 'var(--text-primary)')
       .text(labelFormat(selectedDate));
 
@@ -179,7 +191,7 @@ export function TimeSlider({
       .attr('x', 0)
       .attr('y', 0)
       .attr('width', innerWidth)
-      .attr('height', 40)
+      .attr('height', overlayHeight)
       .attr('fill', 'transparent')
       .style('cursor', 'pointer');
 
@@ -196,7 +208,7 @@ export function TimeSlider({
       .on('drag', (event) => {
         // Get pointer relative to SVG element, then subtract left margin
         const [svgX] = d3.pointer(event.sourceEvent, svg.node());
-        const x = Math.max(0, Math.min(innerWidth, svgX - SLIDER_MARGIN.left));
+        const x = Math.max(0, Math.min(innerWidth, svgX - margin.left));
         const closestDate = findClosestDate(x);
         onDateChange(closestDate);
       })
@@ -207,7 +219,7 @@ export function TimeSlider({
     // Click to jump - get coordinates relative to SVG then subtract margin
     overlay.on('click', (event) => {
       const [svgX] = d3.pointer(event, svg.node());
-      const x = Math.max(0, Math.min(innerWidth, svgX - SLIDER_MARGIN.left));
+      const x = Math.max(0, Math.min(innerWidth, svgX - margin.left));
       const closestDate = findClosestDate(x);
       onDateChange(closestDate);
     });
@@ -217,7 +229,7 @@ export function TimeSlider({
       svg.selectAll('*').interrupt();
       svg.selectAll('*').on('.', null); // Remove all event listeners
     };
-  }, [sortedDates, selectedDate, innerWidth, xScale, findClosestDate, onDateChange]);
+  }, [findClosestDate, innerWidth, isCompact, margin.left, margin.top, onDateChange, selectedDate, showAxis, sortedDates, trackY, thumbRadius, thumbStrokeWidth, overlayHeight, xScale]);
 
   // Playback effect
   useEffect(() => {
@@ -236,7 +248,7 @@ export function TimeSlider({
   }, [isPlaying, playbackBlocked, selectedDate, sortedDates, playbackSpeed, onDateChange]);
 
   return (
-    <div className="time-slider">
+    <div className={`time-slider ${isCompact ? 'compact' : ''}`}>
       <div className="time-slider-controls">
         {onPlayPause && (
           <button

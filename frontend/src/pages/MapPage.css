@@ -9,23 +9,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.875rem 1.25rem;
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border-panel);
   background: var(--surface-panel);
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .map-page-toolbar-left {
   display: flex;
   align-items: center;
-  gap: 0.875rem;
+  gap: 0.75rem;
   min-width: 0;
 }
 
-.map-page-title {
+.map-page-back-btn {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.map-page-title-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+  align-items: center;
+  gap: 0.5rem;
   min-width: 0;
 }
 
@@ -39,6 +44,12 @@
   width: fit-content;
 }
 
+.map-page-title-sep {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
 .map-page-breadcrumb:hover {
   color: var(--accent-primary);
 }
@@ -49,31 +60,40 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-tertiary);
+  white-space: nowrap;
 }
 
 .map-page-name {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 420px;
+  max-width: 520px;
 }
 
 .map-page-cache-btn {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-  width: fit-content;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
 }
 
 .map-page-toolbar-right {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+  row-gap: 0.5rem;
+}
+
+.map-page-toolbar .metric-select {
+  padding: 0.375rem 0.5rem;
+  padding-right: 2rem;
+  font-size: 0.75rem;
+  min-width: 160px;
+  background: var(--surface-panel);
 }
 
 .map-page-overlay-controls {
@@ -82,21 +102,16 @@
   gap: 0.5rem;
 }
 
-.map-page-overlay-label {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-tertiary);
-  white-space: nowrap;
+.map-page-overlay-toggle {
+  padding: 0.3125rem 0.625rem;
+  font-size: 0.75rem;
+  min-width: 100px;
 }
 
-.map-page-overlay-input {
-  width: 72px;
-  padding: 0.5rem;
-  font-size: 0.75rem;
-  text-align: center;
-  font-family: var(--font-mono);
+.map-page-overlay-toggle[aria-pressed="true"] {
+  background: var(--accent-primary-light);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .map-page-dates {
@@ -107,7 +122,7 @@
 
 .map-page-dates input {
   font-size: 0.75rem;
-  padding: 0.5rem;
+  padding: 0.375rem 0.5rem;
   background: var(--surface-panel);
 }
 
@@ -183,7 +198,7 @@
 }
 
 .map-page-timeline {
-  padding: 0.75rem 1rem 1rem;
+  padding: 0.5rem 0.75rem 0.625rem;
   border-top: 1px solid var(--border-panel);
   background: var(--surface-page);
   display: flex;

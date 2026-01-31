@@ -1,20 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import api from '../../services/api';
 
-// Mock axios
-vi.mock('axios', () => ({
-  default: {
-    create: vi.fn(() => ({
-      get: vi.fn(),
-      post: vi.fn(),
-      delete: vi.fn(),
-      interceptors: {
-        request: { use: vi.fn() },
-        response: { use: vi.fn() },
-      },
-    })),
-  },
+const axiosClient = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  delete: vi.fn(),
 }));
+
+// Mock axios
+vi.mock('axios', () => {
+  return {
+    default: {
+      create: vi.fn(() => ({
+        get: axiosClient.get,
+        post: axiosClient.post,
+        delete: axiosClient.delete,
+        interceptors: {
+          request: { use: vi.fn() },
+          response: { use: vi.fn() },
+        },
+      })),
+    },
+  };
+});
 
 describe('API Service', () => {
   beforeEach(() => {
@@ -67,5 +75,17 @@ describe('API Service', () => {
     it('has getTileTemplate method', () => {
       expect(typeof api.getTileTemplate).toBe('function');
     });
+  });
+
+  it('passes AbortSignal through to axios', async () => {
+    const controller = new AbortController();
+    axiosClient.get.mockResolvedValue({ data: { regions: [], total: 0, page: 1, page_size: 0 } });
+
+    await api.listRegions({ page_size: 1 }, { signal: controller.signal });
+
+    expect(axiosClient.get).toHaveBeenCalledWith(
+      '/regions',
+      expect.objectContaining({ signal: controller.signal })
+    );
   });
 });

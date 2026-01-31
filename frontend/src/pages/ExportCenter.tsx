@@ -54,7 +54,7 @@ export function ExportCenter() {
 
   const { data: regionsData, isLoading: regionsLoading, isError: regionsIsError, error: regionsError } = useQuery({
     queryKey: ['regions', { page_size: 100 }],
-    queryFn: () => api.listRegions({ page_size: 100 }),
+    queryFn: ({ signal }) => api.listRegions({ page_size: 100 }, { signal }),
   });
 
   const pdfMutation = useMutation({

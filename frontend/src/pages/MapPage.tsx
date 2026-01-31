@@ -14,7 +14,6 @@ import {
   METRICS_MAX_TIMESERIES_POINTS_DEFAULT,
   METRIC_SUPPORTED_GRANULARITIES,
 } from '../config/metrics';
-import { MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../config/map';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
 import './MapPage.css';
@@ -47,7 +46,7 @@ export function MapPage() {
 
   const [selectedMapMetric, setSelectedMapMetric] = useState<MetricType>('nightlights');
   const [selectedGranularity, setSelectedGranularity] = useState<Granularity | null>(null);
-  const [overlayMinZoom, setOverlayMinZoom] = useState<number>(4);
+  const [overlayEnabled, setOverlayEnabled] = useState(true);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [currentTimelineDate, setCurrentTimelineDate] = useState<Date | null>(null);
   const [overlayIsLoading, setOverlayIsLoading] = useState(false);
@@ -57,7 +56,7 @@ export function MapPage() {
 
   const { data: region, isError: regionIsError, error: regionError } = useQuery({
     queryKey: ['region', regionId],
-    queryFn: () => api.getRegion(regionId!),
+    queryFn: ({ signal }) => api.getRegion(regionId!, { signal }),
     enabled: !!regionId,
   });
 
@@ -79,13 +78,13 @@ export function MapPage() {
     error: metricsError,
   } = useQuery({
     queryKey: ['metrics', regionId, granularity, dateRange, selectedMapMetric],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.getMetrics(regionId!, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
         end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
         metrics: [selectedMapMetric],
         granularity,
-      }),
+      }, { signal }),
     enabled: !!regionId,
   });
 
@@ -175,24 +174,32 @@ export function MapPage() {
     <div className="map-page">
       <div className="map-page-toolbar">
         <div className="map-page-toolbar-left">
-          <Link to={`/analysis/${regionId}`} className="btn btn-outline">Back to Analysis</Link>
-          <div className="map-page-title">
+          <Link to={`/analysis/${regionId}`} className="btn btn-outline map-page-back-btn">Back</Link>
+
+          <div className="map-page-title-row">
             <Link to="/regions" className="map-page-breadcrumb">
               Regions
             </Link>
-            <div className="map-page-kicker">Full Map</div>
+            <span className="map-page-title-sep">/</span>
+            <span className="map-page-kicker">Full Map</span>
+            <span className="map-page-title-sep">·</span>
             <div className="map-page-name">
               {regionIsError ? `Error: ${formatApiError(regionError)}` : (region?.name ?? 'Loading…')}
             </div>
-            <button
-              type="button"
-              className="btn btn-outline map-page-cache-btn"
-              onClick={handleClearCache}
-              title="Clear cached tiles + metrics"
-            >
-              Clear cache
-            </button>
           </div>
+
+          <button
+            type="button"
+            className="btn btn-outline btn-icon map-page-cache-btn"
+            onClick={handleClearCache}
+            aria-label="Clear cached tiles + metrics"
+            title="Clear cached tiles + metrics"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 12a9 9 0 10-3.1 6.7" />
+              <path d="M21 12v7h-7" />
+            </svg>
+          </button>
         </div>
 
         <div className="map-page-toolbar-right">
@@ -233,21 +240,16 @@ export function MapPage() {
           )}
 
           <div className="map-page-overlay-controls">
-            <span className="map-page-overlay-label">Overlay cutoff</span>
-            <input
-              className="map-page-overlay-input"
-              type="number"
-              min={MIN_MAP_ZOOM}
-              max={MAX_MAP_ZOOM}
-              step={1}
-              value={overlayMinZoom}
-              aria-label="Overlay cutoff zoom"
-              onChange={(e) => {
-                const next = e.target.valueAsNumber;
-                if (Number.isNaN(next)) return;
-                setOverlayMinZoom(Math.min(MAX_MAP_ZOOM, Math.max(MIN_MAP_ZOOM, Math.round(next))));
-              }}
-            />
+            <button
+              type="button"
+              className="btn btn-outline map-page-overlay-toggle"
+              onClick={() => setOverlayEnabled((prev) => !prev)}
+              aria-pressed={overlayEnabled}
+              aria-label={overlayEnabled ? 'Hide overlay' : 'Show overlay'}
+              title={overlayEnabled ? 'Hide overlay' : 'Show overlay'}
+            >
+              Overlay {overlayEnabled ? 'On' : 'Off'}
+            </button>
           </div>
 
           <div className="map-page-dates">
@@ -276,7 +278,7 @@ export function MapPage() {
             <MapView
               regions={[region]}
               selectedMetric={selectedMapMetric}
-              overlayMinZoom={overlayMinZoom}
+              overlayEnabled={overlayEnabled}
               tileGranularity={granularity}
               tileDate={tileDate}
               onOverlayLoadingChange={setOverlayIsLoading}
@@ -310,14 +312,16 @@ export function MapPage() {
             </button>
           )}
 
-          <div className="map-page-legend">
-            <HeatmapLegend
-              metric={selectedMapMetric}
-              showValues={false}
-              tileDate={tileDate}
-              tileGranularity={granularity}
-            />
-          </div>
+          {overlayEnabled && (
+            <div className="map-page-legend">
+              <HeatmapLegend
+                metric={selectedMapMetric}
+                showValues={false}
+                tileDate={tileDate}
+                tileGranularity={granularity}
+              />
+            </div>
+          )}
         </div>
 
         <div className="map-page-timeline">
@@ -333,6 +337,7 @@ export function MapPage() {
               isPlaying={isTimelinePlaying}
               playbackBlocked={overlayIsLoading}
               onPlayPause={() => setIsTimelinePlaying(!isTimelinePlaying)}
+              density="compact"
               width={720}
             />
           ) : (

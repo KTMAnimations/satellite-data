@@ -58,7 +58,7 @@ export function AnalysisView() {
 
   const { data: region } = useQuery({
     queryKey: ['region', regionId],
-    queryFn: () => api.getRegion(regionId!),
+    queryFn: ({ signal }) => api.getRegion(regionId!, { signal }),
     enabled: !!regionId,
   });
 
@@ -85,13 +85,13 @@ export function AnalysisView() {
 
   const { data: metrics, isLoading: metricsLoading, isError: metricsIsError, error: metricsError } = useQuery({
     queryKey: ['metrics', regionId, granularity, dateRange, requestedMetrics],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.getMetrics(regionId!, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
         end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
         metrics: requestedMetrics,
         granularity,
-      }),
+      }, { signal }),
     enabled: !!regionId,
   });
 

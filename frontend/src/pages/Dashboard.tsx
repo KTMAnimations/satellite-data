@@ -31,12 +31,12 @@ export function Dashboard() {
   const navigate = useNavigate();
   const { data: regionsData } = useQuery({
     queryKey: ['regions', { type: 'predefined', page_size: 100 }],
-    queryFn: () => api.listRegions({ type: 'predefined', page_size: 100 }),
+    queryFn: ({ signal }) => api.listRegions({ type: 'predefined', page_size: 100 }, { signal }),
   });
 
   const { data: presetsData } = useQuery({
     queryKey: ['presets'],
-    queryFn: () => api.listPresets(),
+    queryFn: ({ signal }) => api.listPresets({ signal }),
   });
 
   const presets = presetsData?.presets ?? [];

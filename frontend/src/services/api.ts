@@ -18,6 +18,10 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
+type RequestOptions = {
+  signal?: AbortSignal;
+};
+
 class APIClient {
   private client: AxiosInstance;
 
@@ -40,13 +44,13 @@ class APIClient {
     category?: string;
     country?: string;
     search?: string;
-  }): Promise<RegionListResponse> {
-    const response = await this.client.get<RegionListResponse>('/regions', { params });
+  }, options?: RequestOptions): Promise<RegionListResponse> {
+    const response = await this.client.get<RegionListResponse>('/regions', { params, signal: options?.signal });
     return response.data;
   }
 
-  async getRegion(id: string): Promise<Region> {
-    const response = await this.client.get<Region>(`/regions/${id}`);
+  async getRegion(id: string, options?: RequestOptions): Promise<Region> {
+    const response = await this.client.get<Region>(`/regions/${id}`, { signal: options?.signal });
     return response.data;
   }
 
@@ -56,23 +60,23 @@ class APIClient {
     geometry: GeoJSONPolygon;
     country?: string;
     state_province?: string;
-  }): Promise<Region> {
-    const response = await this.client.post<Region>('/regions', data);
+  }, options?: RequestOptions): Promise<Region> {
+    const response = await this.client.post<Region>('/regions', data, { signal: options?.signal });
     return response.data;
   }
 
-  async deleteRegion(id: string): Promise<void> {
-    await this.client.delete(`/regions/${id}`);
+  async deleteRegion(id: string, options?: RequestOptions): Promise<void> {
+    await this.client.delete(`/regions/${id}`, { signal: options?.signal });
   }
 
   // Presets
-  async listPresets(): Promise<PresetListResponse> {
-    const response = await this.client.get<PresetListResponse>('/presets');
+  async listPresets(options?: RequestOptions): Promise<PresetListResponse> {
+    const response = await this.client.get<PresetListResponse>('/presets', { signal: options?.signal });
     return response.data;
   }
 
-  async getPreset(id: string): Promise<Preset> {
-    const response = await this.client.get<Preset>(`/presets/${id}`);
+  async getPreset(id: string, options?: RequestOptions): Promise<Preset> {
+    const response = await this.client.get<Preset>(`/presets/${id}`, { signal: options?.signal });
     return response.data;
   }
 
@@ -84,22 +88,24 @@ class APIClient {
       end_date?: string;
       metrics?: MetricType[];
       granularity?: Granularity;
-    }
+    },
+    options?: RequestOptions
   ): Promise<MetricsResponse> {
     const response = await this.client.get<MetricsResponse>(`/metrics/${regionId}`, {
       params,
+      signal: options?.signal,
     });
     return response.data;
   }
 
-  async comparePeriods(data: CompareRequest): Promise<CompareResponse> {
-    const response = await this.client.post<CompareResponse>('/analysis/compare', data);
+  async comparePeriods(data: CompareRequest, options?: RequestOptions): Promise<CompareResponse> {
+    const response = await this.client.post<CompareResponse>('/analysis/compare', data, { signal: options?.signal });
     return response.data;
   }
 
   // Exports
-  async exportPdf(data: ExportRequest): Promise<ExportResponse> {
-    const response = await this.client.post<ExportResponse>('/exports/pdf', data);
+  async exportPdf(data: ExportRequest, options?: RequestOptions): Promise<ExportResponse> {
+    const response = await this.client.post<ExportResponse>('/exports/pdf', data, { signal: options?.signal });
     return response.data;
   }
 
@@ -109,18 +115,18 @@ class APIClient {
     start_date?: string;
     end_date?: string;
     include_metadata?: boolean;
-  }): Promise<ExportResponse> {
-    const response = await this.client.post<ExportResponse>('/exports/csv', data);
+  }, options?: RequestOptions): Promise<ExportResponse> {
+    const response = await this.client.post<ExportResponse>('/exports/csv', data, { signal: options?.signal });
     return response.data;
   }
 
-  async exportAnimation(data: AnimationRequest): Promise<ExportResponse> {
-    const response = await this.client.post<ExportResponse>('/exports/animation', data);
+  async exportAnimation(data: AnimationRequest, options?: RequestOptions): Promise<ExportResponse> {
+    const response = await this.client.post<ExportResponse>('/exports/animation', data, { signal: options?.signal });
     return response.data;
   }
 
-  async getExportStatus(id: string): Promise<ExportResponse> {
-    const response = await this.client.get<ExportResponse>(`/exports/${id}/status`);
+  async getExportStatus(id: string, options?: RequestOptions): Promise<ExportResponse> {
+    const response = await this.client.get<ExportResponse>(`/exports/${id}/status`, { signal: options?.signal });
     return response.data;
   }
 
@@ -134,8 +140,8 @@ class APIClient {
     date_bucket: string;
     granularity: Granularity;
     opacity?: number;
-  }): Promise<TileTemplateResponse> {
-    const response = await this.client.get<TileTemplateResponse>('/tiles/template', { params });
+  }, options?: RequestOptions): Promise<TileTemplateResponse> {
+    const response = await this.client.get<TileTemplateResponse>('/tiles/template', { params, signal: options?.signal });
     return response.data;
   }
 }

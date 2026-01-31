@@ -157,24 +157,24 @@ export function SplitScreenCompare({
 
   const { data: tileTemplateA } = useQuery({
     queryKey: ['tiles', 'template', metric, dateBucketA, granularity],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.getTileTemplate({
         metric,
         date_bucket: dateBucketA,
         granularity,
-      }),
+      }, { signal }),
     enabled: Boolean(metric && dateBucketA && granularity),
     staleTime: 1000 * 60 * 60,
   });
 
   const { data: tileTemplateB } = useQuery({
     queryKey: ['tiles', 'template', metric, dateBucketB, granularity],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.getTileTemplate({
         metric,
         date_bucket: dateBucketB,
         granularity,
-      }),
+      }, { signal }),
     enabled: Boolean(metric && dateBucketB && granularity),
     staleTime: 1000 * 60 * 60,
   });
