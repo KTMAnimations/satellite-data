@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { SeasonalSummary, MetricType } from '../../types';
+import { normalizeMetricValue } from '../../utils/metrics';
 import './Charts.css';
 
 interface SeasonalBarChartProps {
@@ -45,10 +46,25 @@ export function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 
     )
     .map((metric) => ({
       metric,
-      winter: data.winter_avg[metric] || 0,
-      summer: data.summer_avg[metric] || 0,
-      change: data.change_pct[metric] || 0,
-    }));
+      winterRaw: data.winter_avg[metric] || 0,
+      summerRaw: data.summer_avg[metric] || 0,
+    }))
+    .flatMap(({ metric, winterRaw, summerRaw }) => {
+      const winterNorm = normalizeMetricValue(metric, winterRaw, { clamp: true });
+      const summerNorm = normalizeMetricValue(metric, summerRaw, { clamp: true });
+      if (winterNorm === null || summerNorm === null) return [];
+
+      const winter = winterNorm * 100;
+      const summer = summerNorm * 100;
+      return [
+        {
+          metric,
+          winter,
+          summer,
+          change: summer - winter,
+        },
+      ];
+    });
 
   useEffect(() => {
     const svgElement = svgRef.current;
@@ -84,12 +100,8 @@ export function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 
       .range([0, x0Scale.bandwidth()])
       .padding(0.1);
 
-    // Normalize values for comparison
-    const maxValue = Math.max(
-      ...chartData.flatMap((d) => [d.winter, d.summer])
-    );
-
-    const yScale = d3.scaleLinear().domain([0, maxValue * 1.1]).range([innerHeight, 0]);
+    // Normalize values to a unitless 0-100% scale so units don't affect the chart.
+    const yScale = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
 
     // X axis
     g.append('g')
@@ -100,7 +112,7 @@ export function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 
       .style('text-anchor', 'end');
 
     // Y axis
-    g.append('g').call(d3.axisLeft(yScale).ticks(5));
+    g.append('g').call(d3.axisLeft(yScale).ticks(5).tickFormat((d) => `${d}%`));
 
     // Bars
     const groups = g

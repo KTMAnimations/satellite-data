@@ -1,4 +1,5 @@
 import type { MetricType } from '../../types';
+import { METRIC_VALUE_RANGES } from '../../config/metricRanges';
 
 // Colormaps matching backend - converted to RGB hex
 export const COLORMAPS: Record<MetricType, string[]> = {
@@ -65,23 +66,7 @@ export const COLORMAPS: Record<MetricType, string[]> = {
 };
 
 // Value ranges for each metric
-export const VALUE_RANGES: Record<MetricType, [number, number]> = {
-  ndvi: [-1.0, 1.0],
-  nightlights: [0.0, 100.0],
-  urban_density: [0.0, 1.0],
-  parking: [0.0, 1.0],
-  land_cover: [0.0, 1.0],
-  surface_water: [0.0, 1.0],
-  no2: [0.0, 0.0002],
-  temperature: [-30.0, 45.0],
-  precipitation: [0.0, 500.0],
-  aerosol: [-2.0, 5.0],
-  cropland: [0.0, 1.0],
-  evapotranspiration: [0.0, 300.0],
-  soil_moisture: [0.0, 0.5],
-  impervious: [0.0, 1.0],
-  canopy_height: [0.0, 60.0],
-};
+export const VALUE_RANGES: Record<MetricType, [number, number]> = METRIC_VALUE_RANGES;
 
 export function interpolateColor(colors: string[], t: number): string {
   // Clamp t to [0, 1]

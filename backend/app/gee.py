@@ -12,6 +12,17 @@ from app.settings import get_settings
 
 Granularity = Literal["daily", "weekly", "monthly"]
 
+# Web Mercator (EPSG:3857) is only defined up to this latitude. Leaflet's default
+# CRS clamps the map to this range, and the XYZ tiling scheme expects the full
+# extent. If we clip to a smaller latitude (e.g. ±85°), the outermost tile rows
+# (y=0 / y=2^z-1) become partially or fully transparent at higher zooms, which
+# looks like overlays being "cut off" near the poles.
+WEB_MERCATOR_MAX_LAT = 85.05112878
+
+# Avoid using +/-180 exactly: the antimeridian can produce half-world tiles
+# (western hemisphere only) depending on Earth Engine tile rendering internals.
+GLOBAL_TILE_BOUNDS_WGS84 = (-179.999, -WEB_MERCATOR_MAX_LAT, 179.999, WEB_MERCATOR_MAX_LAT)
+
 
 @dataclass(frozen=True)
 class MetricDefinition:
@@ -470,7 +481,8 @@ def build_metric_image(metric: MetricId, start, end, geom):
             .select(["sm_surface"])
         )
         has_images = collection.size().gt(0)
-        image = collection.mean().rename([band])
+        native_proj = ee.Image(collection.first()).projection()
+        image = collection.mean().rename([band]).setDefaultProjection(native_proj).resample("bilinear")
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "impervious":
@@ -649,7 +661,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
-_tile_cache_version = 7
+_tile_cache_version = 8
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
@@ -681,9 +693,7 @@ def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularit
 
     start = ee.Date(start_py.isoformat())
     end = ee.Date(end_py.isoformat())
-    # Avoid using +/-180 exactly: the antimeridian can produce half-world tiles
-    # (western hemisphere only) depending on EE tile rendering internals.
-    geom = ee.Geometry.Rectangle([-179.999, -85, 179.999, 85], proj="EPSG:4326", geodesic=False)
+    geom = ee.Geometry.Rectangle(list(GLOBAL_TILE_BOUNDS_WGS84), proj="EPSG:4326", geodesic=False)
     img = build_metric_image(metric, start, end, geom)
 
     vmin, vmax = metric_def.value_range
