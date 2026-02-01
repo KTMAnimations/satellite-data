@@ -79,10 +79,6 @@
   background: linear-gradient(to right, #ffffff, #d4e6f1, #5dade2, #2980b9, #154360);
 }
 
-.legend-gradient[data-metric="active_fire"] {
-  background: linear-gradient(to right, #ffffcc, #fed976, #fd8d3c, #e31a1c, #800000);
-}
-
 /* Phase 2: Air quality & weather */
 .legend-gradient[data-metric="no2"] {
   background: linear-gradient(to right, #313695, #74add1, #ffffbf, #f46d43, #a50026);
@@ -116,10 +112,6 @@
 /* Phase 4: Historical & specialized */
 .legend-gradient[data-metric="impervious"] {
   background: linear-gradient(to right, #ffffff, #d9d9d9, #969696, #525252, #000000);
-}
-
-.legend-gradient[data-metric="fire_historical"] {
-  background: linear-gradient(to right, #ffffcc, #fed976, #fd8d3c, #e31a1c, #800000);
 }
 
 .legend-gradient[data-metric="canopy_height"] {

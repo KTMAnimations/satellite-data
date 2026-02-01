@@ -34,7 +34,6 @@ describe('SeasonalBarChart', () => {
     parking: null,
     land_cover: null,
     surface_water: null,
-    active_fire: null,
     no2: null,
     temperature: null,
     precipitation: null,
@@ -43,7 +42,6 @@ describe('SeasonalBarChart', () => {
     evapotranspiration: null,
     soil_moisture: null,
     impervious: null,
-    fire_historical: null,
     canopy_height: null,
   } as const;
 

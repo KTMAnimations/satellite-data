@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TimeSeriesChart } from '../../components/Charts/TimeSeriesChart';
 
@@ -26,6 +26,10 @@ vi.mock('d3', async () => {
 });
 
 describe('TimeSeriesChart', () => {
+  afterEach(() => {
+    document.getElementById('chart-tooltip-global')?.remove();
+  });
+
   const emptyMetric = { unit: '', data: [] };
   const baseData = {
     nightlights: { ...emptyMetric },
@@ -34,7 +38,6 @@ describe('TimeSeriesChart', () => {
     parking: { ...emptyMetric },
     land_cover: { ...emptyMetric },
     surface_water: { ...emptyMetric },
-    active_fire: { ...emptyMetric },
     no2: { ...emptyMetric },
     temperature: { ...emptyMetric },
     precipitation: { ...emptyMetric },
@@ -43,7 +46,6 @@ describe('TimeSeriesChart', () => {
     evapotranspiration: { ...emptyMetric },
     soil_moisture: { ...emptyMetric },
     impervious: { ...emptyMetric },
-    fire_historical: { ...emptyMetric },
     canopy_height: { ...emptyMetric },
   } as const;
 
@@ -56,6 +58,7 @@ describe('TimeSeriesChart', () => {
     );
 
     expect(container.querySelector('.chart-tooltip')).not.toBeInTheDocument();
+    expect(document.getElementById('chart-tooltip-global')).toBeNull();
     expect(screen.getByText('No observations available')).toBeInTheDocument();
   });
 
@@ -84,6 +87,6 @@ describe('TimeSeriesChart', () => {
     );
 
     expect(container.querySelector('svg')).toBeInTheDocument();
-    expect(container.querySelector('.chart-tooltip')).toBeInTheDocument();
+    expect(document.getElementById('chart-tooltip-global')).toBeInTheDocument();
   });
 });

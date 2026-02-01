@@ -28,7 +28,6 @@ const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
   { value: 'parking', label: 'Parking Occupancy', color: '#0D9488' },     // Teal-600
   { value: 'land_cover', label: 'Land Cover', color: '#9333EA' },         // Purple-600
   { value: 'surface_water', label: 'Surface Water', color: '#2563EB' },   // Blue-600
-  { value: 'active_fire', label: 'Active Fire', color: '#DC2626' },       // Red-600
   { value: 'no2', label: 'NO₂ Pollution', color: '#6366F1' },             // Indigo-600
   { value: 'temperature', label: 'Temperature', color: '#EF4444' },       // Red-500
   { value: 'precipitation', label: 'Precipitation', color: '#3B82F6' },   // Blue-500
@@ -37,7 +36,6 @@ const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
   { value: 'evapotranspiration', label: 'Evapotranspiration', color: '#0D9488' }, // Teal-600
   { value: 'soil_moisture', label: 'Soil Moisture', color: '#7C3AED' },   // Violet-600
   { value: 'impervious', label: 'Impervious Surface', color: '#6B7280' }, // Gray-500
-  { value: 'fire_historical', label: 'Historical Fire', color: '#EA580C' }, // Orange-600
   { value: 'canopy_height', label: 'Canopy Height', color: '#15803D' },   // Green-700
 ];
 
@@ -114,7 +112,6 @@ export function AnalysisView() {
       parking: [],
       land_cover: [],
       surface_water: [],
-      active_fire: [],
       no2: [],
       temperature: [],
       precipitation: [],
@@ -123,7 +120,6 @@ export function AnalysisView() {
       evapotranspiration: [],
       soil_moisture: [],
       impervious: [],
-      fire_historical: [],
       canopy_height: [],
     };
 
@@ -134,7 +130,6 @@ export function AnalysisView() {
       parking: [],
       land_cover: [],
       surface_water: [],
-      active_fire: [],
       no2: [],
       temperature: [],
       precipitation: [],
@@ -143,7 +138,6 @@ export function AnalysisView() {
       evapotranspiration: [],
       soil_moisture: [],
       impervious: [],
-      fire_historical: [],
       canopy_height: [],
     };
 

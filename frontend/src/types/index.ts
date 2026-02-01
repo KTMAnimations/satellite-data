@@ -34,7 +34,6 @@ export type MetricType =
   // Phase 1: Core datasets
   | 'land_cover'
   | 'surface_water'
-  | 'active_fire'
   // Phase 2: Air quality & weather
   | 'no2'
   | 'temperature'
@@ -46,7 +45,6 @@ export type MetricType =
   | 'soil_moisture'
   // Phase 4: Historical & specialized
   | 'impervious'
-  | 'fire_historical'
   | 'canopy_height';
 
 export type Granularity = 'daily' | 'weekly' | 'monthly';
@@ -70,7 +68,6 @@ export interface SeasonalAverage {
   // Phase 1: Core datasets
   land_cover: number | null;
   surface_water: number | null;
-  active_fire: number | null;
   // Phase 2: Air quality & weather
   no2: number | null;
   temperature: number | null;
@@ -82,7 +79,6 @@ export interface SeasonalAverage {
   soil_moisture: number | null;
   // Phase 4: Historical & specialized
   impervious: number | null;
-  fire_historical: number | null;
   canopy_height: number | null;
 }
 

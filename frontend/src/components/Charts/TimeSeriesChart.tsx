@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricData, MetricType } from '../../types';
 import { parseMetricDate } from '../../utils/dates';
+import { ensureGlobalChartTooltip, hideGlobalChartTooltip, showGlobalChartTooltip } from './chartTooltip';
 import './Charts.css';
 
 interface TimeSeriesChartProps {
@@ -18,7 +19,6 @@ const METRIC_COLORS: Record<MetricType, string> = {
   parking: '#0D9488',        // Teal-600
   land_cover: '#9333EA',     // Purple-600
   surface_water: '#2563EB',  // Blue-600
-  active_fire: '#DC2626',    // Red-600
   no2: '#6366F1',            // Indigo-600
   temperature: '#EF4444',    // Red-500
   precipitation: '#3B82F6',  // Blue-500
@@ -27,7 +27,6 @@ const METRIC_COLORS: Record<MetricType, string> = {
   evapotranspiration: '#0D9488', // Teal-600
   soil_moisture: '#7C3AED',  // Violet-600
   impervious: '#6B7280',     // Gray-500
-  fire_historical: '#EA580C', // Orange-600
   canopy_height: '#15803D',  // Green-700
 };
 
@@ -38,7 +37,6 @@ const METRIC_LABELS: Record<MetricType, string> = {
   parking: 'Parking Occupancy',
   land_cover: 'Land Cover',
   surface_water: 'Surface Water',
-  active_fire: 'Active Fire',
   no2: 'NO₂',
   temperature: 'Temperature',
   precipitation: 'Precipitation',
@@ -47,7 +45,6 @@ const METRIC_LABELS: Record<MetricType, string> = {
   evapotranspiration: 'Evapotranspiration',
   soil_moisture: 'Soil Moisture',
   impervious: 'Impervious Surface',
-  fire_historical: 'Historical Fire',
   canopy_height: 'Canopy Height',
 };
 
@@ -68,6 +65,8 @@ export function TimeSeriesChart({
   useEffect(() => {
     const svgElement = svgRef.current;
     if (!svgElement || selectedMetrics.length === 0 || !hasData) return;
+
+    ensureGlobalChartTooltip();
 
     const svg = d3.select(svgElement);
 
@@ -163,20 +162,18 @@ export function TimeSeriesChart({
         .style('cursor', 'pointer')
         .on('mouseover', function (event, d) {
           d3.select(this).attr('r', 5);
-          // Show tooltip
-          const tooltip = d3.select('.chart-tooltip');
-          tooltip
-            .style('opacity', 1)
-            .style('left', `${event.pageX + 10}px`)
-            .style('top', `${event.pageY - 10}px`)
-            .html(`
+          showGlobalChartTooltip(
+            event,
+            `
               <strong>${METRIC_LABELS[metric]}</strong><br/>
               ${d.rawDate}: ${d.value.toFixed(3)}
-            `);
+            `,
+            { offsetX: 10, offsetY: -10 }
+          );
         })
         .on('mouseout', function () {
           d3.select(this).attr('r', 3);
-          d3.select('.chart-tooltip').style('opacity', 0);
+          hideGlobalChartTooltip();
         });
     });
 
@@ -229,7 +226,6 @@ export function TimeSeriesChart({
   return (
     <div className="chart-wrapper">
       <svg ref={svgRef} width={width} height={height} />
-      <div className="chart-tooltip" />
     </div>
   );
 }

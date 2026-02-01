@@ -3,7 +3,7 @@
 ## Complete Specification Document
 
 **Project Name:** SatelliteMigration
-**Last Updated:** 2026-01-31
+**Last Updated:** 2026-02-01
 **Status:** Dockerless local-first implementation (SQLite + Earth Engine)
 
 ---
@@ -45,7 +45,7 @@ Detecting individual cars requires **5-30cm resolution**, but free satellite dat
 - Granularity: Finest possible per data source (see table below)
 - Seasonal comparisons (winter vs summer)
 
-**Temporal Resolution by Metric (17 total):**
+**Temporal Resolution by Metric (15 total):**
 | Metric | Data Source (GEE Collection) | Resolution | Default Granularity | Supported | Notes |
 |--------|------------------------------|------------|---------------------|-----------|-------|
 | NDVI | Sentinel-2 + MODIS fill | 10m | Weekly | weekly, monthly | Vegetation health |
@@ -54,7 +54,6 @@ Detecting individual cars requires **5-30cm resolution**, but free satellite dat
 | Parking | Sentinel-2 (NDBI) | 10m | Weekly | weekly, monthly | Occupancy proxy |
 | Land Cover | Dynamic World | 10m | Weekly | weekly, monthly | Built-up probability |
 | Surface Water | JRC GSW | 30m | Monthly | monthly | Water extent |
-| Active Fire | VIIRS 375m | 375m | Daily | daily, monthly | Fire hotspots |
 | NO2 | Sentinel-5P | 7km | Daily | daily, monthly | Air quality |
 | Temperature | ERA5-Land Daily Agg | 11km | Daily | daily, monthly | 2m air temperature |
 | Precipitation | CHIRPS Daily | ~5km | Daily | daily, monthly | Rainfall |
@@ -63,7 +62,6 @@ Detecting individual cars requires **5-30cm resolution**, but free satellite dat
 | Evapotranspiration | MODIS MOD16A2GF | ~500m | Monthly | monthly | Water use (global) |
 | Soil Moisture | SMAP L4 | ~11km | Weekly | weekly, monthly | Root-zone moisture (m³/m³) |
 | Impervious | GAIA | 30m | Monthly | monthly | Urban footprint |
-| Fire Historical | MODIS FIRMS | 1km | Monthly | monthly | Fire archive (2000+) |
 | Canopy Height | GEDI / Simard | 1km | Monthly | monthly | Forest structure (static dataset) |
 
 See `docs/GEE_DATASETS.md` for detailed dataset specifications.
@@ -117,7 +115,6 @@ All satellite data is accessed exclusively through Google Earth Engine. GEE hand
 | GHSL SMOD (JRC/GHSL/P2023A/GHS_SMOD_V1_0) | Built-up areas | 10m | Multi-year |
 | Dynamic World (GOOGLE/DYNAMICWORLD/V1) | Land cover | 10m | Near real-time |
 | JRC GSW (JRC/GSW1_4/MonthlyHistory) | Surface water | 30m | Monthly |
-| VIIRS FIRMS (NASA/FIRMS) | Active fire | 375m | Daily |
 | Sentinel-5P (COPERNICUS/S5P/OFFL/L3_NO2) | NO2 pollution | 7km | Daily |
 | ERA5-Land Daily (ECMWF/ERA5_LAND/DAILY_AGGR) | Temperature | 11km | Daily |
 | CHIRPS (UCSB-CHG/CHIRPS/DAILY) | Precipitation | ~5km | Daily |
@@ -126,7 +123,6 @@ All satellite data is accessed exclusively through Google Earth Engine. GEE hand
 | MODIS (MODIS/061/MOD16A2GF) | Evapotranspiration | ~500m | 8-day |
 | SMAP L4 (NASA/SMAP/SPL4SMGP/008) | Soil moisture | ~11km | 3-hourly |
 | GAIA (Tsinghua/FROM-GLC/GAIA/v10) | Impervious surface | 30m | Annual |
-| MODIS (MODIS/061/MOD14A1) | Historical fire | 1km | Daily |
 | GEDI + Simard (NASA/JPL/global_forest_canopy_height_2005) | Canopy height | 1km | Static |
 
 ### 3.3 Project Structure
@@ -1064,7 +1060,7 @@ zustand                              # State management
 
 For detailed information on specific topics, see:
 
-- **`docs/GEE_DATASETS.md`** - Complete GEE dataset specifications, colormaps, value ranges, and implementation guide for all 17 metrics
+- **`docs/GEE_DATASETS.md`** - Complete GEE dataset specifications, colormaps, value ranges, and implementation guide for all 15 metrics
 - **`docs/METHODOLOGY.md`** - Technical methodology for proxy metrics and analysis
 - **`docs/USER_GUIDE.md`** - End-user documentation for the platform
 

@@ -13,7 +13,6 @@ MetricId = Literal[
     "parking",
     "land_cover",
     "surface_water",
-    "active_fire",
     "no2",
     "temperature",
     "precipitation",
@@ -22,7 +21,6 @@ MetricId = Literal[
     "evapotranspiration",
     "soil_moisture",
     "impervious",
-    "fire_historical",
     "canopy_height",
 ]
 
@@ -79,7 +77,6 @@ class SeasonalAverage(BaseModel):
     parking: float | None = None
     land_cover: float | None = None
     surface_water: float | None = None
-    active_fire: float | None = None
     no2: float | None = None
     temperature: float | None = None
     precipitation: float | None = None
@@ -88,7 +85,6 @@ class SeasonalAverage(BaseModel):
     evapotranspiration: float | None = None
     soil_moisture: float | None = None
     impervious: float | None = None
-    fire_historical: float | None = None
     canopy_height: float | None = None
 
 

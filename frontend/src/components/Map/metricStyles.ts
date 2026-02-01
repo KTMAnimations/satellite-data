@@ -26,10 +26,6 @@ export const COLORMAPS: Record<MetricType, string[]> = {
     '#ffffff', '#f0f9ff', '#d6eaf8', '#aed6f1', '#85c1e9',
     '#5dade2', '#3498db', '#2980b9', '#1f618d', '#154360',
   ],
-  active_fire: [
-    '#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c',
-    '#fc4e2a', '#e31a1c', '#bd0026', '#800026', '#500000',
-  ],
   no2: [
     '#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8',
     '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026',
@@ -62,10 +58,6 @@ export const COLORMAPS: Record<MetricType, string[]> = {
     '#ffffff', '#f0f0f0', '#d9d9d9', '#bdbdbd', '#969696',
     '#737373', '#525252', '#363636', '#1a1a1a', '#000000',
   ],
-  fire_historical: [
-    '#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c',
-    '#fc4e2a', '#e31a1c', '#bd0026', '#800026', '#500000',
-  ],
   canopy_height: [
     '#f7fcf5', '#e5f5e0', '#c7e9c0', '#a1d99b', '#74c476',
     '#41ab5d', '#238b45', '#006d2c', '#004d1c', '#00280f',
@@ -80,7 +72,6 @@ export const VALUE_RANGES: Record<MetricType, [number, number]> = {
   parking: [0.0, 1.0],
   land_cover: [0.0, 1.0],
   surface_water: [0.0, 1.0],
-  active_fire: [0.0, 500.0],
   no2: [0.0, 0.0002],
   temperature: [-30.0, 45.0],
   precipitation: [0.0, 500.0],
@@ -89,7 +80,6 @@ export const VALUE_RANGES: Record<MetricType, [number, number]> = {
   evapotranspiration: [0.0, 300.0],
   soil_moisture: [0.0, 0.5],
   impervious: [0.0, 1.0],
-  fire_historical: [0.0, 500.0],
   canopy_height: [0.0, 60.0],
 };
 

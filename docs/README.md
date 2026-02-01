@@ -22,7 +22,7 @@ This directory contains documentation for the Satellite Migration Analysis Platf
   - Limitations and caveats
 
 - **[GEE_DATASETS.md](./GEE_DATASETS.md)** - GEE dataset integration guide
-  - All 17 metrics with specifications
+  - All 15 metrics with specifications
   - Colormaps and value ranges
   - Implementation architecture
   - Adding new metrics

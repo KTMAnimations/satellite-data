@@ -1,7 +1,7 @@
 # GEE Dataset Integration Guide
 
-**Last Updated:** 2026-01-31
-**Status:** 17 metrics implemented, tested, and verified
+**Last Updated:** 2026-02-01
+**Status:** 15 metrics implemented, tested, and verified
 
 This document consolidates the GEE dataset research and test verification for the Satellite Migration Analysis Platform.
 
@@ -9,7 +9,7 @@ This document consolidates the GEE dataset research and test verification for th
 
 ## Quick Reference
 
-### Implemented Metrics (17 total)
+### Implemented Metrics (15 total)
 
 | Metric | GEE Dataset | Resolution | Default | Supported | Status |
 |--------|-------------|------------|---------|-----------|--------|
@@ -19,7 +19,6 @@ This document consolidates the GEE dataset research and test verification for th
 | `parking` | Sentinel-2 (NDBI) | 10m | Weekly | weekly, monthly | Verified |
 | `land_cover` | Dynamic World | 10m | Weekly | weekly, monthly | Verified |
 | `surface_water` | JRC GSW | 30m | Monthly | monthly | Verified |
-| `active_fire` | VIIRS 375m | 375m | Daily | daily, monthly | Verified |
 | `no2` | Sentinel-5P | 7km | Daily | daily, monthly | Verified |
 | `temperature` | ERA5-Land Daily Agg | 11km | Daily | daily, monthly | Verified |
 | `precipitation` | CHIRPS Daily | ~5km | Daily | daily, monthly | Verified |
@@ -28,7 +27,6 @@ This document consolidates the GEE dataset research and test verification for th
 | `evapotranspiration` | MODIS MOD16A2GF | ~500m | Monthly | monthly | Verified |
 | `soil_moisture` | SMAP L4 | ~11km | Weekly | weekly, monthly | Verified |
 | `impervious` | GAIA | 30m | Monthly | monthly | Verified |
-| `fire_historical` | MODIS FIRMS | 1km | Monthly | monthly | Verified |
 | `canopy_height` | GEDI + Simard | 1km | Monthly | monthly | Verified |
 
 ---
@@ -74,13 +72,6 @@ This document consolidates the GEE dataset research and test verification for th
 - **Resolution:** 30m
 - **Value Range:** Binary (water/not-water)
 - **Use Cases:** Reservoir monitoring, flood extent, drought tracking
-
-#### Active Fire (`NASA/LANCE/SNPP_VIIRS/C2`)
-- **Description:** Active fire hotspots with Fire Radiative Power
-- **Resolution:** 375m (4x better than MODIS)
-- **Bands:** brightness temperatures, confidence, FRP
-- **Value Range:** FRP 0-500 MW
-- **Use Cases:** Real-time fire tracking, intensity analysis
 
 ### 1.3 Phase 2: Air Quality & Weather
 
@@ -139,12 +130,6 @@ This document consolidates the GEE dataset research and test verification for th
 - **Band:** `change_year_index`
 - **Value Range:** 0-1 (binary mask for current implementation)
 - **Use Cases:** Urban expansion animations, development timing
-
-#### Fire Historical (`MODIS/061/MOD14A1`)
-- **Description:** Fire archive from 2000+
-- **Resolution:** 1km
-- **Value Range:** FRP 0-500 MW
-- **Use Cases:** Long-term fire history, trend analysis
 
 #### Canopy Height (`LARSE/GEDI/GRIDDEDVEG_002/V1/1KM`)
 - **Description:** LiDAR-derived canopy height
@@ -210,7 +195,6 @@ This document consolidates the GEE dataset research and test verification for th
 | parking | Light-dark blue | Occupancy |
 | land_cover | Purple gradient (built-up) | Built probability |
 | surface_water | White-dark blue | Water presence |
-| active_fire | Yellow-orange-red | Fire intensity |
 | no2 | Blue-yellow-red | Pollution diverging |
 | temperature | Blue-white-red | Cold-hot diverging |
 | precipitation | White-green-blue-purple | Rainfall amount |
@@ -219,7 +203,6 @@ This document consolidates the GEE dataset research and test verification for th
 | evapotranspiration | Brown-green-blue | Water use |
 | soil_moisture | Brown-tan-blue | Dry-wet |
 | impervious | White-black gray | Urban footprint |
-| fire_historical | Yellow-orange-red | Historical fire |
 | canopy_height | Light-dark green | Tree height |
 
 ### 3.2 Value Ranges
@@ -232,7 +215,6 @@ VALUE_RANGES = {
     "parking": (0.0, 1.0),
     "land_cover": (0.0, 1.0),
     "surface_water": (0.0, 1.0),
-    "active_fire": (0.0, 500.0),  # FRP in MW
     "no2": (0.0, 0.0002),  # mol/m²
     "temperature": (-30.0, 45.0),  # Celsius
     "precipitation": (0.0, 500.0),  # mm
@@ -241,7 +223,6 @@ VALUE_RANGES = {
     "evapotranspiration": (0.0, 300.0),  # kg/m²/8day (MODIS)
     "soil_moisture": (0.0, 0.5),  # m³/m³ (SMAP L4)
     "impervious": (0.0, 1.0),  # binary
-    "fire_historical": (0.0, 500.0),  # FRP in MW
     "canopy_height": (0.0, 60.0),  # meters
 }
 ```
@@ -253,12 +234,11 @@ VALUE_RANGES = {
 ### 4.1 Multi-Granularity Metrics
 These metrics support user-selectable granularity via a toggle in the UI:
 - `nightlights` - daily (VIIRS Black Marble) or monthly (NOAA composites)
-- `active_fire` - daily or monthly
 - `no2`, `temperature`, `precipitation`, `aerosol` - daily or monthly
 - `ndvi`, `parking`, `land_cover`, `soil_moisture` - weekly or monthly
 
 ### 4.2 Single-Granularity Metrics
-These metrics only support monthly: `urban_density`, `surface_water`, `cropland`, `evapotranspiration`, `impervious`, `fire_historical`, `canopy_height`.
+These metrics only support monthly: `urban_density`, `surface_water`, `cropland`, `evapotranspiration`, `impervious`, `canopy_height`.
 
 ### 4.3 Frontend Config
 
@@ -285,9 +265,9 @@ See `frontend/src/config/metrics.ts` for the canonical mapping:
 
 ### 6.1 Backend API Tests
 
-All 17 metrics verified to return 200 OK with valid PNG tiles:
+All 15 metrics verified to return 200 OK with valid PNG tiles:
 ```bash
-for metric in ndvi nightlights urban_density parking land_cover surface_water active_fire no2 temperature precipitation aerosol cropland evapotranspiration soil_moisture impervious fire_historical canopy_height; do
+for metric in ndvi nightlights urban_density parking land_cover surface_water no2 temperature precipitation aerosol cropland evapotranspiration soil_moisture impervious canopy_height; do
   curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000/api/v1/tiles/us/$metric/2024-01/11/512/768.png"
 done
 ```
@@ -295,7 +275,7 @@ done
 ### 6.2 Frontend Verification
 
 Visual verification completed via Playwright MCP browser:
-- Animation Studio shows all 17 metric cards
+- Animation Studio shows all 15 metric cards
 - Each metric displays correct granularity badge
 - Map overlays render with appropriate colormaps
 

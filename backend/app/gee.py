@@ -94,17 +94,6 @@ METRICS: dict[MetricId, MetricDefinition] = {
         scale_m=30,
         transparent_below_normalized=0.001,
     ),
-    "active_fire": MetricDefinition(
-        id="active_fire",
-        label="Active Fire (FRP)",
-        unit="MW",
-        value_range=(0.0, 500.0),
-        palette=["ffffcc", "ffeda0", "fed976", "feb24c", "fd8d3c", "fc4e2a", "e31a1c", "bd0026", "800026", "500000"],
-        default_granularity="daily",
-        supported_granularities={"daily", "monthly"},
-        scale_m=500,
-        transparent_below_normalized=0.001,
-    ),
     "no2": MetricDefinition(
         id="no2",
         label="NO₂",
@@ -191,17 +180,6 @@ METRICS: dict[MetricId, MetricDefinition] = {
         default_granularity="monthly",
         supported_granularities={"monthly"},
         scale_m=30,
-        transparent_below_normalized=0.001,
-    ),
-    "fire_historical": MetricDefinition(
-        id="fire_historical",
-        label="Historical Fire (FRP)",
-        unit="MW",
-        value_range=(0.0, 500.0),
-        palette=["ffffcc", "ffeda0", "fed976", "feb24c", "fd8d3c", "fc4e2a", "e31a1c", "bd0026", "800026", "500000"],
-        default_granularity="monthly",
-        supported_granularities={"monthly"},
-        scale_m=1000,
         transparent_below_normalized=0.001,
     ),
     "canopy_height": MetricDefinition(
@@ -423,17 +401,6 @@ def build_metric_image(metric: MetricId, start, end, geom):
         occurrence = ee.Image("JRC/GSW1_4/GlobalSurfaceWater").select(["occurrence"]).divide(100).rename([band])
         return ee.Image(ee.Algorithms.If(has_month, monthly_mask, occurrence)).clip(geom)
 
-    if metric == "active_fire":
-        collection = (
-            ee.ImageCollection("NASA/LANCE/SNPP_VIIRS/C2")
-            .filterBounds(geom)
-            .filterDate(start, end)
-            .select(["frp"])
-        )
-        has_images = collection.size().gt(0)
-        image = collection.max().rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
-
     if metric == "no2":
         collection = (
             ee.ImageCollection("COPERNICUS/S5P/OFFL/L3_NO2")
@@ -512,17 +479,6 @@ def build_metric_image(metric: MetricId, start, end, geom):
         gaia = ee.Image("Tsinghua/FROM-GLC/GAIA/v10")
         urbanized = gaia.lte(year_clamped).And(gaia.gt(0)).rename([band])
         return urbanized.clip(geom)
-
-    if metric == "fire_historical":
-        collection = (
-            ee.ImageCollection("MODIS/061/MOD14A1")
-            .filterBounds(geom)
-            .filterDate(start, end)
-            .select(["MaxFRP"])
-        )
-        has_images = collection.size().gt(0)
-        image = collection.max().rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "canopy_height":
         # GEDI gridded vegetation structure: use RH98 (proxy for canopy height).

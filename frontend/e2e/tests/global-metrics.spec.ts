@@ -68,7 +68,7 @@ test.describe('Global metrics & time periods', () => {
       // Ensure the map metric selector has all metric options.
       const metricSelect = page.locator('select.metric-select');
       await expect(metricSelect).toBeVisible();
-      await expect(metricSelect.locator('option')).toHaveCount(17);
+      await expect(metricSelect.locator('option')).toHaveCount(15);
     });
   }
 
@@ -128,7 +128,7 @@ test.describe('Global metrics & time periods', () => {
     const phoenixSelect = page.locator('select.metric-select');
     await expect(phoenixSelect).toBeVisible();
 
-    for (const metric of ['nightlights', 'ndvi', 'active_fire'] as const) {
+    for (const metric of ['nightlights', 'ndvi', 'temperature'] as const) {
       await phoenixSelect.selectOption({ value: metric });
       await expect(phoenixSelect).toHaveValue(metric);
       await expect(page.locator('.loading-state')).toHaveCount(0, { timeout: 30000 });

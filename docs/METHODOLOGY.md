@@ -281,7 +281,7 @@ All analysis code is available in the repository:
 - `backend/app/routes/tiles.py` - Tile URL template endpoint
 
 Data sources are publicly accessible:
-- Google Earth Engine (requires account) - sole data provider for all 17 metrics
+- Google Earth Engine (requires account) - sole data provider for all 15 metrics
 
 ---
 

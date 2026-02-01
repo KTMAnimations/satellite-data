@@ -33,7 +33,6 @@ const METRIC_OPTIONS: { value: MetricType; label: string; description: string }[
   // Phase 1: Core datasets
   { value: 'land_cover', label: 'Land Cover', description: 'Dynamic World built-up probability' },
   { value: 'surface_water', label: 'Surface Water', description: 'JRC water extent mapping' },
-  { value: 'active_fire', label: 'Active Fire', description: 'VIIRS 375m fire detections (daily)' },
   // Phase 2: Air quality & weather
   { value: 'no2', label: 'NO₂', description: 'Tropospheric nitrogen dioxide' },
   { value: 'temperature', label: 'Temperature', description: 'ERA5-Land 2m air temperature' },
@@ -45,7 +44,6 @@ const METRIC_OPTIONS: { value: MetricType; label: string; description: string }[
   { value: 'soil_moisture', label: 'Soil Moisture', description: 'SMAP root-zone moisture' },
   // Phase 4: Historical & specialized
   { value: 'impervious', label: 'Impervious Surface', description: 'GAIA urban expansion' },
-  { value: 'fire_historical', label: 'Historical Fire', description: 'MODIS FIRMS archive (2000+)' },
   { value: 'canopy_height', label: 'Canopy Height', description: 'GEDI forest structure' },
 ];
 

@@ -25,7 +25,6 @@ const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
   { value: 'parking', label: 'Parking Occupancy' },
   { value: 'land_cover', label: 'Land Cover' },
   { value: 'surface_water', label: 'Surface Water' },
-  { value: 'active_fire', label: 'Active Fire' },
   { value: 'no2', label: 'NO₂ Pollution' },
   { value: 'temperature', label: 'Temperature' },
   { value: 'precipitation', label: 'Precipitation' },
@@ -34,7 +33,6 @@ const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
   { value: 'evapotranspiration', label: 'Evapotranspiration' },
   { value: 'soil_moisture', label: 'Soil Moisture' },
   { value: 'impervious', label: 'Impervious Surface' },
-  { value: 'fire_historical', label: 'Historical Fire' },
   { value: 'canopy_height', label: 'Canopy Height' },
 ];
 

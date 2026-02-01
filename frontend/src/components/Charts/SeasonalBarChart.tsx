@@ -17,7 +17,6 @@ const METRIC_LABELS: Record<MetricType, string> = {
   parking: 'Parking',
   land_cover: 'Land Cover',
   surface_water: 'Surface Water',
-  active_fire: 'Active Fire',
   no2: 'NO₂',
   temperature: 'Temperature',
   precipitation: 'Precipitation',
@@ -26,7 +25,6 @@ const METRIC_LABELS: Record<MetricType, string> = {
   evapotranspiration: 'Evapotranspiration',
   soil_moisture: 'Soil Moisture',
   impervious: 'Impervious Surface',
-  fire_historical: 'Historical Fire',
   canopy_height: 'Canopy Height',
 };
 

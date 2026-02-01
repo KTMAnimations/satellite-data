@@ -63,12 +63,10 @@ In the **Analysis View**, you can:
 | **Surface Water** | Water extent mapping | 30m | Monthly |
 | **Impervious** | Impervious surface extent (1985-2018) | 30m | Monthly |
 
-### Fire & Air Quality
+### Air Quality
 
 | Metric | Description | Resolution | Cadence |
 |--------|-------------|------------|---------|
-| **Active Fire** | Current fire hotspots | 375m | Daily / Monthly |
-| **Fire Historical** | Historical fire archive (2000+) | 1km | Monthly |
 | **NO₂** | Nitrogen dioxide (air quality) | 7km | Daily / Monthly |
 | **Aerosol** | Aerosol index (smoke/dust) | 7km | Daily / Monthly |
 

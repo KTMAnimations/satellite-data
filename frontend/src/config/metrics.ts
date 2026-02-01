@@ -8,7 +8,6 @@ export const METRIC_DEFAULT_GRANULARITY: Record<MetricType, Granularity> = {
   parking: 'weekly',
   land_cover: 'weekly',
   surface_water: 'monthly',
-  active_fire: 'daily',
   no2: 'daily',
   temperature: 'daily',
   precipitation: 'daily',
@@ -17,7 +16,6 @@ export const METRIC_DEFAULT_GRANULARITY: Record<MetricType, Granularity> = {
   evapotranspiration: 'monthly',
   soil_moisture: 'weekly',
   impervious: 'monthly',
-  fire_historical: 'monthly',
   canopy_height: 'monthly',
 };
 
@@ -30,7 +28,6 @@ export const METRIC_SUPPORTED_GRANULARITIES: Record<MetricType, Granularity[]> =
   parking: ['weekly', 'monthly'],
   land_cover: ['weekly', 'monthly'],
   surface_water: ['monthly'],
-  active_fire: ['daily', 'monthly'],
   no2: ['daily', 'monthly'],
   temperature: ['daily', 'monthly'],
   precipitation: ['daily', 'monthly'],
@@ -39,7 +36,6 @@ export const METRIC_SUPPORTED_GRANULARITIES: Record<MetricType, Granularity[]> =
   evapotranspiration: ['monthly'],
   soil_moisture: ['weekly', 'monthly'],
   impervious: ['monthly'],
-  fire_historical: ['monthly'],
   canopy_height: ['monthly'],
 };
 

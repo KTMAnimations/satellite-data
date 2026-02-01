@@ -68,13 +68,6 @@ const METRIC_CONFIG: Record<
     lowLabel: 'Land',
     highLabel: 'Water',
   },
-  active_fire: {
-    label: 'Active Fire',
-    unit: 'MW',
-    gradient: 'linear-gradient(90deg, #FFFFCC 0%, #FED976 30%, #FD8D3C 60%, #800000 100%)',
-    lowLabel: 'None',
-    highLabel: 'Intense',
-  },
   no2: {
     label: 'NO₂',
     unit: 'mol/m²',
@@ -130,13 +123,6 @@ const METRIC_CONFIG: Record<
     gradient: 'linear-gradient(90deg, #FFFFFF 0%, #D9D9D9 30%, #969696 60%, #000000 100%)',
     lowLabel: 'Natural',
     highLabel: 'Paved',
-  },
-  fire_historical: {
-    label: 'Historical Fire',
-    unit: 'MW',
-    gradient: 'linear-gradient(90deg, #FFFFCC 0%, #FED976 30%, #FD8D3C 60%, #800000 100%)',
-    lowLabel: 'None',
-    highLabel: 'Intense',
   },
   canopy_height: {
     label: 'Canopy Height',
