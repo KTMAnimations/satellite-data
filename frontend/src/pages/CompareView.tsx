@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SplitScreenCompare } from '../components/Map/SplitScreenCompare';
 import api from '../services/api';
 import type { MetricType } from '../types';
+import { computeMetricDeltaPercentOfRange, normalizeMetricValue } from '../utils/metrics';
 import './CompareView.css';
 
 const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
@@ -74,10 +75,29 @@ export function CompareView() {
     enabled: !!regionId,
   });
 
-  const changePercent = useMemo(() => {
-    const v = comparison?.change?.[selectedMetric];
-    return v === undefined || v === null ? null : v;
+  const normalizedComparison = useMemo(() => {
+    const a = comparison?.period_a.averages[selectedMetric];
+    const b = comparison?.period_b.averages[selectedMetric];
+
+    const aNorm = typeof a === 'number' ? normalizeMetricValue(selectedMetric, a, { clamp: true }) : null;
+    const bNorm = typeof b === 'number' ? normalizeMetricValue(selectedMetric, b, { clamp: true }) : null;
+    const maxNorm = Math.max(aNorm ?? 0, bNorm ?? 0);
+
+    return {
+      a,
+      b,
+      aNorm: aNorm ?? 0,
+      bNorm: bNorm ?? 0,
+      maxNorm,
+    };
   }, [comparison, selectedMetric]);
+
+  const changePercent = useMemo(() => {
+    const a = normalizedComparison.a;
+    const b = normalizedComparison.b;
+    if (a === undefined || b === undefined) return null;
+    return computeMetricDeltaPercentOfRange(selectedMetric, a, b);
+  }, [normalizedComparison.a, normalizedComparison.b, selectedMetric]);
 
   const applyPreset = (preset: typeof PRESET_COMPARISONS[0]) => {
     setPeriodA({ start: preset.periodA.start, end: preset.periodA.end });
@@ -289,16 +309,8 @@ export function CompareView() {
                       className="bar-fill period-a"
                       style={{
                         width: `${
-                          comparison.period_a.averages[selectedMetric]
-                            ? Math.min(
-                                100,
-                                (comparison.period_a.averages[selectedMetric] /
-                                  Math.max(
-                                    comparison.period_a.averages[selectedMetric],
-                                    comparison.period_b.averages[selectedMetric]
-                                  )) *
-                                  100
-                              )
+                          typeof normalizedComparison.a === 'number' && normalizedComparison.maxNorm > 0
+                            ? Math.min(100, (normalizedComparison.aNorm / normalizedComparison.maxNorm) * 100)
                             : 0
                         }%`,
                       }}
@@ -319,16 +331,8 @@ export function CompareView() {
                       className="bar-fill period-b"
                       style={{
                         width: `${
-                          comparison.period_b.averages[selectedMetric]
-                            ? Math.min(
-                                100,
-                                (comparison.period_b.averages[selectedMetric] /
-                                  Math.max(
-                                    comparison.period_a.averages[selectedMetric],
-                                    comparison.period_b.averages[selectedMetric]
-                                  )) *
-                                  100
-                              )
+                          typeof normalizedComparison.b === 'number' && normalizedComparison.maxNorm > 0
+                            ? Math.min(100, (normalizedComparison.bNorm / normalizedComparison.maxNorm) * 100)
                             : 0
                         }%`,
                       }}

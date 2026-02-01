@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricType } from '../../types';
+import { computeMetricDeltaPercentOfRange } from '../../utils/metrics';
 import './Charts.css';
 
 interface YearData {
@@ -167,7 +168,8 @@ export function YearOverYearChart({
     sortedData.forEach((d, i) => {
       if (i === 0) return;
       const prevValue = sortedData[i - 1].value;
-      const change = ((d.value - prevValue) / prevValue) * 100;
+      const change = computeMetricDeltaPercentOfRange(selectedMetric, prevValue, d.value);
+      if (change === null) return;
       const isPositive = change > 0;
 
       const y = (yScale(String(d.year)) || 0) + yScale.bandwidth() / 2;

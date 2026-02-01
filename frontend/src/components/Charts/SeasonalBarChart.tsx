@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { SeasonalSummary, MetricType } from '../../types';
-import { normalizeMetricValue } from '../../utils/metrics';
+import { clamp01, normalizeMetricValue } from '../../utils/metrics';
 import './Charts.css';
 
 interface SeasonalBarChartProps {
@@ -50,18 +50,18 @@ export function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 
       summerRaw: data.summer_avg[metric] || 0,
     }))
     .flatMap(({ metric, winterRaw, summerRaw }) => {
-      const winterNorm = normalizeMetricValue(metric, winterRaw, { clamp: true });
-      const summerNorm = normalizeMetricValue(metric, summerRaw, { clamp: true });
+      const winterNorm = normalizeMetricValue(metric, winterRaw);
+      const summerNorm = normalizeMetricValue(metric, summerRaw);
       if (winterNorm === null || summerNorm === null) return [];
 
-      const winter = winterNorm * 100;
-      const summer = summerNorm * 100;
+      const winter = clamp01(winterNorm) * 100;
+      const summer = clamp01(summerNorm) * 100;
       return [
         {
           metric,
           winter,
           summer,
-          change: summer - winter,
+          change: (summerNorm - winterNorm) * 100,
         },
       ];
     });

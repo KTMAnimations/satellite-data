@@ -19,6 +19,7 @@ import {
 } from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
+import { computeMetricDeltaPercentOfRange } from '../utils/metrics';
 import './AnalysisView.css';
 
 const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
@@ -528,7 +529,12 @@ export function AnalysisView() {
                         const min = Math.min(...values);
                         const max = Math.max(...values);
 
-                        const seasonalChange = metrics.seasonal_summary?.change_pct[metric];
+                        const winterAvg = metrics.seasonal_summary?.winter_avg[metric];
+                        const summerAvg = metrics.seasonal_summary?.summer_avg[metric];
+                        const seasonalChange =
+                          winterAvg === null || winterAvg === undefined || summerAvg === null || summerAvg === undefined
+                            ? null
+                            : computeMetricDeltaPercentOfRange(metric, winterAvg, summerAvg);
 
                         return (
                           <div key={metric} className="stat-card">
