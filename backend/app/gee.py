@@ -125,7 +125,7 @@ METRICS: dict[MetricId, MetricDefinition] = {
         default_granularity="daily",
         supported_granularities={"daily", "monthly"},
         scale_m=11000,
-        transparent_below_normalized=0.001,
+        transparent_below_normalized=0.0,
     ),
     "precipitation": MetricDefinition(
         id="precipitation",
@@ -136,7 +136,7 @@ METRICS: dict[MetricId, MetricDefinition] = {
         default_granularity="daily",
         supported_granularities={"daily", "monthly"},
         scale_m=5500,
-        transparent_below_normalized=0.001,
+        transparent_below_normalized=0.0,
     ),
     "aerosol": MetricDefinition(
         id="aerosol",
@@ -147,7 +147,7 @@ METRICS: dict[MetricId, MetricDefinition] = {
         default_granularity="daily",
         supported_granularities={"daily", "monthly"},
         scale_m=10000,
-        transparent_below_normalized=0.001,
+        transparent_below_normalized=0.0,
     ),
     "cropland": MetricDefinition(
         id="cropland",
@@ -407,9 +407,18 @@ def build_metric_image(metric: MetricId, start, end, geom):
                 _empty_masked_image("water").rename(["water"]),
             )
         )
-        monthly_mask = monthly_img.select(["water"]).eq(2).rename([band])
+        # JRC layers are masked for non-water (and often masked over open ocean).
+        # For a clean overlay, treat missing as 0 so the tile mask threshold can
+        # make non-water fully transparent without fractional alpha artifacts.
+        monthly_mask = monthly_img.select(["water"]).eq(2).unmask(0).rename([band])
 
-        occurrence = ee.Image("JRC/GSW1_4/GlobalSurfaceWater").select(["occurrence"]).divide(100).rename([band])
+        occurrence = (
+            ee.Image("JRC/GSW1_4/GlobalSurfaceWater")
+            .select(["occurrence"])
+            .unmask(0)
+            .divide(100)
+            .rename([band])
+        )
         return ee.Image(ee.Algorithms.If(has_month, monthly_mask, occurrence)).clip(geom)
 
     if metric == "no2":
@@ -435,15 +444,30 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "precipitation":
-        collection = (
+        # CHIRPS has better spatial resolution but only covers ~50°S..50°N.
+        # Blend in ERA5-Land precipitation to avoid a hard latitude cutoff.
+        chirps = (
             ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
             .filterBounds(geom)
             .filterDate(start, end)
             .select(["precipitation"])
         )
-        has_images = collection.size().gt(0)
-        image = collection.sum().rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+        chirps_has_images = chirps.size().gt(0)
+        chirps_img = chirps.sum().rename([band])
+
+        era5 = (
+            ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["total_precipitation_sum"])
+        )
+        era5_has_images = era5.size().gt(0)
+        # ERA5-Land precip is in meters; convert to mm.
+        era5_img = era5.sum().multiply(1000).rename([band])
+
+        chirps_img = ee.Image(ee.Algorithms.If(chirps_has_images, chirps_img, _empty_masked_image(band)))
+        era5_img = ee.Image(ee.Algorithms.If(era5_has_images, era5_img, _empty_masked_image(band)))
+        return chirps_img.unmask(era5_img).clip(geom)
 
     if metric == "aerosol":
         collection = (
@@ -454,7 +478,58 @@ def build_metric_image(metric: MetricId, start, end, geom):
         )
         has_images = collection.size().gt(0)
         image = collection.mean().rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+        # S5P daily coverage can have masked gaps (orbit seams / QA), which show
+        # up as streaks at tile-scale. Fill masked pixels with a short rolling
+        # composite to keep the overlay visually continuous.
+        fill_days = 7
+        fill_collection = (
+            ee.ImageCollection("COPERNICUS/S5P/OFFL/L3_AER_AI")
+            .filterBounds(geom)
+            .filterDate(start.advance(-fill_days, "day"), end.advance(fill_days, "day"))
+            .select(["absorbing_aerosol_index"])
+        )
+        has_fill = fill_collection.size().gt(0)
+        fill = fill_collection.mean().rename([band])
+
+        base = ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band)))
+        fill = ee.Image(ee.Algorithms.If(has_fill, fill, _empty_masked_image(band)))
+        filled = base.unmask(fill)
+
+        # Final pass: fill any remaining thin masked seams using a small spatial
+        # neighborhood mean that ignores masked neighbors. (Earth Engine's
+        # focal_mean preserves masks, so it won't populate values into the
+        # missing pixels we want to fill.)
+        kernel_radius_px = 3
+        kernel = ee.Kernel.square(radius=kernel_radius_px, units="pixels", normalize=False)
+
+        # Iterate a few times so wider seam gaps fill inwards from their edges
+        # without using an overly large kernel (which would smear details).
+        for _ in range(3):
+            numerator = filled.unmask(0).convolve(kernel)
+            denominator = filled.mask().unmask(0).convolve(kernel)
+            seam_fill = numerator.divide(denominator).updateMask(denominator.gt(0))
+            filled = filled.unmask(seam_fill)
+
+        # Polar night (and other retrieval constraints) can leave large regions
+        # completely masked, which looks like the layer is "misaligned" near the
+        # top of the Web Mercator map. Fill remaining gaps with a CAMS aerosol
+        # optical depth proxy so the overlay stays continuous.
+        cams = (
+            ee.ImageCollection("ECMWF/CAMS/NRT")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["total_aerosol_optical_depth_at_550nm_surface"])
+        )
+        cams_has_images = cams.size().gt(0)
+        cams_aod = cams.mean()
+        # Scale AOD (typically ~0..1+) into the aerosol-index visualization range
+        # so low-AOD regions remain near-white instead of strongly tinting the map.
+        cams_scaled = cams_aod.multiply(7).subtract(2).clamp(-2, 5).rename([band])
+        cams_scaled = ee.Image(ee.Algorithms.If(cams_has_images, cams_scaled, _empty_masked_image(band)))
+        filled = filled.unmask(cams_scaled)
+
+        return filled.clip(geom)
 
     if metric == "cropland":
         # ESA WorldCover: Map class 40 = cropland. Expose as fraction 0..1.
@@ -661,7 +736,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
-_tile_cache_version = 8
+_tile_cache_version = 18
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
@@ -697,8 +772,9 @@ def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularit
     img = build_metric_image(metric, start, end, geom)
 
     vmin, vmax = metric_def.value_range
+    img = img.clamp(vmin, vmax)
     threshold = vmin + metric_def.transparent_below_normalized * (vmax - vmin)
-    img = img.updateMask(img.gt(threshold))
+    img = img.updateMask(img.gte(threshold))
 
     # Keep EE tiles fully opaque; Leaflet controls opacity client-side.
     mapid = img.getMapId({"min": vmin, "max": vmax, "palette": metric_def.palette, "opacity": 1.0})
