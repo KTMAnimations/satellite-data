@@ -252,6 +252,35 @@ def _empty_masked_image(band_name: str):
     return zero.updateMask(ee.Image(0))
 
 
+def _mean_of_daily_means(collection, start, end, band_name: str):
+    """
+    Reduce an ImageCollection into a single Image by:
+    1) computing a per-day mean composite, then
+    2) averaging those daily composites across the full window.
+
+    This is much faster for collections with many images per day (e.g. Sentinel-5P
+    per-orbit products and CAMS sub-daily analyses), and it avoids huge month-long
+    reductions that can make tile generation feel "chunky".
+    """
+    import ee
+
+    day_count = ee.Number(end.difference(start, "day")).ceil().max(1)
+    day_offsets = ee.List.sequence(0, day_count.subtract(1))
+
+    # Ensure each per-day reduction has at least one image so `.mean()` doesn't
+    # error on empty days.
+    fallback = ee.ImageCollection.fromImages([_empty_masked_image(band_name)])
+
+    def per_day(day_offset):
+        d0 = start.advance(day_offset, "day")
+        d1 = d0.advance(1, "day")
+        day_img = collection.filterDate(d0, d1).merge(fallback).mean().rename([band_name])
+        return day_img.set("system:time_start", d0.millis())
+
+    daily = ee.ImageCollection.fromImages(day_offsets.map(per_day))
+    return daily.mean().rename([band_name])
+
+
 def build_metric_image(metric: MetricId, start, end, geom):
     """
     Build an ee.Image with a single band named after the metric.
@@ -470,27 +499,27 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return chirps_img.unmask(era5_img).clip(geom)
 
     if metric == "aerosol":
-        collection = (
+        # Sentinel-5P (S5P) collections are per-orbit (many images per day). A
+        # naive monthly `.mean()` can involve hundreds of images and produces
+        # very slow cold tile renders. Reduce to daily means first to keep
+        # monthly tiles responsive.
+        s5p = (
             ee.ImageCollection("COPERNICUS/S5P/OFFL/L3_AER_AI")
             .filterBounds(geom)
-            .filterDate(start, end)
-            .select(["absorbing_aerosol_index"])
+            .select(["absorbing_aerosol_index"], [band])
         )
-        has_images = collection.size().gt(0)
-        image = collection.mean().rename([band])
+
+        has_images = s5p.filterDate(start, end).size().gt(0)
+        image = _mean_of_daily_means(s5p, start, end, band)
 
         # S5P daily coverage can have masked gaps (orbit seams / QA), which show
         # up as streaks at tile-scale. Fill masked pixels with a short rolling
         # composite to keep the overlay visually continuous.
         fill_days = 7
-        fill_collection = (
-            ee.ImageCollection("COPERNICUS/S5P/OFFL/L3_AER_AI")
-            .filterBounds(geom)
-            .filterDate(start.advance(-fill_days, "day"), end.advance(fill_days, "day"))
-            .select(["absorbing_aerosol_index"])
-        )
-        has_fill = fill_collection.size().gt(0)
-        fill = fill_collection.mean().rename([band])
+        fill_start = start.advance(-fill_days, "day")
+        fill_end = end.advance(fill_days, "day")
+        has_fill = s5p.filterDate(fill_start, fill_end).size().gt(0)
+        fill = _mean_of_daily_means(s5p, fill_start, fill_end, band)
 
         base = ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band)))
         fill = ee.Image(ee.Algorithms.If(has_fill, fill, _empty_masked_image(band)))
@@ -503,9 +532,9 @@ def build_metric_image(metric: MetricId, start, end, geom):
         kernel_radius_px = 3
         kernel = ee.Kernel.square(radius=kernel_radius_px, units="pixels", normalize=False)
 
-        # Iterate a few times so wider seam gaps fill inwards from their edges
-        # without using an overly large kernel (which would smear details).
-        for _ in range(3):
+        # A single pass is usually enough after temporal filling, and keeps tile
+        # generation fast (especially for monthly buckets).
+        for _ in range(1):
             numerator = filled.unmask(0).convolve(kernel)
             denominator = filled.mask().unmask(0).convolve(kernel)
             seam_fill = numerator.divide(denominator).updateMask(denominator.gt(0))
@@ -519,10 +548,10 @@ def build_metric_image(metric: MetricId, start, end, geom):
             ee.ImageCollection("ECMWF/CAMS/NRT")
             .filterBounds(geom)
             .filterDate(start, end)
-            .select(["total_aerosol_optical_depth_at_550nm_surface"])
+            .select(["total_aerosol_optical_depth_at_550nm_surface"], ["aod"])
         )
         cams_has_images = cams.size().gt(0)
-        cams_aod = cams.mean()
+        cams_aod = _mean_of_daily_means(cams, start, end, "aod")
         # Scale AOD (typically ~0..1+) into the aerosol-index visualization range
         # so low-AOD regions remain near-white instead of strongly tinting the map.
         cams_scaled = cams_aod.multiply(7).subtract(2).clamp(-2, 5).rename([band])
@@ -736,7 +765,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
-_tile_cache_version = 18
+_tile_cache_version = 20
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:

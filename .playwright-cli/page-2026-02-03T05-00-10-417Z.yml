@@ -1,0 +1,177 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "SatelliteMigration" [ref=e6] [cursor=pointer]:
+      - /url: /
+      - img [ref=e8]
+      - generic [ref=e11]: SatelliteMigration
+    - navigation [ref=e12]:
+      - generic [ref=e13]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /
+          - img [ref=e16]
+          - generic [ref=e18]: Dashboard
+        - link "Regions" [ref=e21] [cursor=pointer]:
+          - /url: /regions
+          - img [ref=e22]
+          - generic [ref=e24]: Regions
+        - link "Animations" [ref=e27] [cursor=pointer]:
+          - /url: /animations
+          - img [ref=e28]
+          - generic [ref=e30]: Animations
+        - link "Exports" [ref=e33] [cursor=pointer]:
+          - /url: /exports
+          - img [ref=e34]
+          - generic [ref=e36]: Exports
+    - link "Docs" [ref=e38] [cursor=pointer]:
+      - /url: https://github.com
+  - main [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - img [ref=e44]
+          - heading "Satellite Migration Analysis" [level=1] [ref=e47]
+          - paragraph [ref=e48]: Analyze seasonal migration patterns, urban growth, and activity changes using satellite-derived proxy metrics from free data sources.
+          - generic [ref=e49]:
+            - link "Explore Regions" [ref=e50] [cursor=pointer]:
+              - /url: /regions
+            - link "View Presets" [ref=e51] [cursor=pointer]:
+              - /url: /regions?preset=snowbird
+        - generic [ref=e54]:
+          - generic:
+            - generic:
+              - img
+          - generic:
+            - generic [ref=e87]:
+              - button "Zoom in" [ref=e88] [cursor=pointer]: +
+              - button "Zoom out" [disabled] [ref=e89]: −
+            - generic [ref=e90]:
+              - link "Leaflet" [ref=e91] [cursor=pointer]:
+                - /url: https://leafletjs.com
+                - img [ref=e92]
+                - text: Leaflet
+              - text: "|"
+              - link "© MapTiler" [ref=e96] [cursor=pointer]:
+                - /url: https://www.maptiler.com/copyright/
+              - link "© OpenStreetMap contributors" [ref=e97] [cursor=pointer]:
+                - /url: https://www.openstreetmap.org/copyright
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - generic [ref=e100]: "42"
+          - generic [ref=e101]: Predefined Regions
+        - generic [ref=e102]:
+          - generic [ref=e103]: 2015-Present
+          - generic [ref=e104]: Data Coverage
+        - generic [ref=e105]:
+          - generic [ref=e106]: "17"
+          - generic [ref=e107]: Metrics Available
+        - generic [ref=e108]:
+          - generic [ref=e109]: 10m (Sentinel-2)
+          - generic [ref=e110]: Resolution
+      - generic [ref=e111]:
+        - heading "Featured Analyses" [level=2] [ref=e112]
+        - generic [ref=e113]:
+          - link "migration Snowbird Migration Pattern Track how winter populations swell in Sun Belt cities like Phoenix, Miami, and Tampa by comparing seasonal proxy metrics. Phoenix, AZ Miami, FL Tampa, FL" [ref=e114] [cursor=pointer]:
+            - /url: /regions?preset=snowbird
+            - generic [ref=e115]:
+              - img [ref=e117]
+              - generic [ref=e120]: migration
+            - heading "Snowbird Migration Pattern" [level=3] [ref=e121]
+            - paragraph [ref=e122]: Track how winter populations swell in Sun Belt cities like Phoenix, Miami, and Tampa by comparing seasonal proxy metrics.
+            - generic [ref=e123]:
+              - generic [ref=e124]: Phoenix, AZ
+              - generic [ref=e125]: Miami, FL
+              - generic [ref=e126]: Tampa, FL
+          - link "temporal COVID-19 Impact Analysis Examine how urban activity collapsed in 2020 and recovered through 2022. This preset compares major metropolitan areas across the pandemic timeline. New York, NY San Francisco, CA Las Vegas, NV" [ref=e127] [cursor=pointer]:
+            - /url: /regions?preset=covid
+            - generic [ref=e128]:
+              - img [ref=e130]
+              - generic [ref=e133]: temporal
+            - heading "COVID-19 Impact Analysis" [level=3] [ref=e134]
+            - paragraph [ref=e135]: Examine how urban activity collapsed in 2020 and recovered through 2022. This preset compares major metropolitan areas across the pandemic timeline.
+            - generic [ref=e136]:
+              - generic [ref=e137]: New York, NY
+              - generic [ref=e138]: San Francisco, CA
+              - generic [ref=e139]: Las Vegas, NV
+          - 'link "growth Urban Growth: Phoenix (2015-2025) Track long-term urban expansion using satellite-derived proxy metrics over the Sentinel-2 era. Phoenix, AZ" [ref=e140] [cursor=pointer]':
+            - /url: /regions?preset=urban-growth
+            - generic [ref=e141]:
+              - img [ref=e143]
+              - generic [ref=e146]: growth
+            - 'heading "Urban Growth: Phoenix (2015-2025)" [level=3] [ref=e147]'
+            - paragraph [ref=e148]: Track long-term urban expansion using satellite-derived proxy metrics over the Sentinel-2 era.
+            - generic [ref=e150]: Phoenix, AZ
+          - link "seasonal College Town Seasonality University towns show distinct seasonal patterns driven by academic calendars. Compare activity during the school year (Sep-May) versus summer break. Austin, TX Ann Arbor, MI Boulder, CO" [ref=e151] [cursor=pointer]:
+            - /url: /regions?preset=college-towns
+            - generic [ref=e152]:
+              - img [ref=e154]
+              - generic [ref=e157]: seasonal
+            - heading "College Town Seasonality" [level=3] [ref=e158]
+            - paragraph [ref=e159]: University towns show distinct seasonal patterns driven by academic calendars. Compare activity during the school year (Sep-May) versus summer break.
+            - generic [ref=e160]:
+              - generic [ref=e161]: Austin, TX
+              - generic [ref=e162]: Ann Arbor, MI
+              - generic [ref=e163]: Boulder, CO
+          - link "seasonal Tourist Destination Patterns Tourism-driven economies show predictable seasonal activity fluctuations. Analyze peak vs off-peak patterns in major tourist destinations. Las Vegas, NV Orlando, FL" [ref=e164] [cursor=pointer]:
+            - /url: /regions?preset=tourism
+            - generic [ref=e165]:
+              - img [ref=e167]
+              - generic [ref=e170]: seasonal
+            - heading "Tourist Destination Patterns" [level=3] [ref=e171]
+            - paragraph [ref=e172]: Tourism-driven economies show predictable seasonal activity fluctuations. Analyze peak vs off-peak patterns in major tourist destinations.
+            - generic [ref=e173]:
+              - generic [ref=e174]: Las Vegas, NV
+              - generic [ref=e175]: Orlando, FL
+      - generic [ref=e176]:
+        - heading "Quick Start" [level=2] [ref=e177]
+        - generic [ref=e178]:
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]: "1"
+              - img [ref=e183]
+            - heading "Select a Region" [level=3] [ref=e186]
+            - paragraph [ref=e187]: Choose from predefined cities or draw a custom polygon on the map.
+          - generic [ref=e188]:
+            - generic [ref=e189]:
+              - generic [ref=e190]: "2"
+              - img [ref=e192]
+            - heading "Choose Time Period" [level=3] [ref=e195]
+            - paragraph [ref=e196]: Select date ranges or use presets like "Winter vs Summer" for seasonal comparisons.
+          - generic [ref=e197]:
+            - generic [ref=e198]:
+              - generic [ref=e199]: "3"
+              - img [ref=e201]
+            - heading "Analyze Metrics" [level=3] [ref=e204]
+            - paragraph [ref=e205]: View nighttime lights, vegetation indices, and urban density patterns over time.
+          - generic [ref=e206]:
+            - generic [ref=e207]:
+              - generic [ref=e208]: "4"
+              - img [ref=e210]
+            - heading "Export Results" [level=3] [ref=e213]
+            - paragraph [ref=e214]: Generate PDF reports, download CSV data, or create time-lapse animations.
+      - generic [ref=e215]:
+        - heading "Data Sources" [level=2] [ref=e216]
+        - generic [ref=e217]:
+          - generic [ref=e218]:
+            - img [ref=e220]
+            - generic [ref=e223]:
+              - heading "Sentinel-2" [level=4] [ref=e224]
+              - paragraph [ref=e225]: 10m optical imagery for NDVI, urban density
+              - generic [ref=e226]: Primary
+          - generic [ref=e227]:
+            - img [ref=e229]
+            - generic [ref=e232]:
+              - heading "VIIRS" [level=4] [ref=e233]
+              - paragraph [ref=e234]: 375m nighttime lights for activity proxy
+              - generic [ref=e235]: Primary
+          - generic [ref=e236]:
+            - img [ref=e238]
+            - generic [ref=e241]:
+              - heading "GHSL" [level=4] [ref=e242]
+              - paragraph [ref=e243]: Global Human Settlement Layer for built-up areas
+              - generic [ref=e244]: Supplementary
+          - generic [ref=e245]:
+            - img [ref=e247]
+            - generic [ref=e250]:
+              - heading "OpenStreetMap" [level=4] [ref=e251]
+              - paragraph [ref=e252]: Road networks and POIs for context
+              - generic [ref=e253]: Supplementary

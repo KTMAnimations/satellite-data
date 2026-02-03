@@ -1,0 +1,101 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "SatelliteMigration" [ref=e6] [cursor=pointer]:
+      - /url: /
+      - img [ref=e8]
+      - generic [ref=e11]: SatelliteMigration
+    - navigation [ref=e12]:
+      - generic [ref=e13]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /
+          - img [ref=e16]
+          - generic [ref=e18]: Dashboard
+        - link "Regions" [ref=e21] [cursor=pointer]:
+          - /url: /map/5e9d8866-49bc-4bd4-8570-fe5fff3d1f19
+          - img [ref=e22]
+          - generic [ref=e24]: Regions
+        - link "Animations" [ref=e27] [cursor=pointer]:
+          - /url: /animations
+          - img [ref=e28]
+          - generic [ref=e30]: Animations
+        - link "Exports" [ref=e33] [cursor=pointer]:
+          - /url: /exports
+          - img [ref=e34]
+          - generic [ref=e36]: Exports
+    - link "Docs" [ref=e38] [cursor=pointer]:
+      - /url: https://github.com
+  - main [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - link "Back" [ref=e43] [cursor=pointer]:
+            - /url: /analysis/5e9d8866-49bc-4bd4-8570-fe5fff3d1f19
+          - generic [ref=e44]:
+            - link "Regions" [ref=e45] [cursor=pointer]:
+              - /url: /regions
+            - generic [ref=e46]: /
+            - generic [ref=e47]: Full Map
+            - generic [ref=e48]: ·
+            - generic [ref=e49]: Phoenix, AZ
+          - button "Clear cached tiles + metrics" [ref=e50] [cursor=pointer]:
+            - img [ref=e51]
+        - generic [ref=e54]:
+          - combobox "Metric" [ref=e55] [cursor=pointer]:
+            - option "Nighttime Lights"
+            - option "NDVI (Vegetation)"
+            - option "Urban Density"
+            - option "Parking Occupancy"
+            - option "Land Cover"
+            - option "Surface Water"
+            - option "NO₂ Pollution"
+            - option "Temperature"
+            - option "Precipitation"
+            - option "Aerosol Index" [selected]
+            - option "Cropland"
+            - option "Evapotranspiration"
+            - option "Soil Moisture"
+            - option "Impervious Surface"
+            - option "Canopy Height"
+          - generic [ref=e56]:
+            - button "Daily" [ref=e57] [cursor=pointer]
+            - button "Monthly" [ref=e58] [cursor=pointer]
+          - button "Hide overlay" [pressed] [ref=e60] [cursor=pointer]: Overlay On
+          - generic [ref=e61]:
+            - textbox [ref=e62]: 2024-02-03
+            - generic [ref=e63]: to
+            - textbox [ref=e64]: 2026-02-03
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - generic:
+                - generic:
+                  - img
+              - generic:
+                - generic [ref=e70]:
+                  - button "Zoom in" [ref=e71] [cursor=pointer]: +
+                  - button "Zoom out" [ref=e72] [cursor=pointer]: −
+                - generic [ref=e73]:
+                  - link "Leaflet" [ref=e106] [cursor=pointer]:
+                    - /url: https://leafletjs.com
+                    - img [ref=e107]
+                    - text: Leaflet
+                  - text: "|"
+                  - link "© MapTiler" [ref=e111] [cursor=pointer]:
+                    - /url: https://www.maptiler.com/copyright/
+                  - link "© OpenStreetMap contributors" [ref=e112] [cursor=pointer]:
+                    - /url: https://www.openstreetmap.org/copyright
+                  - text: ", Earth Engine / source datasets"
+            - generic [ref=e83]:
+              - generic [ref=e84]: aerosol
+              - generic [ref=e86]:
+                - generic [ref=e87]: Low
+                - generic [ref=e88]: High
+          - button "Enter fullscreen" [ref=e89] [cursor=pointer]:
+            - img [ref=e90]
+          - generic [ref=e96]:
+            - generic [ref=e98]: Aerosol
+            - generic [ref=e101]:
+              - generic [ref=e102]: Clear
+              - generic [ref=e103]: Smoky
+        - generic [ref=e113]: Loading timeline…

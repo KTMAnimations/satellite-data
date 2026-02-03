@@ -1,0 +1,323 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "SatelliteMigration" [ref=e6] [cursor=pointer]:
+      - /url: /
+      - img [ref=e8]
+      - generic [ref=e11]: SatelliteMigration
+    - navigation [ref=e12]:
+      - generic [ref=e13]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /
+          - img [ref=e16]
+          - generic [ref=e18]: Dashboard
+        - link "Regions" [active] [ref=e21] [cursor=pointer]:
+          - /url: /regions
+          - img [ref=e22]
+          - generic [ref=e24]: Regions
+        - link "Animations" [ref=e27] [cursor=pointer]:
+          - /url: /animations
+          - img [ref=e28]
+          - generic [ref=e30]: Animations
+        - link "Exports" [ref=e33] [cursor=pointer]:
+          - /url: /exports
+          - img [ref=e34]
+          - generic [ref=e36]: Exports
+    - link "Docs" [ref=e38] [cursor=pointer]:
+      - /url: https://github.com
+  - main [ref=e39]:
+    - generic [ref=e254]:
+      - complementary [ref=e255]:
+        - generic [ref=e256]:
+          - heading "Regions" [level=2] [ref=e257]
+          - paragraph [ref=e258]: Select a region to analyze or draw a custom area
+        - generic [ref=e259]:
+          - textbox "Search regions..." [ref=e260]
+          - generic [ref=e261]:
+            - combobox [ref=e262] [cursor=pointer]:
+              - option "All Types" [selected]
+              - option "Predefined"
+              - option "Custom"
+            - combobox [ref=e263] [cursor=pointer]:
+              - option "All Categories" [selected]
+              - option "Major Cities"
+              - option "Megacities"
+              - option "Migration Hotspots"
+          - button "Upload GeoJSON" [ref=e264] [cursor=pointer]:
+            - img [ref=e265]
+            - text: Upload GeoJSON
+        - generic [ref=e267]:
+          - generic [ref=e268] [cursor=pointer]:
+            - generic [ref=e269]:
+              - generic [ref=e270]: Boulder, CO
+              - generic [ref=e271]: predefined
+            - generic [ref=e272]: Colorado, United States
+            - generic [ref=e273]: major city
+          - generic [ref=e274] [cursor=pointer]:
+            - generic [ref=e275]:
+              - generic [ref=e276]: Ann Arbor, MI
+              - generic [ref=e277]: predefined
+            - generic [ref=e278]: Michigan, United States
+            - generic [ref=e279]: major city
+          - generic [ref=e280] [cursor=pointer]:
+            - generic [ref=e281]:
+              - generic [ref=e282]: Lagos, Nigeria
+              - generic [ref=e283]: predefined
+            - generic [ref=e284]: Lagos State, Nigeria
+            - generic [ref=e285]: megacity
+          - generic [ref=e286] [cursor=pointer]:
+            - generic [ref=e287]:
+              - generic [ref=e288]: Cairo, Egypt
+              - generic [ref=e289]: predefined
+            - generic [ref=e290]: Cairo Governorate, Egypt
+            - generic [ref=e291]: megacity
+          - generic [ref=e292] [cursor=pointer]:
+            - generic [ref=e293]:
+              - generic [ref=e294]: Mexico City, Mexico
+              - generic [ref=e295]: predefined
+            - generic [ref=e296]: CDMX, Mexico
+            - generic [ref=e297]: megacity
+          - generic [ref=e298] [cursor=pointer]:
+            - generic [ref=e299]:
+              - generic [ref=e300]: Sao Paulo, Brazil
+              - generic [ref=e301]: predefined
+            - generic [ref=e302]: Sao Paulo, Brazil
+            - generic [ref=e303]: megacity
+          - generic [ref=e304] [cursor=pointer]:
+            - generic [ref=e305]:
+              - generic [ref=e306]: Mumbai, India
+              - generic [ref=e307]: predefined
+            - generic [ref=e308]: Maharashtra, India
+            - generic [ref=e309]: megacity
+          - generic [ref=e310] [cursor=pointer]:
+            - generic [ref=e311]:
+              - generic [ref=e312]: Shanghai, China
+              - generic [ref=e313]: predefined
+            - generic [ref=e314]: Shanghai, China
+            - generic [ref=e315]: megacity
+          - generic [ref=e316] [cursor=pointer]:
+            - generic [ref=e317]:
+              - generic [ref=e318]: Beijing, China
+              - generic [ref=e319]: predefined
+            - generic [ref=e320]: Beijing, China
+            - generic [ref=e321]: megacity
+          - generic [ref=e322] [cursor=pointer]:
+            - generic [ref=e323]:
+              - generic [ref=e324]: Paris, France
+              - generic [ref=e325]: predefined
+            - generic [ref=e326]: Ile-de-France, France
+            - generic [ref=e327]: megacity
+          - generic [ref=e328] [cursor=pointer]:
+            - generic [ref=e329]:
+              - generic [ref=e330]: London, UK
+              - generic [ref=e331]: predefined
+            - generic [ref=e332]: England, United Kingdom
+            - generic [ref=e333]: megacity
+          - generic [ref=e334] [cursor=pointer]:
+            - generic [ref=e335]:
+              - generic [ref=e336]: Tokyo, Japan
+              - generic [ref=e337]: predefined
+            - generic [ref=e338]: Tokyo, Japan
+            - generic [ref=e339]: megacity
+          - generic [ref=e340] [cursor=pointer]:
+            - generic [ref=e341]:
+              - generic [ref=e342]: Atlanta, GA
+              - generic [ref=e343]: predefined
+            - generic [ref=e344]: Georgia, United States
+            - generic [ref=e345]: major city
+          - generic [ref=e346] [cursor=pointer]:
+            - generic [ref=e347]:
+              - generic [ref=e348]: Denver, CO
+              - generic [ref=e349]: predefined
+            - generic [ref=e350]: Colorado, United States
+            - generic [ref=e351]: major city
+          - generic [ref=e352] [cursor=pointer]:
+            - generic [ref=e353]:
+              - generic [ref=e354]: Boston, MA
+              - generic [ref=e355]: predefined
+            - generic [ref=e356]: Massachusetts, United States
+            - generic [ref=e357]: major city
+          - generic [ref=e358] [cursor=pointer]:
+            - generic [ref=e359]:
+              - generic [ref=e360]: Seattle, WA
+              - generic [ref=e361]: predefined
+            - generic [ref=e362]: Washington, United States
+            - generic [ref=e363]: major city
+          - generic [ref=e364] [cursor=pointer]:
+            - generic [ref=e365]:
+              - generic [ref=e366]: San Francisco, CA
+              - generic [ref=e367]: predefined
+            - generic [ref=e368]: California, United States
+            - generic [ref=e369]: major city
+          - generic [ref=e370] [cursor=pointer]:
+            - generic [ref=e371]:
+              - generic [ref=e372]: Dallas, TX
+              - generic [ref=e373]: predefined
+            - generic [ref=e374]: Texas, United States
+            - generic [ref=e375]: major city
+          - generic [ref=e376] [cursor=pointer]:
+            - generic [ref=e377]:
+              - generic [ref=e378]: Houston, TX
+              - generic [ref=e379]: predefined
+            - generic [ref=e380]: Texas, United States
+            - generic [ref=e381]: major city
+          - generic [ref=e382] [cursor=pointer]:
+            - generic [ref=e383]:
+              - generic [ref=e384]: Chicago, IL
+              - generic [ref=e385]: predefined
+            - generic [ref=e386]: Illinois, United States
+            - generic [ref=e387]: major city
+          - generic [ref=e388] [cursor=pointer]:
+            - generic [ref=e389]:
+              - generic [ref=e390]: Los Angeles, CA
+              - generic [ref=e391]: predefined
+            - generic [ref=e392]: California, United States
+            - generic [ref=e393]: major city
+          - generic [ref=e394] [cursor=pointer]:
+            - generic [ref=e395]:
+              - generic [ref=e396]: New York, NY
+              - generic [ref=e397]: predefined
+            - generic [ref=e398]: New York, United States
+            - generic [ref=e399]: major city
+          - generic [ref=e400] [cursor=pointer]:
+            - generic [ref=e401]:
+              - generic [ref=e402]: West Palm Beach, FL
+              - generic [ref=e403]: predefined
+            - generic [ref=e404]: Florida, United States
+            - generic [ref=e405]: migration hotspot
+          - generic [ref=e406] [cursor=pointer]:
+            - generic [ref=e407]:
+              - generic [ref=e408]: Fort Lauderdale, FL
+              - generic [ref=e409]: predefined
+            - generic [ref=e410]: Florida, United States
+            - generic [ref=e411]: migration hotspot
+          - generic [ref=e412] [cursor=pointer]:
+            - generic [ref=e413]:
+              - generic [ref=e414]: Myrtle Beach, SC
+              - generic [ref=e415]: predefined
+            - generic [ref=e416]: South Carolina, United States
+            - generic [ref=e417]: migration hotspot
+          - generic [ref=e418] [cursor=pointer]:
+            - generic [ref=e419]:
+              - generic [ref=e420]: Savannah, GA
+              - generic [ref=e421]: predefined
+            - generic [ref=e422]: Georgia, United States
+            - generic [ref=e423]: migration hotspot
+          - generic [ref=e424] [cursor=pointer]:
+            - generic [ref=e425]:
+              - generic [ref=e426]: Charleston, SC
+              - generic [ref=e427]: predefined
+            - generic [ref=e428]: South Carolina, United States
+            - generic [ref=e429]: migration hotspot
+          - generic [ref=e430] [cursor=pointer]:
+            - generic [ref=e431]:
+              - generic [ref=e432]: San Antonio, TX
+              - generic [ref=e433]: predefined
+            - generic [ref=e434]: Texas, United States
+            - generic [ref=e435]: migration hotspot
+          - generic [ref=e436] [cursor=pointer]:
+            - generic [ref=e437]:
+              - generic [ref=e438]: Austin, TX
+              - generic [ref=e439]: predefined
+            - generic [ref=e440]: Texas, United States
+            - generic [ref=e441]: migration hotspot
+          - generic [ref=e442] [cursor=pointer]:
+            - generic [ref=e443]:
+              - generic [ref=e444]: Albuquerque, NM
+              - generic [ref=e445]: predefined
+            - generic [ref=e446]: New Mexico, United States
+            - generic [ref=e447]: migration hotspot
+          - generic [ref=e448] [cursor=pointer]:
+            - generic [ref=e449]:
+              - generic [ref=e450]: Sarasota, FL
+              - generic [ref=e451]: predefined
+            - generic [ref=e452]: Florida, United States
+            - generic [ref=e453]: migration hotspot
+          - generic [ref=e454] [cursor=pointer]:
+            - generic [ref=e455]:
+              - generic [ref=e456]: Naples, FL
+              - generic [ref=e457]: predefined
+            - generic [ref=e458]: Florida, United States
+            - generic [ref=e459]: migration hotspot
+          - generic [ref=e460] [cursor=pointer]:
+            - generic [ref=e461]:
+              - generic [ref=e462]: Scottsdale, AZ
+              - generic [ref=e463]: predefined
+            - generic [ref=e464]: Arizona, United States
+            - generic [ref=e465]: migration hotspot
+          - generic [ref=e466] [cursor=pointer]:
+            - generic [ref=e467]:
+              - generic [ref=e468]: Fort Myers, FL
+              - generic [ref=e469]: predefined
+            - generic [ref=e470]: Florida, United States
+            - generic [ref=e471]: migration hotspot
+          - generic [ref=e472] [cursor=pointer]:
+            - generic [ref=e473]:
+              - generic [ref=e474]: Palm Springs, CA
+              - generic [ref=e475]: predefined
+            - generic [ref=e476]: California, United States
+            - generic [ref=e477]: migration hotspot
+          - generic [ref=e478] [cursor=pointer]:
+            - generic [ref=e479]:
+              - generic [ref=e480]: Tucson, AZ
+              - generic [ref=e481]: predefined
+            - generic [ref=e482]: Arizona, United States
+            - generic [ref=e483]: migration hotspot
+          - generic [ref=e484] [cursor=pointer]:
+            - generic [ref=e485]:
+              - generic [ref=e486]: Orlando, FL
+              - generic [ref=e487]: predefined
+            - generic [ref=e488]: Florida, United States
+            - generic [ref=e489]: migration hotspot
+          - generic [ref=e490] [cursor=pointer]:
+            - generic [ref=e491]:
+              - generic [ref=e492]: San Diego, CA
+              - generic [ref=e493]: predefined
+            - generic [ref=e494]: California, United States
+            - generic [ref=e495]: migration hotspot
+          - generic [ref=e496] [cursor=pointer]:
+            - generic [ref=e497]:
+              - generic [ref=e498]: Las Vegas, NV
+              - generic [ref=e499]: predefined
+            - generic [ref=e500]: Nevada, United States
+            - generic [ref=e501]: migration hotspot
+          - generic [ref=e502] [cursor=pointer]:
+            - generic [ref=e503]:
+              - generic [ref=e504]: Tampa, FL
+              - generic [ref=e505]: predefined
+            - generic [ref=e506]: Florida, United States
+            - generic [ref=e507]: migration hotspot
+          - generic [ref=e508] [cursor=pointer]:
+            - generic [ref=e509]:
+              - generic [ref=e510]: Miami, FL
+              - generic [ref=e511]: predefined
+            - generic [ref=e512]: Florida, United States
+            - generic [ref=e513]: migration hotspot
+          - generic [ref=e514] [cursor=pointer]:
+            - generic [ref=e515]:
+              - generic [ref=e516]: Phoenix, AZ
+              - generic [ref=e517]: predefined
+            - generic [ref=e518]: Arizona, United States
+            - generic [ref=e519]: migration hotspot
+      - main [ref=e520]:
+        - generic [ref=e522]:
+          - generic:
+            - generic:
+              - img
+          - generic:
+            - generic [ref=e556]:
+              - button "Zoom in" [ref=e557] [cursor=pointer]: +
+              - button "Zoom out" [disabled] [ref=e558]: −
+            - link "Draw a polygon" [ref=e562] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e563]: Draw a polygon
+            - generic [ref=e564]:
+              - link "Leaflet" [ref=e565] [cursor=pointer]:
+                - /url: https://leafletjs.com
+                - img [ref=e566]
+                - text: Leaflet
+              - text: "|"
+              - link "© MapTiler" [ref=e570] [cursor=pointer]:
+                - /url: https://www.maptiler.com/copyright/
+              - link "© OpenStreetMap contributors" [ref=e571] [cursor=pointer]:
+                - /url: https://www.openstreetmap.org/copyright
+        - generic [ref=e572]: Click a region to select it, or use the polygon tool to draw a custom area
