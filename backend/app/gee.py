@@ -451,14 +451,15 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return ee.Image(ee.Algorithms.If(has_month, monthly_mask, occurrence)).clip(geom)
 
     if metric == "no2":
-        collection = (
+        # Sentinel-5P NO2 is per-orbit (many images per day). Reduce to daily
+        # means first so monthly tiles stay responsive at low zoom.
+        s5p = (
             ee.ImageCollection("COPERNICUS/S5P/OFFL/L3_NO2")
             .filterBounds(geom)
-            .filterDate(start, end)
-            .select(["tropospheric_NO2_column_number_density"])
+            .select(["tropospheric_NO2_column_number_density"], [band])
         )
-        has_images = collection.size().gt(0)
-        image = collection.mean().rename([band])
+        has_images = s5p.filterDate(start, end).size().gt(0)
+        image = _mean_of_daily_means(s5p, start, end, band)
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "temperature":
@@ -578,15 +579,17 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "soil_moisture":
+        # SMAP L4 soil moisture is sub-daily. Reduce to daily means first so
+        # weekly/monthly buckets don't require aggregating hundreds of images.
         collection = (
             ee.ImageCollection("NASA/SMAP/SPL4SMGP/008")
             .filterBounds(geom)
             .filterDate(start, end)
-            .select(["sm_surface"])
+            .select(["sm_surface"], [band])
         )
         has_images = collection.size().gt(0)
-        native_proj = ee.Image(collection.first()).projection()
-        image = collection.mean().rename([band]).setDefaultProjection(native_proj).resample("bilinear")
+        native_proj = ee.Image(ee.Algorithms.If(has_images, collection.first(), _empty_masked_image(band))).projection()
+        image = _mean_of_daily_means(collection, start, end, band).setDefaultProjection(native_proj).resample("bilinear")
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "impervious":
@@ -765,7 +768,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
-_tile_cache_version = 20
+_tile_cache_version = 21
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
