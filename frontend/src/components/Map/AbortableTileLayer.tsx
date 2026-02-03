@@ -170,10 +170,18 @@ export function AbortableTileLayer({
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      // Remove the layer *before* detaching handlers so in-flight tile fetches
+      // get aborted immediately during metric/date swaps.
+      if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      } else {
+        // If the layer was never added (e.g. StrictMode test mount), still ensure
+        // any tracked controllers are aborted.
+        handleRemove();
+      }
+
       layer.off('tileunload', handleTileUnload);
       layer.off('remove', handleRemove);
-
-      if (map.hasLayer(layer)) map.removeLayer(layer);
       layerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -10,6 +10,7 @@ import type { Granularity, Region, MetricType } from '../../types';
 import api from '../../services/api';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
 import { MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
+import { AbortableTileLayer } from './AbortableTileLayer';
 import './SplitScreenCompare.css';
 
 function toDateBucket(dateStr: string, granularity: Granularity): string {
@@ -413,11 +414,14 @@ export function SplitScreenCompare({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
           {tileTemplateA?.tile_url && (
-            <TileLayer
+            <AbortableTileLayer
               key={`${metric}:${granularity}:${dateBucketA}`}
               url={tileTemplateA.tile_url}
               opacity={tileTemplateA.opacity}
               attribution={tileTemplateA.attribution ?? undefined}
+              updateWhenIdle
+              updateWhenZooming={false}
+              keepBuffer={0}
             />
           )}
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
@@ -466,11 +470,14 @@ export function SplitScreenCompare({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           />
           {tileTemplateB?.tile_url && (
-            <TileLayer
+            <AbortableTileLayer
               key={`${metric}:${granularity}:${dateBucketB}`}
               url={tileTemplateB.tile_url}
               opacity={tileTemplateB.opacity}
               attribution={tileTemplateB.attribution ?? undefined}
+              updateWhenIdle
+              updateWhenZooming={false}
+              keepBuffer={0}
             />
           )}
           <GeoJSON data={region.geometry as GeoJSON.Geometry} style={regionStyle} />
