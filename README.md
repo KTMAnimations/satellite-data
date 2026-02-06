@@ -1,4 +1,4 @@
-# SatelliteMigration
+# Exeter Astro
 
 Local-first satellite proxy metrics explorer for detecting seasonal migration patterns, urban growth, and activity changes using free satellite datasets.
 

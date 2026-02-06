@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     )
 
     # App
-    app_name: str = "SatelliteMigration"
+    app_name: str = "Exeter Astro"
     api_v1_prefix: str = "/api/v1"
     environment: Literal["development", "production"] = "development"
     debug: bool = True

@@ -2,7 +2,7 @@
 
 ## Complete Specification Document
 
-**Project Name:** SatelliteMigration
+**Project Name:** Exeter Astro
 **Last Updated:** 2026-02-01
 **Status:** Dockerless local-first implementation (SQLite + Earth Engine)
 
@@ -1066,4 +1066,4 @@ For detailed information on specific topics, see:
 
 ---
 
-*This document serves as the source of truth for the SatelliteMigration project. Update as requirements evolve.*
+*This document serves as the source of truth for the Exeter Astro project. Update as requirements evolve.*

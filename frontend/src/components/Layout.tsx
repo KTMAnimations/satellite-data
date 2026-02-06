@@ -68,7 +68,7 @@ export function Layout() {
             <div className="logo-icon">
               <Planet size={22} weight="duotone" />
             </div>
-            <span className="logo-text">SatelliteMigration</span>
+            <span className="logo-text">Exeter Astro</span>
           </Link>
         </div>
 
