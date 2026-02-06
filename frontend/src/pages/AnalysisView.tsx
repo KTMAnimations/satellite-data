@@ -42,6 +42,44 @@ const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
 
 type ViewMode = 'charts' | 'correlation' | 'yoy';
 
+function getTimeSeriesNotes(
+  metrics: MetricType[],
+  dateRange: { start: Date; end: Date }
+): Array<{ metric: MetricType; note: string }> {
+  const notes: Array<{ metric: MetricType; note: string }> = [];
+  const has = (m: MetricType) => metrics.includes(m);
+
+  if (has('surface_water')) {
+    notes.push({
+      metric: 'surface_water',
+      note: 'JRC monthly history ends 2021; newer dates use Dynamic World water probability.',
+    });
+  }
+
+  if (has('cropland')) {
+    notes.push({
+      metric: 'cropland',
+      note: 'WorldCover cropland mask (2021) × Dynamic World crops probability (seasonal).',
+    });
+  }
+
+  if (has('impervious') && dateRange.end.getFullYear() > 2018) {
+    notes.push({
+      metric: 'impervious',
+      note: 'GAIA ends in 2018; dates after 2018 show the 2018 extent (flat line is expected).',
+    });
+  }
+
+  if (has('canopy_height')) {
+    notes.push({
+      metric: 'canopy_height',
+      note: 'Canopy height changes slowly; GEDI coverage is limited and later dates may fall back to a static layer.',
+    });
+  }
+
+  return notes;
+}
+
 export function AnalysisView() {
   const { regionId } = useParams<{ regionId: string }>();
   const { selectedMetrics, toggleMetric, dateRange, setDateRange } = useStore();
@@ -184,6 +222,11 @@ export function AnalysisView() {
       return [{ x: xPoint.value, y: yValue, date: xPoint.date }];
     });
   }, [metrics, correlationMetricX, correlationMetricY, viewMode]);
+
+  const timeSeriesNotes = useMemo(
+    () => getTimeSeriesNotes(selectedMetrics, dateRange),
+    [selectedMetrics, dateRange]
+  );
 
   // Reset timeline date and granularity when metric changes
   useEffect(() => {
@@ -510,6 +553,15 @@ export function AnalysisView() {
                       width={700}
                       height={320}
                     />
+                    {timeSeriesNotes.length > 0 && (
+                      <div className="chart-note" role="note">
+                        {timeSeriesNotes.map(({ metric, note }) => (
+                          <div key={metric} className="chart-note-line">
+                            <strong>{METRIC_OPTIONS.find((o) => o.value === metric)?.label ?? metric}:</strong> {note}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Seasonal Comparison */}

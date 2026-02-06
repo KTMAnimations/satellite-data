@@ -442,8 +442,8 @@ def build_metric_image(metric: MetricId, start, end, geom):
 
     if metric == "surface_water":
         # Primary: JRC MonthlyHistory (ends at 2021-12). system:index uses YYYY_MM.
-        # Fallback: JRC GlobalSurfaceWater occurrence (static), so recent date ranges
-        # still render meaningful water signal instead of an empty layer.
+        # Fallback (recent): Dynamic World water probability (near real-time).
+        # Final fallback: JRC GlobalSurfaceWater occurrence (static).
         target_month = start.format("YYYY_MM")
         monthly = ee.ImageCollection("JRC/GSW1_4/MonthlyHistory").filterBounds(geom).select(["water"])
         filtered = monthly.filter(ee.Filter.eq("system:index", target_month))
@@ -461,6 +461,19 @@ def build_metric_image(metric: MetricId, start, end, geom):
         # make non-water fully transparent without fractional alpha artifacts.
         monthly_mask = monthly_img.select(["water"]).eq(2).unmask(0).rename([band])
 
+        # Dynamic World water probability for recent dates where JRC has no monthly
+        # history (e.g. >2021). Treat missing pixels as 0 so reduceRegion means
+        # represent a true fraction over the full AOI.
+        dw = (
+            ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["water"])
+        )
+        dw_has = dw.size().gt(0)
+        dw_img = dw.median().unmask(0).rename([band])
+        dw_img = ee.Image(ee.Algorithms.If(dw_has, dw_img, _empty_masked_image(band)))
+
         occurrence = (
             ee.Image("JRC/GSW1_4/GlobalSurfaceWater")
             .select(["occurrence"])
@@ -468,7 +481,8 @@ def build_metric_image(metric: MetricId, start, end, geom):
             .divide(100)
             .rename([band])
         )
-        return ee.Image(ee.Algorithms.If(has_month, monthly_mask, occurrence)).clip(geom)
+        fallback = ee.Image(ee.Algorithms.If(dw_has, dw_img, occurrence))
+        return ee.Image(ee.Algorithms.If(has_month, monthly_mask, fallback)).clip(geom)
 
     if metric == "no2":
         # Sentinel-5P NO2 is per-orbit (many images per day). Reduce to daily
@@ -582,9 +596,27 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return filled.clip(geom)
 
     if metric == "cropland":
-        # ESA WorldCover: Map class 40 = cropland. Expose as fraction 0..1.
+        # Cropland proxy:
+        # - Base mask from ESA WorldCover (2021): Map class 40 = cropland.
+        # - Temporal signal from Dynamic World crops probability (near real-time).
+        #
+        # This keeps the metric interpretable as a fraction (0..1) over the AOI,
+        # while allowing month-to-month variation for recent years.
         worldcover = ee.ImageCollection("ESA/WorldCover/v200").first().select(["Map"])
-        cropland = worldcover.eq(40).rename([band])
+        cropland_mask = worldcover.eq(40).unmask(0).rename(["mask"])
+
+        dw = (
+            ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["crops"])
+        )
+        dw_has = dw.size().gt(0)
+        dw_crops = dw.median().unmask(0).rename(["crops"])
+        dw_crops = ee.Image(ee.Algorithms.If(dw_has, dw_crops, cropland_mask.rename(["crops"])))
+
+        # Only count crop probability within the WorldCover cropland extent.
+        cropland = dw_crops.multiply(cropland_mask.rename(["crops"])).rename([band])
         return cropland.clip(geom)
 
     if metric == "evapotranspiration":
@@ -613,10 +645,17 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "impervious":
+        # GAIA stores the year of urbanization as an index:
+        #   1 => 1985 ... 34 => 2018. Non-urban pixels are masked.
+        #
+        # Convert requested year -> index and unmask to 0 so reduceRegion means
+        # represent a true fraction of the AOI (not "mean over only urban pixels").
         year = ee.Number.parse(start.format("YYYY"))
         year_clamped = year.min(2018).max(1985)
-        gaia = ee.Image("Tsinghua/FROM-GLC/GAIA/v10")
-        urbanized = gaia.lte(year_clamped).And(gaia.gt(0)).rename([band])
+        year_index = year_clamped.subtract(1984)
+
+        gaia = ee.Image("Tsinghua/FROM-GLC/GAIA/v10").select(["change_year_index"]).unmask(0)
+        urbanized = gaia.lte(year_index).And(gaia.gt(0)).unmask(0).rename([band])
         return urbanized.clip(geom)
 
     if metric == "canopy_height":
@@ -626,10 +665,34 @@ def build_metric_image(metric: MetricId, start, end, geom):
         #
         # To avoid a hard "break" line at the GEDI swath edge, fall back to the
         # global 1km canopy height (2005) product where GEDI has no data.
-        gedi_rh98 = (
-            ee.ImageCollection("LARSE/GEDI/GRIDDEDVEG_002/V1/1KM")
-            .filter(ee.Filter.stringContains("system:index", "rh-98-a0_vf_20190417_20230316"))
+        year = ee.Number.parse(start.format("YYYY"))
+        # Use year-specific composites when available so time series can vary.
+        idx = ee.String(
+            ee.Algorithms.If(
+                year.lte(2019),
+                "gediv002_rh-98-a0_vf_20190417_20191231",
+                ee.Algorithms.If(
+                    year.eq(2020),
+                    "gediv002_rh-98-a0_vf_20200101_20201231",
+                    ee.Algorithms.If(
+                        year.eq(2021),
+                        "gediv002_rh-98-a0_vf_20210101_20211231",
+                        ee.Algorithms.If(
+                            year.eq(2022),
+                            "gediv002_rh-98-a0_vf_20220101_20221231",
+                            ee.Algorithms.If(
+                                year.eq(2023),
+                                "gediv002_rh-98-a0_vf_20230101_20230316",
+                                # Fallback: full GEDI window (static).
+                                "gediv002_rh-98-a0_vf_20190417_20230316",
+                            ),
+                        ),
+                    ),
+                ),
+            )
         )
+
+        gedi_rh98 = ee.ImageCollection("LARSE/GEDI/GRIDDEDVEG_002/V1/1KM").filter(ee.Filter.eq("system:index", idx))
         has_gedi = gedi_rh98.size().gt(0)
         gedi = ee.Image(
             ee.Algorithms.If(
@@ -788,7 +851,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
-_tile_cache_version = 22
+_tile_cache_version = 23
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:

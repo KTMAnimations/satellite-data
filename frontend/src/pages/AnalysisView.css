@@ -334,6 +334,26 @@
   color: var(--text-tertiary);
 }
 
+.chart-note {
+  margin-top: 0.875rem;
+  padding: 0.75rem 0.875rem;
+  background: var(--surface-recessed);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.chart-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.chart-note-line + .chart-note-line {
+  margin-top: 0.375rem;
+}
+
 /* Stats Section */
 .stats-section h4 {
   margin-bottom: 0.875rem;
