@@ -48,7 +48,7 @@ function getTimeSeriesNotes(
 ): Array<{ metric: MetricType; note: string }> {
   const notes: Array<{ metric: MetricType; note: string }> = [];
   const has = (m: MetricType) => metrics.includes(m);
-
+/*
   if (has('surface_water')) {
     notes.push({
       metric: 'surface_water',
@@ -76,7 +76,7 @@ function getTimeSeriesNotes(
       note: 'Canopy height changes slowly; GEDI coverage is limited and later dates may fall back to a static layer.',
     });
   }
-
+*/
   return notes;
 }
 
