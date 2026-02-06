@@ -23,6 +23,10 @@ import './MapContainer.css';
 
 const MAPTILER_KEY = (import.meta.env.VITE_MAPTILER_KEY ?? '').trim();
 const MAPTILER_OMT_RASTER_URL = `https://api.maptiler.com/maps/openstreetmap/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`;
+const CARTO_DARK_RASTER_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+const CARTO_DARK_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors ' +
+  '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>';
 
 function toDateBucket(dateStr: string, granularity: Granularity): string {
   return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
@@ -171,10 +175,12 @@ export function MapView({
     shallow
   );
   const mapRef = useRef<LeafletMap | null>(null);
+  const [mapContainerEl, setMapContainerEl] = useState<HTMLElement | null>(null);
 
   const handleMapRef = useCallback(
     (map: LeafletMap | null) => {
       mapRef.current = map;
+      setMapContainerEl(map ? map.getContainer() : null);
       if (import.meta.env.DEV && map) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__satelliteLeafletMap = map;
@@ -193,11 +199,20 @@ export function MapView({
       : showDrawControls
         ? (selectedRegion?.id ?? null)
         : null;
+  const useDarkBasemap = selectedMetric === 'nightlights';
   const effectiveOverlayMinZoom = DEFAULT_METRIC_OVERLAY_MIN_ZOOM;
   const metricLayerMounted = Boolean(selectedMetric && tileDate);
   const metricLayerVisible = Boolean(
     overlayEnabled && overlayAllowNetwork && mapState.zoom >= effectiveOverlayMinZoom
   );
+
+  useEffect(() => {
+    if (!mapContainerEl) return;
+    mapContainerEl.classList.toggle('map-container--dark', useDarkBasemap);
+    return () => {
+      mapContainerEl.classList.remove('map-container--dark');
+    };
+  }, [mapContainerEl, useDarkBasemap]);
 
   const effectiveGranularity = selectedMetric
     ? (tileGranularity ?? METRIC_DEFAULT_GRANULARITY[selectedMetric])
@@ -407,13 +422,24 @@ export function MapView({
         className="map-container"
         ref={handleMapRef}
       >
-        <TileLayer
-          attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
-          url={MAPTILER_OMT_RASTER_URL}
-          tileSize={512}
-          zoomOffset={-1}
-          crossOrigin
-        />
+        {useDarkBasemap ? (
+          <TileLayer
+            key="basemap:carto-dark"
+            attribution={CARTO_DARK_ATTRIBUTION}
+            url={CARTO_DARK_RASTER_URL}
+            subdomains={['a', 'b', 'c', 'd']}
+            crossOrigin
+          />
+        ) : (
+          <TileLayer
+            key="basemap:maptiler-osm"
+            attribution='<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">&copy; OpenStreetMap contributors</a>'
+            url={MAPTILER_OMT_RASTER_URL}
+            tileSize={512}
+            zoomOffset={-1}
+            crossOrigin
+          />
+        )}
 
         {/* Metric tile overlay (Earth Engine URL template) */}
         {metricLayerMounted && metricLayerVisible && activeTileTemplate?.tile_url && (
