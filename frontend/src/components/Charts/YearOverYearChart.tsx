@@ -52,6 +52,12 @@ const METRIC_LABELS: Record<MetricType, string> = {
   canopy_height: 'Canopy Height',
 };
 
+function formatChartValue(value: number): string {
+  const abs = Math.abs(value);
+  const digits = abs < 1 ? 4 : 3;
+  return value.toFixed(digits);
+}
+
 export function YearOverYearChart({
   data,
   selectedMetric,
@@ -162,7 +168,7 @@ export function YearOverYearChart({
       .attr('fill', 'var(--text-secondary)')
       .attr('font-family', 'var(--font-mono)')
       .attr('font-size', '11px')
-      .text((d) => d.value.toFixed(3));
+      .text((d) => formatChartValue(d.value));
 
     // Year-over-year change indicators - no animation
     sortedData.forEach((d, i) => {

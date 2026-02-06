@@ -55,6 +55,13 @@ export function AnalysisView() {
   const [currentTimelineDate, setCurrentTimelineDate] = useState<Date | null>(null);
   const [overlayIsLoading, setOverlayIsLoading] = useState(false);
 
+  const handleMapMetricChange = (metric: MetricType) => {
+    setSelectedMapMetric(metric);
+    // When a user changes the map metric, ensure it also appears in the charts/stats.
+    // This keeps the "analysis" view in sync with what is shown on the map.
+    if (!selectedMetrics.includes(metric)) toggleMetric(metric);
+  };
+
   const { data: region } = useQuery({
     queryKey: ['region', regionId],
     queryFn: ({ signal }) => api.getRegion(regionId!, { signal }),
@@ -278,7 +285,7 @@ export function AnalysisView() {
               <h4>Map View</h4>
               <select
                 value={selectedMapMetric}
-                onChange={(e) => setSelectedMapMetric(e.target.value as MetricType)}
+                onChange={(e) => handleMapMetricChange(e.target.value as MetricType)}
                 className="metric-select"
               >
                 {METRIC_OPTIONS.map((opt) => (
@@ -528,6 +535,7 @@ export function AnalysisView() {
                         const avg = values.reduce((a, b) => a + b, 0) / values.length;
                         const min = Math.min(...values);
                         const max = Math.max(...values);
+                        const valueDigits = Math.max(Math.abs(avg), Math.abs(min), Math.abs(max)) < 1 ? 4 : 3;
 
                         const winterAvg = metrics.seasonal_summary?.winter_avg[metric];
                         const summerAvg = metrics.seasonal_summary?.summer_avg[metric];
@@ -545,11 +553,11 @@ export function AnalysisView() {
                               }}
                             />
                             <h5>{METRIC_OPTIONS.find((o) => o.value === metric)?.label}</h5>
-                            <div className="stat-value mono">{avg.toFixed(3)}</div>
+                            <div className="stat-value mono">{avg.toFixed(valueDigits)}</div>
                             <div className="stat-label">Average ({metricData.unit})</div>
                             <div className="stat-range">
-                              <span>Min: {min.toFixed(3)}</span>
-                              <span>Max: {max.toFixed(3)}</span>
+                              <span>Min: {min.toFixed(valueDigits)}</span>
+                              <span>Max: {max.toFixed(valueDigits)}</span>
                             </div>
                             {seasonalChange !== null && seasonalChange !== undefined && (
                               <div
@@ -588,7 +596,7 @@ export function AnalysisView() {
                     <label>Select Metric:</label>
                     <select
                       value={selectedMapMetric}
-                      onChange={(e) => setSelectedMapMetric(e.target.value as MetricType)}
+                      onChange={(e) => handleMapMetricChange(e.target.value as MetricType)}
                     >
                       {METRIC_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>

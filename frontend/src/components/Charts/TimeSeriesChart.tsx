@@ -48,6 +48,12 @@ const METRIC_LABELS: Record<MetricType, string> = {
   canopy_height: 'Canopy Height',
 };
 
+function formatChartValue(value: number): string {
+  const abs = Math.abs(value);
+  const digits = abs < 1 ? 4 : 3;
+  return value.toFixed(digits);
+}
+
 export function TimeSeriesChart({
   data,
   selectedMetrics,
@@ -116,9 +122,13 @@ export function TimeSeriesChart({
       const metricData = parsedDataByMetric[metric];
       if (metricData) {
         const values = metricData.map((d) => d.value);
+        const minValue = Math.min(...values);
+        const maxValue = Math.max(...values);
+        const range = maxValue - minValue;
+        const padding = range > 0 ? range * 0.1 : (Math.abs(minValue) || 1) * 0.1;
         yScales[metric] = d3
           .scaleLinear()
-          .domain([Math.min(...values) * 0.9, Math.max(...values) * 1.1])
+          .domain([minValue - padding, maxValue + padding])
           .range([innerHeight, 0]);
       }
     });
@@ -166,7 +176,7 @@ export function TimeSeriesChart({
             event,
             `
               <strong>${METRIC_LABELS[metric]}</strong><br/>
-              ${d.rawDate}: ${d.value.toFixed(3)}
+              ${d.rawDate}: ${formatChartValue(d.value)}
             `,
             { offsetX: 10, offsetY: -10 }
           );

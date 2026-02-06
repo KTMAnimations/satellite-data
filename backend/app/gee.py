@@ -267,14 +267,23 @@ def _mean_of_daily_means(collection, start, end, band_name: str):
     day_count = ee.Number(end.difference(start, "day")).ceil().max(1)
     day_offsets = ee.List.sequence(0, day_count.subtract(1))
 
-    # Ensure each per-day reduction has at least one image so `.mean()` doesn't
-    # error on empty days.
-    fallback = ee.ImageCollection.fromImages([_empty_masked_image(band_name)])
+    # Build a fully-masked image with the same band type as the collection, so
+    # empty days can be represented without introducing heterogeneous band types
+    # in the daily ImageCollection.
+    template = ee.Image(
+        ee.Algorithms.If(
+            collection.size().gt(0),
+            collection.first(),
+            _empty_masked_image(band_name),
+        )
+    ).rename([band_name])
+    empty_day = template.updateMask(ee.Image(0))
 
     def per_day(day_offset):
         d0 = start.advance(day_offset, "day")
         d1 = d0.advance(1, "day")
-        day_img = collection.filterDate(d0, d1).merge(fallback).mean().rename([band_name])
+        day_col = collection.filterDate(d0, d1)
+        day_img = ee.Image(ee.Algorithms.If(day_col.size().gt(0), day_col.mean().rename([band_name]), empty_day))
         return day_img.set("system:time_start", d0.millis())
 
     daily = ee.ImageCollection.fromImages(day_offsets.map(per_day))
@@ -380,10 +389,21 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return ee.Image(ee.Algorithms.If(use_daily, daily_image(), monthly_image()))
 
     if metric == "urban_density":
+        # Built surface fraction from GHSL, provided as ~5-year epoch snapshots.
+        # `system:index` for this collection is the epoch year (e.g. "2020").
+        # Pick the latest available epoch <= the requested year so time series
+        # don't "peek" into future projections.
         year = ee.Number.parse(start.format("YYYY"))
         epochs = ee.List([1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2025, 2030])
-        nearest_epoch = epochs.sort(epochs.map(lambda e: ee.Number(e).subtract(year).abs())).get(0)
-        idx = ee.String("GHS_BUILT_S_E").cat(ee.Number(nearest_epoch).format()).cat("_GLOBE_R2023A_54009_100_V1_0")
+
+        def pick_epoch(e, acc):
+            e_num = ee.Number(e)
+            acc_num = ee.Number(acc)
+            return ee.Number(ee.Algorithms.If(e_num.lte(year), e_num, acc_num))
+
+        epoch = ee.Number(epochs.iterate(pick_epoch, ee.Number(epochs.get(0))))
+        idx = epoch.format()
+
         collection = ee.ImageCollection("JRC/GHSL/P2023A/GHS_BUILT_S")
         filtered = collection.filter(ee.Filter.eq("system:index", idx))
         image = ee.Image(ee.Algorithms.If(filtered.size().gt(0), filtered.first(), collection.mosaic()))
@@ -768,7 +788,7 @@ def compute_time_series(
 
 _tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
-_tile_cache_version = 21
+_tile_cache_version = 22
 
 
 def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
