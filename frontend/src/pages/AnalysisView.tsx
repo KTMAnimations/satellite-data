@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { TimeSeriesChart } from '../components/Charts/TimeSeriesChart';
@@ -7,7 +7,8 @@ import { YearOverYearChart } from '../components/Charts/YearOverYearChart';
 import { CorrelationScatter } from '../components/Charts/CorrelationScatter';
 import { useStore } from '../store';
 import api from '../services/api';
-import type { MetricType } from '../types';
+import type { Granularity, MetricType } from '../types';
+import { estimateBucketCount, METRICS_MAX_TIMESERIES_POINTS_DEFAULT, METRIC_SUPPORTED_GRANULARITIES } from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
 import { computeMetricDeltaPercentOfRange } from '../utils/metrics';
@@ -33,6 +34,8 @@ const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
 
 type ViewMode = 'charts' | 'correlation' | 'yoy';
 
+const GRANULARITY_ORDER: Granularity[] = ['daily', 'weekly', 'monthly'];
+
 export function AnalysisView() {
   const { regionId } = useParams<{ regionId: string }>();
   const { selectedMetrics, toggleMetric, dateRange, setDateRange } = useStore();
@@ -41,6 +44,7 @@ export function AnalysisView() {
   const [yoyMetric, setYoyMetric] = useState<MetricType>('nightlights');
   const [correlationMetricX, setCorrelationMetricX] = useState<MetricType>('nightlights');
   const [correlationMetricY, setCorrelationMetricY] = useState<MetricType>('ndvi');
+  const [selectedGranularity, setSelectedGranularity] = useState<Granularity>('monthly');
 
   const { data: region } = useQuery({
     queryKey: ['region', regionId],
@@ -48,28 +52,76 @@ export function AnalysisView() {
     enabled: !!regionId,
   });
 
-  const requestedMetrics = useMemo(() => {
+  const viewMetrics = useMemo(() => {
     const metricsSet = new Set<MetricType>();
-    for (const metric of selectedMetrics) metricsSet.add(metric);
     if (viewMode === 'correlation') {
       metricsSet.add(correlationMetricX);
       metricsSet.add(correlationMetricY);
-    }
-    if (viewMode === 'yoy') {
+    } else if (viewMode === 'yoy') {
       metricsSet.add(yoyMetric);
+    } else {
+      for (const metric of selectedMetrics) metricsSet.add(metric);
     }
     return Array.from(metricsSet).sort();
   }, [correlationMetricX, correlationMetricY, selectedMetrics, viewMode, yoyMetric]);
 
-  const shouldFetchMetrics = Boolean(regionId && requestedMetrics.length > 0);
+  const supportedGranularitiesForView = useMemo(() => {
+    if (viewMetrics.length === 0) return [] as Granularity[];
+    return GRANULARITY_ORDER.filter((granularity) =>
+      viewMetrics.every((metric) => (METRIC_SUPPORTED_GRANULARITIES[metric] ?? []).includes(granularity))
+    );
+  }, [viewMetrics]);
+
+  const granularityOptions = useMemo(() => {
+    return GRANULARITY_ORDER.map((granularity) => {
+      if (viewMetrics.length === 0) {
+        return { granularity, enabled: false, reason: 'Select metrics to enable granularity controls.' };
+      }
+
+      if (!supportedGranularitiesForView.includes(granularity)) {
+        return { granularity, enabled: false, reason: 'Not supported by all metrics in this view.' };
+      }
+
+      const withinLimit =
+        estimateBucketCount(dateRange.start, dateRange.end, granularity) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT;
+      if (!withinLimit) {
+        return { granularity, enabled: false, reason: 'Date range too large for this granularity.' };
+      }
+
+      return { granularity, enabled: true };
+    });
+  }, [dateRange.end, dateRange.start, supportedGranularitiesForView, viewMetrics.length]);
+
+  const fallbackGranularity = useMemo((): Granularity => {
+    const preference: Granularity[] = ['monthly', 'weekly', 'daily'];
+    for (const granularity of preference) {
+      const option = granularityOptions.find((o) => o.granularity === granularity);
+      if (option?.enabled) return granularity;
+    }
+    return 'monthly';
+  }, [granularityOptions]);
+
+  const selectedGranularityAllowed = Boolean(
+    granularityOptions.find((o) => o.granularity === selectedGranularity)?.enabled
+  );
+  const granularity = selectedGranularityAllowed ? selectedGranularity : fallbackGranularity;
+
+  useEffect(() => {
+    if (viewMetrics.length === 0) return;
+    if (selectedGranularityAllowed) return;
+    setSelectedGranularity(fallbackGranularity);
+  }, [fallbackGranularity, selectedGranularityAllowed, viewMetrics.length]);
+
+  const shouldFetchMetrics = Boolean(regionId && viewMetrics.length > 0);
 
   const { data: metrics, isLoading: metricsLoading, isError: metricsIsError, error: metricsError } = useQuery({
-    queryKey: ['metrics', regionId, dateRange, requestedMetrics],
+    queryKey: ['metrics', regionId, dateRange, viewMetrics, granularity],
     queryFn: ({ signal }) =>
       api.getMetrics(regionId!, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
         end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
-        metrics: requestedMetrics,
+        metrics: viewMetrics,
+        granularity,
       }, { signal }),
     enabled: shouldFetchMetrics,
   });
@@ -243,6 +295,28 @@ export function AnalysisView() {
             </div>
           </div>
 
+          {/* Granularity */}
+          <div className="granularity-section">
+            <h4>Granularity</h4>
+            <div className="granularity-toggle">
+              {granularityOptions.map(({ granularity: g, enabled, reason }) => {
+                const label = g.charAt(0).toUpperCase() + g.slice(1);
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    className={`granularity-btn ${granularity === g ? 'active' : ''}`}
+                    onClick={() => setSelectedGranularity(g)}
+                    disabled={!enabled}
+                    title={!enabled ? reason : undefined}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Date Range */}
           <div className="date-section">
             <h4>Date Range</h4>
@@ -380,7 +454,7 @@ export function AnalysisView() {
                   <div className="chart-card">
                     <div className="chart-card-header">
                       <h3>Activity Over Time</h3>
-                      <span className="chart-subtitle">Auto granularity by metric (daily/weekly/monthly)</span>
+                      <span className="chart-subtitle">{granularity.charAt(0).toUpperCase() + granularity.slice(1)} granularity</span>
                     </div>
                     <TimeSeriesChart
                       data={metrics.metrics}
