@@ -17,16 +17,15 @@ describe('metrics granularity helpers', () => {
     expect(estimateBucketCount(new Date(2024, 0, 15), new Date(2024, 1, 1), 'monthly')).toBe(2);
   });
 
-  it('picks the finest supported granularity that fits the point limit', () => {
+  it('picks the coarsest supported granularity by default', () => {
     const shortRange = { start: new Date(2024, 0, 1), end: new Date(2024, 0, 31) };
-    expect(getRecommendedGranularity('nightlights', shortRange)).toBe('daily');
-    expect(getRecommendedGranularity('ndvi', shortRange)).toBe('weekly');
+    expect(getRecommendedGranularity('nightlights', shortRange)).toBe('monthly');
+    expect(getRecommendedGranularity('ndvi', shortRange)).toBe('monthly');
 
     const longRange = { start: new Date(2010, 0, 1), end: new Date(2016, 0, 1) };
     expect(getRecommendedGranularity('nightlights', longRange)).toBe('monthly');
 
-    // Force a coarser pick with an artificially small maxPoints limit.
-    expect(getRecommendedGranularity('ndvi', shortRange, 2)).toBe('monthly');
+    // Single-option metrics should always return that option.
+    expect(getRecommendedGranularity('urban_density', shortRange)).toBe('monthly');
   });
 });
-

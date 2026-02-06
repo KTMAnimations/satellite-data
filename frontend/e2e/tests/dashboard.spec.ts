@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/dashboard');
   });
 
   test('displays hero section with title', async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe('Dashboard', () => {
     await expect(page).toHaveURL('/regions');
 
     // Go back and click View Presets
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.getByRole('link', { name: 'View Presets' }).click();
     await expect(page).toHaveURL('/regions?preset=snowbird');
   });

@@ -13,7 +13,7 @@ async function ensureNavVisible(page: import('@playwright/test').Page) {
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/map');
   });
 
   test('has main navigation links', async ({ page }) => {
@@ -23,8 +23,9 @@ test.describe('Navigation', () => {
 
   test('can navigate to all main views', async ({ page }) => {
     const routes = [
+      { path: '/map', title: 'Full Map' },
+      { path: '/dashboard', title: 'Dashboard' },
       { path: '/regions', title: 'Region' },
-      { path: '/animations', title: 'Animation' },
       { path: '/exports', title: 'Export' },
     ];
 
@@ -38,7 +39,7 @@ test.describe('Navigation', () => {
   test('navigation is responsive on mobile', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
+    await page.goto('/map');
 
     await ensureNavVisible(page);
     await expect(page.locator('.header-nav')).toBeVisible();
@@ -51,7 +52,7 @@ test.describe('Navigation', () => {
     const logoLink = page.locator('a[href="/"]').first();
     await logoLink.click();
 
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/map');
   });
 
   test('404 page for invalid routes', async ({ page }) => {
@@ -65,18 +66,18 @@ test.describe('Navigation', () => {
   test('maintains navigation state on back/forward', async ({ page }) => {
     // Navigate through pages
     await page.goto('/regions');
-    await page.goto('/animations');
+    await page.goto('/dashboard');
     await page.goto('/exports');
 
     // Go back
     await page.goBack();
-    await expect(page).toHaveURL('/animations');
+    await expect(page).toHaveURL('/dashboard');
 
     await page.goBack();
     await expect(page).toHaveURL('/regions');
 
     // Go forward
     await page.goForward();
-    await expect(page).toHaveURL('/animations');
+    await expect(page).toHaveURL('/dashboard');
   });
 });

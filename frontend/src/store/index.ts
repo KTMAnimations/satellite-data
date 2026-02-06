@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Region, MetricType, DateRange, MapState, ExportResponse } from '../types';
 
-export type NavSection = 'dashboard' | 'regions' | 'animations' | 'exports';
+export type NavSection = 'fullmap' | 'dashboard' | 'regions' | 'exports';
 
 interface AppState {
   // Selected region
@@ -94,9 +94,9 @@ export const useStore = create<AppState>()(
       sidebarOpen: false,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       navLastPath: {
-        dashboard: '/',
+        fullmap: '/map',
+        dashboard: '/dashboard',
         regions: '/regions',
-        animations: '/animations',
         exports: '/exports',
       },
       setNavLastPath: (section, path) =>

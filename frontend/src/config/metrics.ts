@@ -83,8 +83,8 @@ export function estimateBucketCount(start: Date, end: Date, granularity: Granula
 /**
  * Returns an automatic/default granularity for a metric + date range.
  *
- * - Picks the most granular supported option (daily > weekly > monthly)
- * - Falls back to a coarser supported option if the estimated bucket count
+ * - Picks the least granular supported option (monthly > weekly > daily)
+ * - Falls back to a finer supported option only if the estimated bucket count
  *   would exceed the backend time-series limit.
  */
 export function getRecommendedGranularity(
@@ -94,7 +94,7 @@ export function getRecommendedGranularity(
 ): Granularity {
   const supported = METRIC_SUPPORTED_GRANULARITIES[metric] ?? [];
   const candidates = [...supported].sort(
-    (a, b) => GRANULARITY_ORDER[a] - GRANULARITY_ORDER[b]
+    (a, b) => GRANULARITY_ORDER[b] - GRANULARITY_ORDER[a]
   );
 
   for (const candidate of candidates) {
@@ -103,5 +103,5 @@ export function getRecommendedGranularity(
     }
   }
 
-  return candidates[candidates.length - 1] ?? METRIC_DEFAULT_GRANULARITY[metric];
+  return candidates[0] ?? METRIC_DEFAULT_GRANULARITY[metric];
 }

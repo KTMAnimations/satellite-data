@@ -1,9 +1,8 @@
 import { Suspense, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
-  SquaresFour,
+  GlobeHemisphereWest,
   MapTrifold,
-  FilmStrip,
   DownloadSimple,
   List,
   Planet,
@@ -13,17 +12,18 @@ import { useStore, type NavSection } from '../store';
 import './Layout.css';
 
 function navSectionForPath(pathname: string): NavSection {
+  if (pathname === '/' || pathname === '/map') return 'fullmap';
   if (
     pathname.startsWith('/regions')
     || pathname.startsWith('/analysis')
-    || pathname.startsWith('/map')
+    || pathname.startsWith('/map/')
     || pathname.startsWith('/compare')
   ) {
     return 'regions';
   }
-  if (pathname.startsWith('/animations')) return 'animations';
+  if (pathname.startsWith('/dashboard')) return 'dashboard';
   if (pathname.startsWith('/exports')) return 'exports';
-  return 'dashboard';
+  return 'fullmap';
 }
 
 export function Layout() {
@@ -39,9 +39,8 @@ export function Layout() {
   );
 
   const navItems = [
-    { section: 'dashboard' as const, path: '/', label: 'Dashboard', icon: SquaresFour },
+    { section: 'fullmap' as const, path: '/map', label: 'Full Map', icon: GlobeHemisphereWest },
     { section: 'regions' as const, path: '/regions', label: 'Regions', icon: MapTrifold },
-    { section: 'animations' as const, path: '/animations', label: 'Animations', icon: FilmStrip },
     { section: 'exports' as const, path: '/exports', label: 'Exports', icon: DownloadSimple },
   ];
 
