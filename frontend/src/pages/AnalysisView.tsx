@@ -1,22 +1,13 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { MapView } from '../components/Map/MapContainer';
-import { HeatmapLegend } from '../components/Map/HeatmapLegend';
 import { TimeSeriesChart } from '../components/Charts/TimeSeriesChart';
 import { SeasonalBarChart } from '../components/Charts/SeasonalBarChart';
 import { YearOverYearChart } from '../components/Charts/YearOverYearChart';
 import { CorrelationScatter } from '../components/Charts/CorrelationScatter';
-import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
 import api from '../services/api';
-import type { Granularity, MetricType } from '../types';
-import {
-  estimateBucketCount,
-  getRecommendedGranularity,
-  METRICS_MAX_TIMESERIES_POINTS_DEFAULT,
-  METRIC_SUPPORTED_GRANULARITIES,
-} from '../config/metrics';
+import type { MetricType } from '../types';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
 import { computeMetricDeltaPercentOfRange } from '../utils/metrics';
@@ -42,63 +33,14 @@ const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
 
 type ViewMode = 'charts' | 'correlation' | 'yoy';
 
-function getTimeSeriesNotes(
-  metrics: MetricType[],
-  dateRange: { start: Date; end: Date }
-): Array<{ metric: MetricType; note: string }> {
-  const notes: Array<{ metric: MetricType; note: string }> = [];
-  const has = (m: MetricType) => metrics.includes(m);
-/*
-  if (has('surface_water')) {
-    notes.push({
-      metric: 'surface_water',
-      note: 'JRC monthly history ends 2021; newer dates use Dynamic World water probability.',
-    });
-  }
-
-  if (has('cropland')) {
-    notes.push({
-      metric: 'cropland',
-      note: 'WorldCover cropland mask (2021) × Dynamic World crops probability (seasonal).',
-    });
-  }
-
-  if (has('impervious') && dateRange.end.getFullYear() > 2018) {
-    notes.push({
-      metric: 'impervious',
-      note: 'GAIA ends in 2018; dates after 2018 show the 2018 extent (flat line is expected).',
-    });
-  }
-
-  if (has('canopy_height')) {
-    notes.push({
-      metric: 'canopy_height',
-      note: 'Canopy height changes slowly; GEDI coverage is limited and later dates may fall back to a static layer.',
-    });
-  }
-*/
-  return notes;
-}
-
 export function AnalysisView() {
   const { regionId } = useParams<{ regionId: string }>();
   const { selectedMetrics, toggleMetric, dateRange, setDateRange } = useStore();
 
-  const [selectedMapMetric, setSelectedMapMetric] = useState<MetricType>('nightlights');
-  const [selectedGranularity, setSelectedGranularity] = useState<Granularity | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('charts');
+  const [yoyMetric, setYoyMetric] = useState<MetricType>('nightlights');
   const [correlationMetricX, setCorrelationMetricX] = useState<MetricType>('nightlights');
   const [correlationMetricY, setCorrelationMetricY] = useState<MetricType>('ndvi');
-  const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
-  const [currentTimelineDate, setCurrentTimelineDate] = useState<Date | null>(null);
-  const [overlayIsLoading, setOverlayIsLoading] = useState(false);
-
-  const handleMapMetricChange = (metric: MetricType) => {
-    setSelectedMapMetric(metric);
-    // When a user changes the map metric, ensure it also appears in the charts/stats.
-    // This keeps the "analysis" view in sync with what is shown on the map.
-    if (!selectedMetrics.includes(metric)) toggleMetric(metric);
-  };
 
   const { data: region } = useQuery({
     queryKey: ['region', regionId],
@@ -106,48 +48,31 @@ export function AnalysisView() {
     enabled: !!regionId,
   });
 
-  const supportedGranularities = METRIC_SUPPORTED_GRANULARITIES[selectedMapMetric];
-  const recommendedGranularity = getRecommendedGranularity(selectedMapMetric, dateRange);
-  const selectedGranularityAllowed = Boolean(
-    selectedGranularity
-      && supportedGranularities.includes(selectedGranularity)
-      && estimateBucketCount(dateRange.start, dateRange.end, selectedGranularity) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT
-  );
-  const granularity = selectedGranularityAllowed
-    ? (selectedGranularity as Granularity)
-    : recommendedGranularity;
   const requestedMetrics = useMemo(() => {
     const metricsSet = new Set<MetricType>();
-    metricsSet.add(selectedMapMetric);
     for (const metric of selectedMetrics) metricsSet.add(metric);
     if (viewMode === 'correlation') {
       metricsSet.add(correlationMetricX);
       metricsSet.add(correlationMetricY);
     }
+    if (viewMode === 'yoy') {
+      metricsSet.add(yoyMetric);
+    }
     return Array.from(metricsSet).sort();
-  }, [correlationMetricX, correlationMetricY, selectedMapMetric, selectedMetrics, viewMode]);
+  }, [correlationMetricX, correlationMetricY, selectedMetrics, viewMode, yoyMetric]);
+
+  const shouldFetchMetrics = Boolean(regionId && requestedMetrics.length > 0);
 
   const { data: metrics, isLoading: metricsLoading, isError: metricsIsError, error: metricsError } = useQuery({
-    queryKey: ['metrics', regionId, granularity, dateRange, requestedMetrics],
+    queryKey: ['metrics', regionId, dateRange, requestedMetrics],
     queryFn: ({ signal }) =>
       api.getMetrics(regionId!, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
         end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
         metrics: requestedMetrics,
-        granularity,
       }, { signal }),
-    enabled: !!regionId,
+    enabled: shouldFetchMetrics,
   });
-
-  // Generate timeline dates from metrics
-  const timelineDates = useMemo(() => {
-    if (!metrics?.metrics[selectedMapMetric]?.data) return [];
-    return metrics.metrics[selectedMapMetric].data
-      .map((d) => parseMetricDate(d.date))
-      .flatMap((d) => (d && !Number.isNaN(d.getTime()) ? [d] : []))
-      .sort((a, b) => a.getTime() - b.getTime())
-      .filter((d, i, arr) => i === 0 || d.getTime() !== arr[i - 1].getTime());
-  }, [metrics, selectedMapMetric]);
 
   // Generate Year-over-Year data
   const yoyData = useMemo((): Record<MetricType, { year: number; value: number }[]> => {
@@ -223,25 +148,6 @@ export function AnalysisView() {
     });
   }, [metrics, correlationMetricX, correlationMetricY, viewMode]);
 
-  const timeSeriesNotes = useMemo(
-    () => getTimeSeriesNotes(selectedMetrics, dateRange),
-    [selectedMetrics, dateRange]
-  );
-
-  // Reset timeline date and granularity when metric changes
-  useEffect(() => {
-    setCurrentTimelineDate(null);
-    setSelectedGranularity(null);
-  }, [selectedMapMetric]);
-
-  // Initialize and reset timeline date when dates change
-  useEffect(() => {
-    if (timelineDates.length > 0) {
-      // Always reset to first date when timeline dates change
-      setCurrentTimelineDate(timelineDates[0]);
-    }
-  }, [timelineDates]);
-
   if (!regionId) {
     return (
       <div className="analysis-view">
@@ -261,12 +167,6 @@ export function AnalysisView() {
       </div>
     );
   }
-
-  const tileDate =
-    formatDateYYYYMMDD(currentTimelineDate)
-    ?? formatDateYYYYMMDD(dateRange.start)
-    ?? formatDateYYYYMMDD(new Date())
-    ?? new Date().toISOString().split('T')[0];
 
   return (
     <div className="analysis-view">
@@ -301,7 +201,7 @@ export function AnalysisView() {
               <path d="M9 3v15" />
               <path d="M15 6v15" />
             </svg>
-            Full Map
+            View Map
           </Link>
           <Link to={`/compare/${regionId}`} className="btn btn-outline">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -320,81 +220,8 @@ export function AnalysisView() {
       </header>
 
       <div className="analysis-content">
-        {/* Left Panel - Map & Controls */}
+        {/* Left Panel - Controls */}
         <aside className="analysis-sidebar">
-          {/* Map */}
-          <div className="map-section">
-            <div className="section-header">
-              <h4>Map View</h4>
-              <select
-                value={selectedMapMetric}
-                onChange={(e) => handleMapMetricChange(e.target.value as MetricType)}
-                className="metric-select"
-              >
-                {METRIC_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {supportedGranularities.length > 1 && (
-                <div className="granularity-toggle">
-                  {supportedGranularities.map((g) => {
-                    const withinLimit =
-                      estimateBucketCount(dateRange.start, dateRange.end, g) <= METRICS_MAX_TIMESERIES_POINTS_DEFAULT;
-                    const label = g.charAt(0).toUpperCase() + g.slice(1);
-
-                    return (
-                      <button
-                        key={g}
-                        className={`granularity-btn ${granularity === g ? 'active' : ''}`}
-                        onClick={() => setSelectedGranularity(g)}
-                        disabled={!withinLimit}
-                        title={withinLimit ? undefined : `Date range too large for ${label.toLowerCase()} granularity`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            <div className="map-container-wrapper">
-                  {region && (
-                    <MapView
-                      regions={[region]}
-                      selectedMetric={selectedMapMetric}
-                      tileGranularity={granularity}
-                      tileDate={tileDate}
-                      onOverlayLoadingChange={setOverlayIsLoading}
-                    />
-                  )}
-                  <div className="map-legend-overlay">
-                    <HeatmapLegend
-                      metric={selectedMapMetric}
-                      showValues={false}
-                      tileDate={tileDate}
-                      tileGranularity={granularity}
-                    />
-                  </div>
-                </div>
-
-            {/* Timeline Slider */}
-            {timelineDates.length > 0 && currentTimelineDate && !isNaN(currentTimelineDate.getTime()) && (
-              <div className="timeline-section">
-                <TimeSlider
-                  dates={timelineDates}
-                  selectedDate={currentTimelineDate}
-                  onDateChange={setCurrentTimelineDate}
-                  isPlaying={isTimelinePlaying}
-                  playbackBlocked={overlayIsLoading}
-                  onPlayPause={() => setIsTimelinePlaying(!isTimelinePlaying)}
-                  width={280}
-                />
-              </div>
-            )}
-          </div>
-
           {/* Metric Toggles */}
           <div className="metrics-section">
             <h4>Metrics</h4>
@@ -522,7 +349,15 @@ export function AnalysisView() {
             </button>
           </div>
 
-          {metricsLoading ? (
+          {!shouldFetchMetrics ? (
+            <div className="no-data">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3 3v18h18" />
+                <path d="M7 16l4-4 4 4 5-6" opacity="0.3" />
+              </svg>
+              <p>Select one or more metrics to view analysis.</p>
+            </div>
+          ) : metricsLoading ? (
             <div className="loading-state">
               <div className="loading-spinner" />
               <span>Loading metrics...</span>
@@ -553,15 +388,6 @@ export function AnalysisView() {
                       width={700}
                       height={320}
                     />
-                    {timeSeriesNotes.length > 0 && (
-                      <div className="chart-note" role="note">
-                        {timeSeriesNotes.map(({ metric, note }) => (
-                          <div key={metric} className="chart-note-line">
-                            <strong>{METRIC_OPTIONS.find((o) => o.value === metric)?.label ?? metric}:</strong> {note}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   {/* Seasonal Comparison */}
@@ -647,8 +473,8 @@ export function AnalysisView() {
                   <div className="yoy-controls">
                     <label>Select Metric:</label>
                     <select
-                      value={selectedMapMetric}
-                      onChange={(e) => handleMapMetricChange(e.target.value as MetricType)}
+                      value={yoyMetric}
+                      onChange={(e) => setYoyMetric(e.target.value as MetricType)}
                     >
                       {METRIC_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -660,7 +486,7 @@ export function AnalysisView() {
                   <div className="chart-card">
                     <YearOverYearChart
                       data={yoyData}
-                      selectedMetric={selectedMapMetric}
+                      selectedMetric={yoyMetric}
                       width={700}
                       height={400}
                     />
