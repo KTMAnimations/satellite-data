@@ -5,13 +5,14 @@ import hashlib
 import os
 import threading
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response
 
 from app.gee import METRICS, get_tile_fetcher, get_tile_template
-from app.gee_concurrency import gee_to_thread, get_gee_semaphore
+from app.gee_concurrency import get_gee_semaphore
 from app.schemas import MetricId, TileTemplateResponse
 from app.settings import get_settings
 
@@ -174,19 +175,17 @@ async def tile_template(
     if granularity not in {"daily", "weekly", "monthly"}:
         raise HTTPException(status_code=400, detail="Invalid granularity")
 
+    # Validate date formats up front so the frontend gets a fast 400 for bad input,
+    # without needing to hit Earth Engine.
     try:
-        payload = await gee_to_thread(get_tile_template, metric, date_bucket, granularity, opacity=opacity)  # type: ignore[arg-type]
+        if granularity == "monthly":
+            date.fromisoformat(f"{date_bucket}-01")
+        else:
+            date.fromisoformat(date_bucket)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Failed to fetch tile template from Earth Engine. "
-                "Verify credentials (run `earthengine authenticate` or configure GEE_* env vars) "
-                f"and try again. Error: {e}"
-            ),
-        ) from e
+
+    payload = get_tile_template(metric, date_bucket, granularity, opacity=opacity)  # type: ignore[arg-type]
     return TileTemplateResponse(**payload)
 
 

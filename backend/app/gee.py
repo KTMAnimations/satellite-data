@@ -933,16 +933,14 @@ def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularit
 
 def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granularity, *, opacity: float | None = None) -> dict[str, Any]:
     """
-    Return an Earth Engine tile URL template for the requested metric/date bucket.
+    Return the API tile URL template + viz metadata for the requested metric/date bucket.
 
-    Cached in-process with a TTL (tokens expire).
+    Note: this intentionally does **not** call Earth Engine. EE initialization and
+    mapId/token creation happens lazily on the first tile PNG fetch.
     """
     settings = get_settings()
     metric_def = METRICS[metric]
     opacity = settings.default_tile_opacity if opacity is None else float(opacity)
-
-    # Ensure the tile fetcher exists (and is cached) before returning the client template.
-    get_tile_fetcher(metric, date_bucket, granularity)
 
     cache_key = f"v{_tile_cache_version}:{metric}:{granularity}:{date_bucket}:{opacity}"
     now = time.time()
