@@ -59,7 +59,9 @@ METRICS: dict[MetricId, MetricDefinition] = {
         label="Nighttime Lights",
         unit="nW/cm²/sr",
         value_range=(0.0, 100.0),
-        palette=["000000", "1e0032", "3c0064", "640096", "963296", "c86464", "ff9632", "ffc864", "ffff96", "ffffff"],
+        # Keep all visible nightlight intensity in a light range so dim areas
+        # appear softly lit and bright areas trend toward white.
+        palette=["e8c36a", "efd084", "f3db9d", "f7e5b6", "faedcb", "fdf3dc", "fef8ea", "fffbf2", "fffdf8", "ffffff"],
         default_granularity="monthly",
         supported_granularities={"daily", "monthly"},
         scale_m=500,

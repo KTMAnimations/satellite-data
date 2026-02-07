@@ -8,8 +8,8 @@ export const COLORMAPS: Record<MetricType, string[]> = {
     '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850', '#006837',
   ],
   nightlights: [
-    '#000000', '#1e0032', '#3c0064', '#640096', '#963296',
-    '#c86464', '#ff9632', '#ffc864', '#ffff96', '#ffffff',
+    '#e8c36a', '#efd084', '#f3db9d', '#f7e5b6', '#faedcb',
+    '#fdf3dc', '#fef8ea', '#fffbf2', '#fffdf8', '#ffffff',
   ],
   urban_density: [
     '#ffffe5', '#fff7bc', '#fee391', '#fec44f', '#fe9929',

@@ -28,8 +28,8 @@ const METRIC_CONFIG: Record<
   nightlights: {
     label: 'Nighttime Lights',
     unit: 'nW/cm²/sr',
-    gradient: 'linear-gradient(90deg, #FEF3C7 0%, #FBBF24 30%, #D97706 60%, #B45309 100%)',
-    lowLabel: 'Dark',
+    gradient: 'linear-gradient(90deg, #E8C36A 0%, #F3DB9D 30%, #FAEDCB 60%, #FFFFFF 100%)',
+    lowLabel: 'Dim',
     highLabel: 'Bright',
   },
   ndvi: {

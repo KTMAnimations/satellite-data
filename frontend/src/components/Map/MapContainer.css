@@ -63,7 +63,7 @@
 }
 
 .legend-gradient[data-metric="nightlights"] {
-  background: linear-gradient(to right, #000000, #3d0066, #990099, #ff6600, #ffff00, #ffffff);
+  background: linear-gradient(to right, #e8c36a, #f3db9d, #faedcb, #fef8ea, #fffdf8, #ffffff);
 }
 
 .legend-gradient[data-metric="urban_density"] {
