@@ -236,6 +236,8 @@ async def tile_png(
     try:
         await _acquire_gee_slot_or_499(request)
         try:
+            if await request.is_disconnected():
+                raise HTTPException(status_code=499, detail="Client disconnected")
             png_bytes: bytes = await asyncio.to_thread(_fetch_tile_png, metric, date_bucket, granularity, x, y, z)  # type: ignore[arg-type]
         finally:
             _gee_semaphore.release()

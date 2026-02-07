@@ -4,12 +4,12 @@ import asyncio
 import json
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.gee_concurrency import gee_to_thread
+from app.gee_concurrency import gee_to_thread_or_499
 from app.gee import METRICS, bucket_starts, compute_time_series, format_bucket_date
 from app.models import MetricObservation, Region
 from app.schemas import MetricData, MetricDataPoint, MetricsResponse, MetricId, SeasonalAverage, SeasonalSummary
@@ -82,6 +82,7 @@ def _seasonal_summary(metrics: dict[str, MetricData]) -> SeasonalSummary | None:
 @router.get("/{region_id}", response_model=MetricsResponse)
 async def get_region_metrics(
     region_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
@@ -155,7 +156,8 @@ async def get_region_metrics(
     async def compute_one(metric: MetricId) -> tuple[MetricId, list[tuple[str, float]]]:
         async with semaphore:
             try:
-                series = await gee_to_thread(
+                series = await gee_to_thread_or_499(
+                    request,
                     compute_time_series,
                     geometry_geojson=geometry,
                     metric=metric,
@@ -163,6 +165,8 @@ async def get_region_metrics(
                     end_date=end_date,
                     granularity=per_metric[metric]["granularity"],  # type: ignore[arg-type]
                 )
+            except HTTPException:
+                raise
             except ValueError as e:
                 raise HTTPException(status_code=400, detail=str(e)) from e
             except Exception as e:

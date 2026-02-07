@@ -179,7 +179,12 @@ export function FullMapPage() {
         <div className="map-page-toolbar-right">
           <select
             value={selectedMapMetric}
-            onChange={(e) => setSelectedMapMetric(e.target.value as MetricType)}
+            onChange={(e) => {
+              const nextMetric = e.target.value as MetricType;
+              if (nextMetric === selectedMapMetric) return;
+              void queryClient.cancelQueries({ queryKey: ['tiles', 'template', selectedMapMetric] });
+              setSelectedMapMetric(nextMetric);
+            }}
             className="metric-select"
             aria-label="Metric"
           >

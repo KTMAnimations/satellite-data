@@ -183,7 +183,17 @@ export function MapPage() {
         <div className="map-page-toolbar-right">
           <select
             value={selectedMapMetric}
-            onChange={(e) => setSelectedMapMetric(e.target.value as MetricType)}
+            onChange={(e) => {
+              const nextMetric = e.target.value as MetricType;
+              if (nextMetric === selectedMapMetric) return;
+              // Cancel in-flight metric/tile-template queries for the previous metric so we
+              // don't keep doing backend work after the user switches.
+              if (regionId) {
+                void queryClient.cancelQueries({ queryKey: ['metrics', regionId] });
+              }
+              void queryClient.cancelQueries({ queryKey: ['tiles', 'template', selectedMapMetric] });
+              setSelectedMapMetric(nextMetric);
+            }}
             className="metric-select"
             aria-label="Metric"
           >
