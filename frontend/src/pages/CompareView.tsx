@@ -2,28 +2,12 @@ import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { SplitScreenCompare } from '../components/Map/SplitScreenCompare';
+import { useRegion } from '../hooks/useRegion';
 import api from '../services/api';
 import type { MetricType } from '../types';
+import { METRIC_OPTIONS } from '../config/metrics';
 import { computeMetricDeltaPercentOfRange, normalizeMetricValue } from '../utils/metrics';
 import './CompareView.css';
-
-const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
-  { value: 'nightlights', label: 'Nighttime Lights' },
-  { value: 'ndvi', label: 'NDVI (Vegetation)' },
-  { value: 'urban_density', label: 'Urban Density' },
-  { value: 'parking', label: 'Parking Occupancy' },
-  { value: 'land_cover', label: 'Land Cover' },
-  { value: 'surface_water', label: 'Surface Water' },
-  { value: 'no2', label: 'NO2 Air Quality' },
-  { value: 'temperature', label: 'Temperature' },
-  { value: 'precipitation', label: 'Precipitation' },
-  { value: 'aerosol', label: 'Aerosol Index' },
-  { value: 'cropland', label: 'Cropland' },
-  { value: 'evapotranspiration', label: 'Evapotranspiration' },
-  { value: 'soil_moisture', label: 'Soil Moisture' },
-  { value: 'impervious', label: 'Impervious Surface' },
-  { value: 'canopy_height', label: 'Canopy Height' },
-];
 
 const PRESET_COMPARISONS = [
   {
@@ -55,11 +39,7 @@ export function CompareView() {
     end: '2023-08-31',
   });
 
-  const { data: region } = useQuery({
-    queryKey: ['region', regionId],
-    queryFn: ({ signal }) => api.getRegion(regionId!, { signal }),
-    enabled: !!regionId,
-  });
+  const { data: region } = useRegion(regionId);
 
   const { data: comparison } = useQuery({
     queryKey: ['comparison', regionId, periodA, periodB, selectedMetric],

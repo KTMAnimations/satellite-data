@@ -106,39 +106,28 @@ export function CompositeTileLayer({
   const map = useMap();
   const layerRef = useRef<L.GridLayer | null>(null);
   const tileCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
-  const baseUrlRef = useRef(baseUrl);
-  const enabledRef = useRef(enabled);
-  const allowNetworkRef = useRef(allowNetwork);
-  const nativeZoomRef = useRef(nativeZoom);
-  const maxCompositeZoomDiffRef = useRef(maxCompositeZoomDiff);
-  const onTileEventRef = useRef(onTileEvent);
-  const lastRenderedBaseUrlRef = useRef<string | null>(null);
-  const lastEnabledRef = useRef<boolean>(enabled);
-  const lastRenderedAllowNetworkRef = useRef<boolean>(allowNetwork);
 
-  useEffect(() => {
-    baseUrlRef.current = baseUrl;
-  }, [baseUrl]);
+  // Single mutable ref for all prop values accessed inside the Leaflet
+  // createTile callback and the redraw effect, avoiding 7+ separate refs.
+  const propsRef = useRef({
+    baseUrl,
+    enabled,
+    allowNetwork,
+    nativeZoom,
+    maxCompositeZoomDiff,
+    onTileEvent,
+    lastRenderedBaseUrl: null as string | null,
+    lastEnabled: enabled,
+    lastRenderedAllowNetwork: allowNetwork,
+  });
 
-  useEffect(() => {
-    enabledRef.current = enabled;
-  }, [enabled]);
-
-  useEffect(() => {
-    allowNetworkRef.current = allowNetwork;
-  }, [allowNetwork]);
-
-  useEffect(() => {
-    nativeZoomRef.current = nativeZoom;
-  }, [nativeZoom]);
-
-  useEffect(() => {
-    maxCompositeZoomDiffRef.current = maxCompositeZoomDiff;
-  }, [maxCompositeZoomDiff]);
-
-  useEffect(() => {
-    onTileEventRef.current = onTileEvent;
-  }, [onTileEvent]);
+  // Keep propsRef in sync on every render (no effects needed for these).
+  propsRef.current.baseUrl = baseUrl;
+  propsRef.current.enabled = enabled;
+  propsRef.current.allowNetwork = allowNetwork;
+  propsRef.current.nativeZoom = nativeZoom;
+  propsRef.current.maxCompositeZoomDiff = maxCompositeZoomDiff;
+  propsRef.current.onTileEvent = onTileEvent;
 
   // Create the Leaflet layer once; keep in-memory caches across baseUrl changes.
   useEffect(() => {
@@ -155,7 +144,7 @@ export function CompositeTileLayer({
       tile.height = 256;
       const ctx = tile.getContext('2d')!;
 
-      if (!enabledRef.current) {
+      if (!propsRef.current.enabled) {
         done(undefined, tile);
         return tile;
       }
@@ -164,16 +153,16 @@ export function CompositeTileLayer({
       const x = coords.x;
       const y = coords.y;
       const now = performance.now();
-      const allowNetworkNow = allowNetworkRef.current;
+      const allowNetworkNow = propsRef.current.allowNetwork;
 
-      const effectiveNativeZoom = nativeZoomRef.current;
+      const effectiveNativeZoom = propsRef.current.nativeZoom;
       const isComposite = z < effectiveNativeZoom;
       const zoomDiff = isComposite ? effectiveNativeZoom - z : 0;
-      const canComposite = isComposite && zoomDiff <= maxCompositeZoomDiffRef.current;
+      const canComposite = isComposite && zoomDiff <= propsRef.current.maxCompositeZoomDiff;
       const sourceTiles = canComposite ? Math.pow(2, zoomDiff) ** 2 : isComposite ? 0 : 1;
 
       if (allowNetworkNow) {
-        onTileEventRef.current?.({
+        propsRef.current.onTileEvent?.({
           kind: 'tile-start',
           coords: { z, x, y },
           composite: isComposite,
@@ -183,7 +172,7 @@ export function CompositeTileLayer({
 
       if (z >= effectiveNativeZoom) {
         // At or above native zoom, just load the tile directly
-        const url = baseUrlRef.current
+        const url = propsRef.current.baseUrl
           .replace('{z}', String(effectiveNativeZoom))
           .replace('{x}', String(x))
           .replace('{y}', String(y));
@@ -194,7 +183,7 @@ export function CompositeTileLayer({
           }
 
           if (allowNetworkNow) {
-            onTileEventRef.current?.({
+            propsRef.current.onTileEvent?.({
               kind: 'tile-done',
               coords: { z, x, y },
               composite: false,
@@ -209,13 +198,13 @@ export function CompositeTileLayer({
         });
       } else {
         const zoomDiff = effectiveNativeZoom - z;
-        const effectiveMaxDiff = maxCompositeZoomDiffRef.current;
+        const effectiveMaxDiff = propsRef.current.maxCompositeZoomDiff;
 
         // Bail out if compositing would require too many source tiles.
         // This keeps the browser responsive when zoomed far out.
         if (zoomDiff > effectiveMaxDiff) {
           if (allowNetworkNow) {
-            onTileEventRef.current?.({
+            propsRef.current.onTileEvent?.({
               kind: 'tile-done',
               coords: { z, x, y },
               composite: true,
@@ -252,7 +241,7 @@ export function CompositeTileLayer({
           for (let tx = 0; tx < tilesPerSide; tx++) {
             const tileX = nativeX + tx;
             const tileY = nativeY + ty;
-            const url = baseUrlRef.current
+            const url = propsRef.current.baseUrl
               .replace('{z}', String(effectiveNativeZoom))
               .replace('{x}', String(tileX))
               .replace('{y}', String(tileY));
@@ -283,7 +272,7 @@ export function CompositeTileLayer({
           }
 
           if (allowNetworkNow) {
-            onTileEventRef.current?.({
+            propsRef.current.onTileEvent?.({
               kind: 'tile-done',
               coords: { z, x, y },
               composite: true,
@@ -321,9 +310,9 @@ export function CompositeTileLayer({
 
     layer.addTo(map);
     layerRef.current = layer;
-    lastRenderedBaseUrlRef.current = baseUrlRef.current;
-    lastEnabledRef.current = enabledRef.current;
-    lastRenderedAllowNetworkRef.current = allowNetworkRef.current;
+    propsRef.current.lastRenderedBaseUrl = propsRef.current.baseUrl;
+    propsRef.current.lastEnabled = propsRef.current.enabled;
+    propsRef.current.lastRenderedAllowNetwork = propsRef.current.allowNetwork;
 
     return () => {
       if (layerRef.current) {
@@ -347,28 +336,28 @@ export function CompositeTileLayer({
     const layer = layerRef.current;
     if (!layer) return;
 
-    const shouldEnable = enabledRef.current;
-    const baseUrlNow = baseUrlRef.current;
-    const baseUrlChanged = lastRenderedBaseUrlRef.current !== baseUrlNow;
-    const enabling = shouldEnable && !lastEnabledRef.current;
+    const shouldEnable = propsRef.current.enabled;
+    const baseUrlNow = propsRef.current.baseUrl;
+    const baseUrlChanged = propsRef.current.lastRenderedBaseUrl !== baseUrlNow;
+    const enabling = shouldEnable && !propsRef.current.lastEnabled;
 
-    const allowNetworkNow = allowNetworkRef.current;
-    const allowNetworkBecameTrue = allowNetworkNow && !lastRenderedAllowNetworkRef.current;
+    const allowNetworkNow = propsRef.current.allowNetwork;
+    const allowNetworkBecameTrue = allowNetworkNow && !propsRef.current.lastRenderedAllowNetwork;
 
     // If we are disabled, don't redraw on baseUrl changes (keeps things quiet while scrubbing).
     if (!shouldEnable) {
-      lastEnabledRef.current = false;
-      lastRenderedAllowNetworkRef.current = allowNetworkNow;
+      propsRef.current.lastEnabled = false;
+      propsRef.current.lastRenderedAllowNetwork = allowNetworkNow;
       return;
     }
 
     if (enabling || baseUrlChanged || allowNetworkBecameTrue) {
       layer.redraw();
-      lastRenderedBaseUrlRef.current = baseUrlNow;
+      propsRef.current.lastRenderedBaseUrl = baseUrlNow;
     }
 
-    lastEnabledRef.current = shouldEnable;
-    lastRenderedAllowNetworkRef.current = allowNetworkNow;
+    propsRef.current.lastEnabled = shouldEnable;
+    propsRef.current.lastRenderedAllowNetwork = allowNetworkNow;
   }, [enabled, baseUrl, allowNetwork]);
 
   return null;

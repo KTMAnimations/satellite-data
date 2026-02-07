@@ -65,10 +65,11 @@ def _seasonal_summary(metrics: dict[str, MetricData]) -> SeasonalSummary | None:
     for m in common:
         w = winter_avg.get(m)
         s = summer_avg.get(m)
-        if w is None or s is None or w == 0:
+        if w is None or s is None or abs(w) < 1e-9:
             change_pct[m] = None
         else:
-            change_pct[m] = ((s - w) / w) * 100.0
+            raw = ((s - w) / w) * 100.0
+            change_pct[m] = max(-1000.0, min(1000.0, raw))
 
     return SeasonalSummary(
         winter_avg=SeasonalAverage(**{k: winter_avg.get(k) for k in SeasonalAverage.model_fields.keys()}),
@@ -212,6 +213,10 @@ async def get_region_metrics(
 
         # Mark the dict back (mutated in place)
         info["existing"] = existing
+
+    # Flush all observation writes in a single batch to minimise SQLite lock duration.
+    if to_compute:
+        await db.flush()
 
     for metric in requested:
         info = per_metric[metric]

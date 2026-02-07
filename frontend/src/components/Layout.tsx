@@ -9,6 +9,7 @@ import {
 } from '@phosphor-icons/react';
 import { shallow } from 'zustand/shallow';
 import { useStore, type NavSection } from '../store';
+import { ErrorBoundary } from './ErrorBoundary';
 import './Layout.css';
 
 function navSectionForPath(pathname: string): NavSection {
@@ -105,9 +106,11 @@ export function Layout() {
       </header>
 
       <main className="main-content">
-        <Suspense fallback={<div className="loading">Loading...</div>}>
-          <Outlet />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="loading">Loading...</div>}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
   );

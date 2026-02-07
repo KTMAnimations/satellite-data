@@ -1,5 +1,4 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   MapContainer as LeafletMapContainer,
   TileLayer,
@@ -7,7 +6,7 @@ import {
   useMap,
 } from 'react-leaflet';
 import type { Granularity, Region, MetricType } from '../../types';
-import api from '../../services/api';
+import { useTileTemplate } from '../../hooks/useTileTemplate';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
 import { MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
 import { AbortableTileLayer } from './AbortableTileLayer';
@@ -245,29 +244,8 @@ export function SplitScreenCompare({
   const dateBucketA = toDateBucket(dateA, granularity);
   const dateBucketB = toDateBucket(dateB, granularity);
 
-  const { data: tileTemplateA } = useQuery({
-    queryKey: ['tiles', 'template', metric, dateBucketA, granularity],
-    queryFn: ({ signal }) =>
-      api.getTileTemplate({
-        metric,
-        date_bucket: dateBucketA,
-        granularity,
-      }, { signal }),
-    enabled: Boolean(metric && dateBucketA && granularity),
-    staleTime: 1000 * 60 * 60,
-  });
-
-  const { data: tileTemplateB } = useQuery({
-    queryKey: ['tiles', 'template', metric, dateBucketB, granularity],
-    queryFn: ({ signal }) =>
-      api.getTileTemplate({
-        metric,
-        date_bucket: dateBucketB,
-        granularity,
-      }, { signal }),
-    enabled: Boolean(metric && dateBucketB && granularity),
-    staleTime: 1000 * 60 * 60,
-  });
+  const { data: tileTemplateA } = useTileTemplate(metric, dateBucketA, granularity);
+  const { data: tileTemplateB } = useTileTemplate(metric, dateBucketB, granularity);
 
   return (
     <div

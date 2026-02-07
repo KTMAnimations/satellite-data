@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricType } from '../../types';
 import './Charts.css';
@@ -78,7 +78,7 @@ function linearRegression(data: DataPoint[]): { slope: number; intercept: number
   return { slope, intercept, r2 };
 }
 
-export function CorrelationScatter({
+export const CorrelationScatter = memo(function CorrelationScatter({
   data,
   xMetric,
   yMetric,
@@ -297,4 +297,4 @@ export function CorrelationScatter({
       <svg ref={svgRef} width={width} height={height} />
     </div>
   );
-}
+});

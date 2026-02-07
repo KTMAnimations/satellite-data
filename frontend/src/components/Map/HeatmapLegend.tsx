@@ -1,6 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api';
 import type { Granularity, MetricType } from '../../types';
+import { useTileTemplate } from '../../hooks/useTileTemplate';
 import './HeatmapLegend.css';
 
 interface HeatmapLegendProps {
@@ -144,17 +143,7 @@ export function HeatmapLegend({
   const config = METRIC_CONFIG[metric];
   const dateBucket = tileDate && tileGranularity ? toDateBucket(tileDate, tileGranularity) : undefined;
 
-  const { data: tileTemplate } = useQuery({
-    queryKey: ['tiles', 'template', metric, dateBucket, tileGranularity],
-    queryFn: ({ signal }) =>
-      api.getTileTemplate({
-        metric,
-        date_bucket: dateBucket!,
-        granularity: tileGranularity!,
-      }, { signal }),
-    enabled: Boolean(metric && dateBucket && tileGranularity),
-    staleTime: 1000 * 60 * 60,
-  });
+  const { data: tileTemplate } = useTileTemplate(metric, dateBucket, tileGranularity);
 
   const gradient =
     tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : config.gradient;
@@ -197,17 +186,7 @@ export function HeatmapLegendCompact({
   const config = METRIC_CONFIG[metric];
   const dateBucket = tileDate && tileGranularity ? toDateBucket(tileDate, tileGranularity) : undefined;
 
-  const { data: tileTemplate } = useQuery({
-    queryKey: ['tiles', 'template', metric, dateBucket, tileGranularity],
-    queryFn: ({ signal }) =>
-      api.getTileTemplate({
-        metric,
-        date_bucket: dateBucket!,
-        granularity: tileGranularity!,
-      }, { signal }),
-    enabled: Boolean(metric && dateBucket && tileGranularity),
-    staleTime: 1000 * 60 * 60,
-  });
+  const { data: tileTemplate } = useTileTemplate(metric, dateBucket, tileGranularity);
 
   const gradient =
     tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : config.gradient;

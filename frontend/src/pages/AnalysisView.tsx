@@ -6,31 +6,14 @@ import { SeasonalBarChart } from '../components/Charts/SeasonalBarChart';
 import { YearOverYearChart } from '../components/Charts/YearOverYearChart';
 import { CorrelationScatter } from '../components/Charts/CorrelationScatter';
 import { useStore } from '../store';
+import { useRegion } from '../hooks/useRegion';
 import api from '../services/api';
 import type { Granularity, MetricType } from '../types';
-import { estimateBucketCount, METRICS_MAX_TIMESERIES_POINTS_DEFAULT, METRIC_SUPPORTED_GRANULARITIES } from '../config/metrics';
+import { estimateBucketCount, METRICS_MAX_TIMESERIES_POINTS_DEFAULT, METRIC_SUPPORTED_GRANULARITIES, METRIC_OPTIONS, emptyMetricRecord } from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
 import { computeMetricDeltaPercentOfRange } from '../utils/metrics';
 import './AnalysisView.css';
-
-const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
-  { value: 'nightlights', label: 'Nighttime Lights', color: '#D97706' },  // Amber-600
-  { value: 'ndvi', label: 'NDVI (Vegetation)', color: '#059669' },        // Emerald-600
-  { value: 'urban_density', label: 'Urban Density', color: '#7C3AED' },   // Violet-600
-  { value: 'parking', label: 'Parking Occupancy', color: '#0D9488' },     // Teal-600
-  { value: 'land_cover', label: 'Land Cover', color: '#9333EA' },         // Purple-600
-  { value: 'surface_water', label: 'Surface Water', color: '#2563EB' },   // Blue-600
-  { value: 'no2', label: 'NO₂ Pollution', color: '#6366F1' },             // Indigo-600
-  { value: 'temperature', label: 'Temperature', color: '#EF4444' },       // Red-500
-  { value: 'precipitation', label: 'Precipitation', color: '#3B82F6' },   // Blue-500
-  { value: 'aerosol', label: 'Aerosol Index', color: '#92400E' },         // Brown-600
-  { value: 'cropland', label: 'Cropland', color: '#16A34A' },             // Green-600
-  { value: 'evapotranspiration', label: 'Evapotranspiration', color: '#0D9488' }, // Teal-600
-  { value: 'soil_moisture', label: 'Soil Moisture', color: '#7C3AED' },   // Violet-600
-  { value: 'impervious', label: 'Impervious Surface', color: '#6B7280' }, // Gray-500
-  { value: 'canopy_height', label: 'Canopy Height', color: '#15803D' },   // Green-700
-];
 
 type ViewMode = 'charts' | 'correlation' | 'yoy';
 
@@ -46,11 +29,7 @@ export function AnalysisView() {
   const [correlationMetricY, setCorrelationMetricY] = useState<MetricType>('ndvi');
   const [selectedGranularity, setSelectedGranularity] = useState<Granularity>('monthly');
 
-  const { data: region } = useQuery({
-    queryKey: ['region', regionId],
-    queryFn: ({ signal }) => api.getRegion(regionId!, { signal }),
-    enabled: !!regionId,
-  });
+  const { data: region } = useRegion(regionId);
 
   const viewMetrics = useMemo(() => {
     const metricsSet = new Set<MetricType>();
@@ -115,7 +94,7 @@ export function AnalysisView() {
   const shouldFetchMetrics = Boolean(regionId && viewMetrics.length > 0);
 
   const { data: metrics, isLoading: metricsLoading, isError: metricsIsError, error: metricsError } = useQuery({
-    queryKey: ['metrics', regionId, dateRange, viewMetrics, granularity],
+    queryKey: ['metrics', regionId, formatDateYYYYMMDD(dateRange.start), formatDateYYYYMMDD(dateRange.end), viewMetrics, granularity],
     queryFn: ({ signal }) =>
       api.getMetrics(regionId!, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
@@ -128,41 +107,9 @@ export function AnalysisView() {
 
   // Generate Year-over-Year data
   const yoyData = useMemo((): Record<MetricType, { year: number; value: number }[]> => {
-    if (!metrics || viewMode !== 'yoy') return {
-      nightlights: [],
-      ndvi: [],
-      urban_density: [],
-      parking: [],
-      land_cover: [],
-      surface_water: [],
-      no2: [],
-      temperature: [],
-      precipitation: [],
-      aerosol: [],
-      cropland: [],
-      evapotranspiration: [],
-      soil_moisture: [],
-      impervious: [],
-      canopy_height: [],
-    };
+    if (!metrics || viewMode !== 'yoy') return emptyMetricRecord<{ year: number; value: number }[]>([]);
 
-    const result: Record<MetricType, { year: number; value: number }[]> = {
-      nightlights: [],
-      ndvi: [],
-      urban_density: [],
-      parking: [],
-      land_cover: [],
-      surface_water: [],
-      no2: [],
-      temperature: [],
-      precipitation: [],
-      aerosol: [],
-      cropland: [],
-      evapotranspiration: [],
-      soil_moisture: [],
-      impervious: [],
-      canopy_height: [],
-    };
+    const result = emptyMetricRecord<{ year: number; value: number }[]>([]);
 
     Object.entries(metrics.metrics).forEach(([metric, data]) => {
       const byYear: Record<number, number[]> = {};
@@ -340,14 +287,14 @@ export function AnalysisView() {
             <div className="date-presets">
               <button
                 className="preset-btn"
-                onClick={() =>
-                  setDateRange({
-                    start: new Date(2024, 0, 1),
-                    end: new Date(2024, 0, 31),
-                  })
-                }
+                onClick={() => {
+                  const now = new Date();
+                  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                  const end = new Date(now.getFullYear(), now.getMonth(), 0); // last day of prev month
+                  setDateRange({ start, end });
+                }}
               >
-                Jan 2024
+                Last Month
               </button>
               <button
                 className="preset-btn"

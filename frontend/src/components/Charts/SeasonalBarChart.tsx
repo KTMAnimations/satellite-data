@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { SeasonalSummary, MetricType } from '../../types';
 import { clamp01, normalizeMetricValue } from '../../utils/metrics';
@@ -29,7 +29,7 @@ const METRIC_LABELS: Record<MetricType, string> = {
   canopy_height: 'Canopy Height',
 };
 
-export function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 300 }: SeasonalBarChartProps) {
+export const SeasonalBarChart = memo(function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 300 }: SeasonalBarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Prepare data - only include metrics that are selected AND have data in BOTH seasons
@@ -200,4 +200,4 @@ export function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 
       <svg ref={svgRef} width={width} height={height} />
     </div>
   );
-}
+});

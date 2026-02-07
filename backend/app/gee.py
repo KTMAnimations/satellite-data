@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import time
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, Literal
+
+# Timeout (seconds) for individual Earth Engine getInfo() calls.
+_GEE_GETINFO_TIMEOUT = 120
 
 from app.schemas import MetricId
 from app.settings import get_settings
@@ -832,7 +836,15 @@ def compute_time_series(
         ee_dates = ee.List(dates)
         fc = ee.FeatureCollection(ee_dates.map(per_bucket))
         try:
-            info = fc.getInfo()
+            # Use a thread-pool future so we can enforce a timeout on getInfo().
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(fc.getInfo)
+                info = future.result(timeout=_GEE_GETINFO_TIMEOUT)
+        except concurrent.futures.TimeoutError:
+            raise TimeoutError(
+                f"Earth Engine getInfo() timed out after {_GEE_GETINFO_TIMEOUT}s "
+                f"for {len(dates)} date buckets. Try a smaller date range or coarser granularity."
+            )
         except Exception as e:
             # Common when mapping reduceRegion over many dates.
             if "Too many concurrent aggregations" in str(e) and len(dates) > 1:
@@ -849,8 +861,26 @@ def compute_time_series(
     return out
 
 
-_tile_template_cache: dict[str, tuple[float, dict[str, Any]]] = {}
-_tile_fetcher_cache: dict[str, tuple[float, Any]] = {}
+_TILE_CACHE_MAX_SIZE = 500
+
+
+class _BoundedTTLCache(dict):
+    """Dict with a max size. Evicts oldest entries (FIFO) when full."""
+
+    def __init__(self, maxsize: int = _TILE_CACHE_MAX_SIZE):
+        super().__init__()
+        self._maxsize = maxsize
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        # Evict oldest entries when at capacity
+        while len(self) >= self._maxsize:
+            oldest_key = next(iter(self))
+            dict.__delitem__(self, oldest_key)
+        dict.__setitem__(self, key, value)
+
+
+_tile_template_cache: _BoundedTTLCache = _BoundedTTLCache()
+_tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_cache_version = 23
 
 

@@ -96,7 +96,7 @@ export function AnimationStudio() {
     ? (selectedGranularity as Granularity)
     : recommendedGranularity;
   const { data: metrics } = useQuery({
-    queryKey: ['metrics', selectedRegion?.id, selectedMetric, granularity, dateRange],
+    queryKey: ['metrics', selectedRegion?.id, selectedMetric, granularity, formatDateYYYYMMDD(dateRange.start), formatDateYYYYMMDD(dateRange.end)],
     queryFn: ({ signal }) =>
       api.getMetrics(selectedRegion!.id, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],

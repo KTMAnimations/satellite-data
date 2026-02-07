@@ -5,6 +5,7 @@ import { MapView } from '../components/Map/MapContainer';
 import { HeatmapLegend } from '../components/Map/HeatmapLegend';
 import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
+import { useRegion } from '../hooks/useRegion';
 import api from '../services/api';
 import type { Map as LeafletMap } from 'leaflet';
 import type { Granularity, MetricType } from '../types';
@@ -12,29 +13,12 @@ import {
   estimateBucketCount,
   getRecommendedGranularity,
   METRICS_MAX_TIMESERIES_POINTS_DEFAULT,
+  METRIC_OPTIONS,
   METRIC_SUPPORTED_GRANULARITIES,
 } from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import { formatApiError } from '../utils/errors';
 import './MapPage.css';
-
-const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
-  { value: 'nightlights', label: 'Nighttime Lights' },
-  { value: 'ndvi', label: 'NDVI (Vegetation)' },
-  { value: 'urban_density', label: 'Urban Density' },
-  { value: 'parking', label: 'Parking Occupancy' },
-  { value: 'land_cover', label: 'Land Cover' },
-  { value: 'surface_water', label: 'Surface Water' },
-  { value: 'no2', label: 'NO₂ Pollution' },
-  { value: 'temperature', label: 'Temperature' },
-  { value: 'precipitation', label: 'Precipitation' },
-  { value: 'aerosol', label: 'Aerosol Index' },
-  { value: 'cropland', label: 'Cropland' },
-  { value: 'evapotranspiration', label: 'Evapotranspiration' },
-  { value: 'soil_moisture', label: 'Soil Moisture' },
-  { value: 'impervious', label: 'Impervious Surface' },
-  { value: 'canopy_height', label: 'Canopy Height' },
-];
 
 export function MapPage() {
   const { regionId } = useParams<{ regionId: string }>();
@@ -52,11 +36,7 @@ export function MapPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenEnabled = typeof document !== 'undefined' && document.fullscreenEnabled;
 
-  const { data: region, isError: regionIsError, error: regionError } = useQuery({
-    queryKey: ['region', regionId],
-    queryFn: ({ signal }) => api.getRegion(regionId!, { signal }),
-    enabled: !!regionId,
-  });
+  const { data: region, isError: regionIsError, error: regionError } = useRegion(regionId);
 
   const supportedGranularities = METRIC_SUPPORTED_GRANULARITIES[selectedMapMetric];
   const recommendedGranularity = getRecommendedGranularity(selectedMapMetric, dateRange);
@@ -75,7 +55,7 @@ export function MapPage() {
     isError: metricsIsError,
     error: metricsError,
   } = useQuery({
-    queryKey: ['metrics', regionId, granularity, dateRange, selectedMapMetric],
+    queryKey: ['metrics', regionId, granularity, formatDateYYYYMMDD(dateRange.start), formatDateYYYYMMDD(dateRange.end), selectedMapMetric],
     queryFn: ({ signal }) =>
       api.getMetrics(regionId!, {
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],

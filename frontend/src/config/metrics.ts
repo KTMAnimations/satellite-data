@@ -1,5 +1,36 @@
 import type { Granularity, MetricType } from '../types';
 
+/** Canonical metric options for dropdowns and toggles across the app. */
+export const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
+  { value: 'nightlights', label: 'Nighttime Lights', color: '#D97706' },
+  { value: 'ndvi', label: 'NDVI (Vegetation)', color: '#059669' },
+  { value: 'urban_density', label: 'Urban Density', color: '#7C3AED' },
+  { value: 'parking', label: 'Parking Occupancy', color: '#0D9488' },
+  { value: 'land_cover', label: 'Land Cover', color: '#9333EA' },
+  { value: 'surface_water', label: 'Surface Water', color: '#2563EB' },
+  { value: 'no2', label: 'NO\u2082 Pollution', color: '#6366F1' },
+  { value: 'temperature', label: 'Temperature', color: '#EF4444' },
+  { value: 'precipitation', label: 'Precipitation', color: '#3B82F6' },
+  { value: 'aerosol', label: 'Aerosol Index', color: '#92400E' },
+  { value: 'cropland', label: 'Cropland', color: '#16A34A' },
+  { value: 'evapotranspiration', label: 'Evapotranspiration', color: '#0D9488' },
+  { value: 'soil_moisture', label: 'Soil Moisture', color: '#7C3AED' },
+  { value: 'impervious', label: 'Impervious Surface', color: '#6B7280' },
+  { value: 'canopy_height', label: 'Canopy Height', color: '#15803D' },
+];
+
+/** All MetricType values as an array, derived from METRIC_OPTIONS. */
+export const ALL_METRIC_TYPES: MetricType[] = METRIC_OPTIONS.map((o) => o.value);
+
+/** Create an empty Record<MetricType, T> with a default value for each key. */
+export function emptyMetricRecord<T>(defaultValue: T): Record<MetricType, T> {
+  const record = {} as Record<MetricType, T>;
+  for (const m of ALL_METRIC_TYPES) {
+    record[m] = defaultValue;
+  }
+  return record;
+}
+
 // Keep in sync with backend metric definitions (backend/app/gee.py).
 export const METRIC_DEFAULT_GRANULARITY: Record<MetricType, Granularity> = {
   ndvi: 'weekly',

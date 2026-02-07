@@ -59,6 +59,19 @@ class Settings(BaseSettings):
     default_tile_opacity: float = Field(default=0.7, ge=0.0, le=1.0)
     tile_token_ttl_seconds: int = Field(default=6 * 60 * 60, ge=60)
 
+    # Tile PNG disk cache
+    tile_cache_dir: str = Field(default="data/tile_cache")
+    tile_cache_max_mb: int = Field(default=200, ge=0, description="Max disk cache size in MB. 0 disables caching.")
+
+    @property
+    def tile_cache_path(self) -> Path:
+        path = Path(self.tile_cache_dir).expanduser()
+        if not path.is_absolute():
+            path = _PROJECT_ROOT / path
+        path = path.resolve()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     @property
     def database_url(self) -> str:
         path = Path(self.database_path).expanduser()

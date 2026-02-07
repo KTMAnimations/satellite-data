@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricType } from '../../types';
 import { computeMetricDeltaPercentOfRange } from '../../utils/metrics';
@@ -58,7 +58,7 @@ function formatChartValue(value: number): string {
   return value.toFixed(digits);
 }
 
-export function YearOverYearChart({
+export const YearOverYearChart = memo(function YearOverYearChart({
   data,
   selectedMetric,
   width = 500,
@@ -232,4 +232,4 @@ export function YearOverYearChart({
       <svg ref={svgRef} width={width} height={height} />
     </div>
   );
-}
+});

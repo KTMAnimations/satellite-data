@@ -11,7 +11,7 @@ import {
 import type { LatLngBounds, Map as LeafletMap } from 'leaflet';
 import { shallow } from 'zustand/shallow';
 import { useStore } from '../../store';
-import type { Granularity, Region, GeoJSONPolygon, MetricType, TileTemplateResponse } from '../../types';
+import type { Granularity, MapState, Region, GeoJSONPolygon, MetricType, TileTemplateResponse } from '../../types';
 import api from '../../services/api';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
 import { DEFAULT_METRIC_OVERLAY_MIN_ZOOM, MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
@@ -136,14 +136,40 @@ function MapController({
 
 function MapEvents({ contextRegionId }: { contextRegionId: string | null }) {
   const updateMapState = useStore((state) => state.updateMapState);
+  const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const patchRef = useRef<Partial<MapState>>({});
+
+  // Flush any pending debounced update on unmount.
+  useEffect(() => {
+    return () => {
+      if (pendingRef.current) {
+        clearTimeout(pendingRef.current);
+        updateMapState({ ...patchRef.current, contextRegionId });
+        pendingRef.current = null;
+        patchRef.current = {};
+      }
+    };
+  }, [updateMapState, contextRegionId]);
 
   useMapEvents({
     moveend: (e) => {
       const center = e.target.getCenter();
-      updateMapState({ center: [center.lat, center.lng], contextRegionId });
+      patchRef.current = { ...patchRef.current, center: [center.lat, center.lng] };
+      if (pendingRef.current) clearTimeout(pendingRef.current);
+      pendingRef.current = setTimeout(() => {
+        updateMapState({ ...patchRef.current, contextRegionId });
+        patchRef.current = {};
+        pendingRef.current = null;
+      }, 150);
     },
     zoomend: (e) => {
-      updateMapState({ zoom: e.target.getZoom(), contextRegionId });
+      patchRef.current = { ...patchRef.current, zoom: e.target.getZoom() };
+      if (pendingRef.current) clearTimeout(pendingRef.current);
+      pendingRef.current = setTimeout(() => {
+        updateMapState({ ...patchRef.current, contextRegionId });
+        patchRef.current = {};
+        pendingRef.current = null;
+      }, 150);
     },
   });
 

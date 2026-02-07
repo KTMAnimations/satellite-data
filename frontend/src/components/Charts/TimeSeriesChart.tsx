@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricData, MetricType } from '../../types';
 import { parseMetricDate } from '../../utils/dates';
@@ -54,7 +54,7 @@ function formatChartValue(value: number): string {
   return value.toFixed(digits);
 }
 
-export function TimeSeriesChart({
+export const TimeSeriesChart = memo(function TimeSeriesChart({
   data,
   selectedMetrics,
   width = 600,
@@ -238,4 +238,4 @@ export function TimeSeriesChart({
       <svg ref={svgRef} width={width} height={height} />
     </div>
   );
-}
+});

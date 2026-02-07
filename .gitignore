@@ -83,3 +83,4 @@ frontend/.env.*.local
 
 # Local scratch
 tmp_tile_debug/
+data/tile_cache/
