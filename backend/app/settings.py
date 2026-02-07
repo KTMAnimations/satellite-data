@@ -74,7 +74,7 @@ class Settings(BaseSettings):
 
     # Tile PNG disk cache
     tile_cache_dir: str = Field(default="data/tile_cache")
-    tile_cache_max_mb: int = Field(default=200, ge=0, description="Max disk cache size in MB. 0 disables caching.")
+    tile_cache_max_mb: int = Field(default=20000, ge=0, description="Max disk cache size in MB. 0 disables caching.")
 
     @property
     def tile_cache_path(self) -> Path:
