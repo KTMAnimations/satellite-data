@@ -725,28 +725,84 @@ def build_metric_image_for_tiles(metric: MetricId, start, end, geom, *, z: int |
     """
     import ee
 
-    # Low-zoom NDVI: use MODIS-only composite (global, coarse) instead of
-    # Sentinel-2 + cloud masking. This keeps z<=6 renders responsive and avoids
-    # global S2 graph explosions for world-scale tiles.
-    if metric == "ndvi" and z is not None and z <= 6:
-        band = metric
-        modis_buffer_days = 16
-        modis = (
-            ee.ImageCollection("MODIS/061/MOD13Q1")
-            .filterBounds(geom)
-            .filterDate(start.advance(-modis_buffer_days, "day"), end.advance(modis_buffer_days, "day"))
-        )
-        modis_has_images = modis.size().gt(0)
+    def _modis_land_cover_for_year():
+        all_years = ee.ImageCollection("MODIS/061/MCD12Q1")
+        latest = ee.Image(all_years.sort("system:time_start", False).first())
+        latest_year = ee.Number.parse(latest.date().format("YYYY"))
+        year = ee.Number.parse(start.format("YYYY")).min(latest_year).max(2001)
+        year_start = ee.Date.fromYMD(year, 1, 1)
+        year_end = year_start.advance(1, "year")
+        by_year = all_years.filterDate(year_start, year_end)
+        return ee.Image(ee.Algorithms.If(by_year.size().gt(0), by_year.first(), latest))
 
-        land_cover = ee.ImageCollection("MODIS/061/MCD12Q1").sort("system:time_start", False).first()
-        land_mask = land_cover.select(["LC_Type1"]).neq(0)
+    if z is not None and z <= 6:
+        # Low-zoom NDVI: use MODIS-only composite (global, coarse) instead of
+        # Sentinel-2 + cloud masking. This keeps z<=6 renders responsive and
+        # avoids global S2 graph explosions for world-scale tiles.
+        if metric == "ndvi":
+            band = metric
+            modis_buffer_days = 16
+            modis = (
+                ee.ImageCollection("MODIS/061/MOD13Q1")
+                .filterBounds(geom)
+                .filterDate(start.advance(-modis_buffer_days, "day"), end.advance(modis_buffer_days, "day"))
+            )
+            modis_has_images = modis.size().gt(0)
 
-        modis_median = modis.median()
-        modis_ndvi_raw = modis_median.select(["NDVI"]).multiply(0.0001).clamp(-1, 1).rename([band])
-        modis_qa_mask = modis_median.select(["SummaryQA"]).lt(3)
-        modis_ndvi = modis_ndvi_raw.updateMask(modis_qa_mask).updateMask(land_mask)
-        modis_ndvi = ee.Image(ee.Algorithms.If(modis_has_images, modis_ndvi, _empty_masked_image(band)))
-        return modis_ndvi.clip(geom)
+            land_cover = ee.ImageCollection("MODIS/061/MCD12Q1").sort("system:time_start", False).first()
+            land_mask = land_cover.select(["LC_Type1"]).neq(0)
+
+            modis_median = modis.median()
+            modis_ndvi_raw = modis_median.select(["NDVI"]).multiply(0.0001).clamp(-1, 1).rename([band])
+            modis_qa_mask = modis_median.select(["SummaryQA"]).lt(3)
+            modis_ndvi = modis_ndvi_raw.updateMask(modis_qa_mask).updateMask(land_mask)
+            modis_ndvi = ee.Image(ee.Algorithms.If(modis_has_images, modis_ndvi, _empty_masked_image(band)))
+            return modis_ndvi.clip(geom)
+
+        # Low-zoom parking: reuse coarse built-surface fraction proxy.
+        if metric == "parking":
+            return build_metric_image("urban_density", start, end, geom).rename([metric])
+
+        # Low-zoom built-up layer: use annual MODIS land-cover built-up class.
+        if metric == "land_cover":
+            lc_type1 = _modis_land_cover_for_year().select(["LC_Type1"])
+            built_up = lc_type1.eq(13).toFloat().rename([metric])
+            return built_up.clip(geom)
+
+        # Low-zoom cropland: MODIS cropland classes (12=croplands, 14=mosaic).
+        if metric == "cropland":
+            lc_type1 = _modis_land_cover_for_year().select(["LC_Type1"])
+            croplands = lc_type1.eq(12).toFloat()
+            mosaic = lc_type1.eq(14).toFloat().multiply(0.5)
+            cropland = croplands.add(mosaic).clamp(0, 1).rename([metric])
+            return cropland.clip(geom)
+
+        # Low-zoom surface water: avoid Dynamic World and use lightweight JRC
+        # sources only. Prefer monthly history where available; otherwise use
+        # global occurrence as a static fallback.
+        if metric == "surface_water":
+            target_month = start.format("YYYY_MM")
+            monthly = ee.ImageCollection("JRC/GSW1_4/MonthlyHistory").filterBounds(geom).select(["water"])
+            filtered = monthly.filter(ee.Filter.eq("system:index", target_month))
+            has_month = filtered.size().gt(0)
+
+            monthly_img = ee.Image(
+                ee.Algorithms.If(
+                    has_month,
+                    filtered.first(),
+                    _empty_masked_image("water").rename(["water"]),
+                )
+            )
+            monthly_mask = monthly_img.select(["water"]).eq(2).unmask(0).rename([metric])
+
+            occurrence = (
+                ee.Image("JRC/GSW1_4/GlobalSurfaceWater")
+                .select(["occurrence"])
+                .unmask(0)
+                .divide(100)
+                .rename([metric])
+            )
+            return ee.Image(ee.Algorithms.If(has_month, monthly_mask, occurrence)).clip(geom)
 
     return build_metric_image(metric, start, end, geom)
 
@@ -921,8 +977,8 @@ _tile_cache_version = 23
 
 
 def _tile_render_variant(metric: MetricId, *, z: int | None) -> str:
-    if metric == "ndvi" and z is not None and z <= 6:
-        return "ndvi_low_zoom_proxy"
+    if z is not None and z <= 6 and metric in {"ndvi", "parking", "land_cover", "cropland", "surface_water"}:
+        return f"{metric}_low_zoom_proxy"
     return "default"
 
 
