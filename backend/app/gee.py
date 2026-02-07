@@ -256,6 +256,33 @@ def _empty_masked_image(band_name: str):
     return zero.updateMask(ee.Image(0))
 
 
+def _surface_water_static_fallback(band_name: str):
+    """
+    Build a global static fallback for surface water.
+
+    Primary static source is JRC occurrence. At very high latitudes where JRC
+    is masked/no-data, fill from MOD44W inland-water mask while excluding
+    ocean QA classes.
+    """
+    import ee
+
+    occurrence = (
+        ee.Image("JRC/GSW1_4/GlobalSurfaceWater")
+        .select(["occurrence"])
+        .divide(100)
+        .toFloat()
+        .rename([band_name])
+    )
+
+    mod44_latest = ee.Image(ee.ImageCollection("MODIS/006/MOD44W").sort("system:time_start", False).first())
+    mod44_water = mod44_latest.select(["water_mask"]).eq(1)
+    mod44_qa = mod44_latest.select(["water_mask_QA"])
+    # MOD44W QA classes 4/5 are ocean masks; keep only inland-water classes.
+    mod44_inland = mod44_water.And(mod44_qa.lt(4)).toFloat().rename([band_name])
+
+    return occurrence.unmask(mod44_inland).unmask(0)
+
+
 def _mean_of_daily_means(collection, start, end, band_name: str):
     """
     Reduce an ImageCollection into a single Image by:
@@ -446,8 +473,9 @@ def build_metric_image(metric: MetricId, start, end, geom):
 
     if metric == "surface_water":
         # Primary: JRC MonthlyHistory (ends at 2021-12). system:index uses YYYY_MM.
-        # Fallback (recent): Dynamic World water probability (near real-time).
-        # Final fallback: JRC GlobalSurfaceWater occurrence (static).
+        # Per-pixel fallback chain:
+        #   monthly class -> Dynamic World water probability -> static fallback.
+        # Static fallback fills JRC's high-latitude no-data with MOD44W inland water.
         target_month = start.format("YYYY_MM")
         monthly = ee.ImageCollection("JRC/GSW1_4/MonthlyHistory").filterBounds(geom).select(["water"])
         filtered = monthly.filter(ee.Filter.eq("system:index", target_month))
@@ -460,14 +488,14 @@ def build_metric_image(metric: MetricId, start, end, geom):
                 _empty_masked_image("water").rename(["water"]),
             )
         )
-        # JRC layers are masked for non-water (and often masked over open ocean).
-        # For a clean overlay, treat missing as 0 so the tile mask threshold can
-        # make non-water fully transparent without fractional alpha artifacts.
-        monthly_mask = monthly_img.select(["water"]).eq(2).unmask(0).rename([band])
+        monthly_band = monthly_img.select(["water"])
+        # In MonthlyHistory: 0=no observation, 1=not water, 2=water.
+        # Keep no-observation pixels masked so fallbacks can fill them.
+        monthly_valid = monthly_band.neq(0)
+        monthly_water = monthly_band.eq(2).toFloat().rename([band]).updateMask(monthly_valid)
 
         # Dynamic World water probability for recent dates where JRC has no monthly
-        # history (e.g. >2021). Treat missing pixels as 0 so reduceRegion means
-        # represent a true fraction over the full AOI.
+        # history (e.g. >2021). Keep masked gaps for static fallback filling.
         dw = (
             ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
             .filterBounds(geom)
@@ -475,18 +503,11 @@ def build_metric_image(metric: MetricId, start, end, geom):
             .select(["water"])
         )
         dw_has = dw.size().gt(0)
-        dw_img = dw.median().unmask(0).rename([band])
-        dw_img = ee.Image(ee.Algorithms.If(dw_has, dw_img, _empty_masked_image(band)))
+        dw_img = ee.Image(ee.Algorithms.If(dw_has, dw.median().rename([band]), _empty_masked_image(band)))
 
-        occurrence = (
-            ee.Image("JRC/GSW1_4/GlobalSurfaceWater")
-            .select(["occurrence"])
-            .unmask(0)
-            .divide(100)
-            .rename([band])
-        )
-        fallback = ee.Image(ee.Algorithms.If(dw_has, dw_img, occurrence))
-        return ee.Image(ee.Algorithms.If(has_month, monthly_mask, fallback)).clip(geom)
+        static_fallback = _surface_water_static_fallback(band)
+        fallback = dw_img.unmask(static_fallback)
+        return monthly_water.unmask(fallback).clip(geom)
 
     if metric == "no2":
         # Sentinel-5P NO2 is per-orbit (many images per day). Reduce to daily
@@ -782,9 +803,8 @@ def build_metric_image_for_tiles(metric: MetricId, start, end, geom, *, z: int |
             cropland = croplands.add(mosaic).clamp(0, 1).rename([metric])
             return cropland.clip(geom)
 
-        # Low-zoom surface water: avoid Dynamic World and use lightweight JRC
-        # sources only. Prefer monthly history where available; otherwise use
-        # global occurrence as a static fallback.
+        # Low-zoom surface water: avoid Dynamic World for responsiveness.
+        # Fill monthly no-data pixels using the static fallback chain.
         if metric == "surface_water":
             target_month = start.format("YYYY_MM")
             monthly = ee.ImageCollection("JRC/GSW1_4/MonthlyHistory").filterBounds(geom).select(["water"])
@@ -798,16 +818,12 @@ def build_metric_image_for_tiles(metric: MetricId, start, end, geom, *, z: int |
                     _empty_masked_image("water").rename(["water"]),
                 )
             )
-            monthly_mask = monthly_img.select(["water"]).eq(2).unmask(0).rename([metric])
+            monthly_band = monthly_img.select(["water"])
+            monthly_valid = monthly_band.neq(0)
+            monthly_water = monthly_band.eq(2).toFloat().rename([metric]).updateMask(monthly_valid)
 
-            occurrence = (
-                ee.Image("JRC/GSW1_4/GlobalSurfaceWater")
-                .select(["occurrence"])
-                .unmask(0)
-                .divide(100)
-                .rename([metric])
-            )
-            return ee.Image(ee.Algorithms.If(has_month, monthly_mask, occurrence)).clip(geom)
+            static_fallback = _surface_water_static_fallback(metric)
+            return monthly_water.unmask(static_fallback).clip(geom)
 
     return build_metric_image(metric, start, end, geom)
 
@@ -978,7 +994,7 @@ class _BoundedTTLCache(dict):
 
 _tile_template_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
-_tile_cache_version = 23
+_tile_cache_version = 24
 
 
 def _tile_render_variant(metric: MetricId, *, z: int | None) -> str:
