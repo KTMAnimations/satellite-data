@@ -14,6 +14,7 @@ import type {
   Granularity,
   MetricType,
   TileTemplateResponse,
+  TileCacheClearResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -142,6 +143,13 @@ class APIClient {
     opacity?: number;
   }, options?: RequestOptions): Promise<TileTemplateResponse> {
     const response = await this.client.get<TileTemplateResponse>('/tiles/template', { params, signal: options?.signal });
+    return response.data;
+  }
+
+  async clearTileCacheMetric(metric: MetricType, options?: RequestOptions): Promise<TileCacheClearResponse> {
+    const response = await this.client.delete<TileCacheClearResponse>(`/tiles/cache/${metric}`, {
+      signal: options?.signal,
+    });
     return response.data;
   }
 }

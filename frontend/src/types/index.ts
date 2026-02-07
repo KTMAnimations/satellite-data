@@ -134,6 +134,13 @@ export interface TileTemplateResponse {
   opacity: number;
 }
 
+export interface TileCacheClearResponse {
+  metric: MetricType;
+  cache_enabled: boolean;
+  deleted_files: number;
+  deleted_bytes: number;
+}
+
 // Export types
 export interface ExportRequest {
   region_id: string;

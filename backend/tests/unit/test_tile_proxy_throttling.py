@@ -125,3 +125,54 @@ def test_tile_proxy_passes_zoom_to_fetcher(monkeypatch):
 
     asyncio.run(run())
     assert seen_zoom == [6]
+
+
+def test_tile_proxy_clear_metric_cache_only_removes_selected_metric(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEE_MAX_CONCURRENT_REQUESTS", "8")
+    monkeypatch.setenv("TILE_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("TILE_CACHE_MAX_MB", "10")
+
+    app = _import_fresh_app()
+
+    from app.routes import tiles as tiles_module
+
+    fetch_count_lock = threading.Lock()
+    fetch_count = 0
+
+    class StubFetcher:
+        def fetch_tile(self, x: int, y: int, z: int) -> bytes:
+            nonlocal fetch_count
+            with fetch_count_lock:
+                fetch_count += 1
+            return b"PNG"
+
+    def stub_get_tile_fetcher(metric, date_bucket: str, granularity: str, *, z=None):  # type: ignore[no-untyped-def]
+        return StubFetcher()
+
+    monkeypatch.setattr(tiles_module, "get_tile_fetcher", stub_get_tile_fetcher)
+
+    async def run() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            ndvi_url = "/api/v1/tiles/ndvi/weekly/2024-01-01/4/3/0.png?v=23"
+            nightlights_url = "/api/v1/tiles/nightlights/weekly/2024-01-01/4/3/0.png?v=23"
+
+            res1 = await client.get(ndvi_url)
+            assert res1.status_code == 200
+            res2 = await client.get(nightlights_url)
+            assert res2.status_code == 200
+            assert fetch_count == 2
+
+            clear_res = await client.delete("/api/v1/tiles/cache/ndvi")
+            assert clear_res.status_code == 200
+            payload = clear_res.json()
+            assert payload["metric"] == "ndvi"
+            assert payload["deleted_files"] >= 1
+
+            ndvi_after_clear = await client.get(ndvi_url)
+            assert ndvi_after_clear.status_code == 200
+            nightlights_after_clear = await client.get(nightlights_url)
+            assert nightlights_after_clear.status_code == 200
+
+    asyncio.run(run())
+    assert fetch_count == 3

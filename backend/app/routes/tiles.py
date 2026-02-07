@@ -32,6 +32,14 @@ _tile_cache_lock = threading.Lock()
 _tile_cache_stats: _TileCacheStats | None = None
 
 
+def _tile_cache_path(cache_dir: Path, metric: str, key: str) -> Path:
+    return cache_dir / f"{metric}--{key}.png"
+
+
+def _legacy_tile_cache_path(cache_dir: Path, key: str) -> Path:
+    return cache_dir / f"{key}.png"
+
+
 def _wrap_x(x: int, z: int) -> int:
     """
     Leaflet can request tiles outside the global x-range when world-wrapping.
@@ -47,14 +55,36 @@ def _tile_cache_key(metric: str, granularity: str, date_bucket: str, z: int, x: 
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def _get_cached_tile(cache_dir: Path, key: str) -> bytes | None:
-    path = cache_dir / f"{key}.png"
+def _get_cached_tile(cache_dir: Path, metric: str, key: str) -> bytes | None:
+    path = _tile_cache_path(cache_dir, metric, key)
+    legacy_path = _legacy_tile_cache_path(cache_dir, key)
+    using_legacy = False
+
     if not path.exists():
-        return None
+        if legacy_path.exists():
+            path = legacy_path
+            using_legacy = True
+        else:
+            return None
+
     try:
         data = path.read_bytes()
     except Exception:
         return None
+
+    # Opportunistically migrate legacy cache files so metric-specific clears work.
+    if using_legacy:
+        metric_path = _tile_cache_path(cache_dir, metric, key)
+        try:
+            if not metric_path.exists():
+                os.replace(path, metric_path)
+                path = metric_path
+            else:
+                path.unlink(missing_ok=True)
+                path = metric_path
+        except Exception:
+            pass
+
     try:
         # Touch to update atime for LRU eviction.
         path.touch()
@@ -73,7 +103,7 @@ def _init_tile_cache_stats(cache_dir: Path) -> _TileCacheStats:
     return _TileCacheStats(total_bytes=total)
 
 
-def _put_cached_tile(cache_dir: Path, key: str, data: bytes, max_mb: int) -> None:
+def _put_cached_tile(cache_dir: Path, metric: str, key: str, data: bytes, max_mb: int) -> None:
     """
     Persist a tile to disk and enforce a best-effort size cap.
 
@@ -83,8 +113,9 @@ def _put_cached_tile(cache_dir: Path, key: str, data: bytes, max_mb: int) -> Non
         return
 
     max_bytes = max_mb * 1024 * 1024
-    path = cache_dir / f"{key}.png"
-    tmp = cache_dir / f"{key}.{uuid4().hex}.tmp"
+    path = _tile_cache_path(cache_dir, metric, key)
+    legacy_path = _legacy_tile_cache_path(cache_dir, key)
+    tmp = cache_dir / f"{metric}--{key}.{uuid4().hex}.tmp"
 
     with _tile_cache_lock:
         global _tile_cache_stats
@@ -104,7 +135,20 @@ def _put_cached_tile(cache_dir: Path, key: str, data: bytes, max_mb: int) -> Non
         finally:
             tmp.unlink(missing_ok=True)
 
-        _tile_cache_stats = _TileCacheStats(total_bytes=stats.total_bytes + (new_size - old_size))
+        removed_legacy_size = 0
+        if legacy_path != path and legacy_path.exists():
+            try:
+                removed_legacy_size = legacy_path.stat().st_size
+            except FileNotFoundError:
+                removed_legacy_size = 0
+            try:
+                legacy_path.unlink()
+            except FileNotFoundError:
+                removed_legacy_size = 0
+
+        _tile_cache_stats = _TileCacheStats(
+            total_bytes=stats.total_bytes + (new_size - old_size - removed_legacy_size)
+        )
         _evict_if_needed(cache_dir, max_bytes)
 
 
@@ -137,6 +181,33 @@ def _evict_if_needed(cache_dir: Path, max_bytes: int) -> None:
         total -= size
 
     _tile_cache_stats = _TileCacheStats(total_bytes=max(0, total))
+
+
+def _clear_metric_cached_tiles(cache_dir: Path, metric: str) -> tuple[int, int]:
+    deleted_files = 0
+    deleted_bytes = 0
+
+    with _tile_cache_lock:
+        for p in cache_dir.glob(f"{metric}--*.png"):
+            try:
+                size = p.stat().st_size
+            except FileNotFoundError:
+                continue
+            try:
+                p.unlink()
+            except FileNotFoundError:
+                continue
+            deleted_files += 1
+            deleted_bytes += size
+
+        global _tile_cache_stats
+        stats = _tile_cache_stats
+        if stats is None:
+            _tile_cache_stats = _init_tile_cache_stats(cache_dir)
+        else:
+            _tile_cache_stats = _TileCacheStats(total_bytes=max(0, stats.total_bytes - deleted_bytes))
+
+    return deleted_files, deleted_bytes
 
 
 def _fetch_tile_png(metric: MetricId, date_bucket: str, granularity: str, x: int, y: int, z: int) -> bytes:
@@ -222,7 +293,7 @@ async def tile_png(
     if settings.tile_cache_max_mb > 0:
         try:
             cache_dir = settings.tile_cache_path
-            cached = await asyncio.to_thread(_get_cached_tile, cache_dir, cache_key)
+            cached = await asyncio.to_thread(_get_cached_tile, cache_dir, str(metric), cache_key)
         except Exception:
             cached = None
             cache_dir = None
@@ -256,7 +327,14 @@ async def tile_png(
         ) from e
 
     if cache_dir is not None:
-        background_tasks.add_task(_put_cached_tile, cache_dir, cache_key, png_bytes, settings.tile_cache_max_mb)
+        background_tasks.add_task(
+            _put_cached_tile,
+            cache_dir,
+            str(metric),
+            cache_key,
+            png_bytes,
+            settings.tile_cache_max_mb,
+        )
 
     return Response(
         content=png_bytes,
@@ -264,3 +342,28 @@ async def tile_png(
         background=background_tasks,
         headers={"Cache-Control": "public, max-age=3600"},
     )
+
+
+@router.delete("/cache/{metric}")
+async def clear_metric_tile_cache(metric: MetricId) -> dict[str, str | int | bool]:
+    if metric not in METRICS:
+        raise HTTPException(status_code=400, detail="Invalid metric")
+
+    settings = get_settings()
+    if settings.tile_cache_max_mb <= 0:
+        return {
+            "metric": str(metric),
+            "cache_enabled": False,
+            "deleted_files": 0,
+            "deleted_bytes": 0,
+        }
+
+    cache_dir = settings.tile_cache_path
+    deleted_files, deleted_bytes = await asyncio.to_thread(_clear_metric_cached_tiles, cache_dir, str(metric))
+
+    return {
+        "metric": str(metric),
+        "cache_enabled": True,
+        "deleted_files": deleted_files,
+        "deleted_bytes": deleted_bytes,
+    }

@@ -32,6 +32,12 @@ function toDateBucket(dateStr: string, granularity: Granularity): string {
   return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
 }
 
+function withCacheBust(tileUrl: string, cacheBustKey?: string | number): string {
+  if (cacheBustKey === undefined || cacheBustKey === null || cacheBustKey === '') return tileUrl;
+  const sep = tileUrl.includes('?') ? '&' : '?';
+  return `${tileUrl}${sep}cb=${encodeURIComponent(String(cacheBustKey))}`;
+}
+
 const LazyFlowLayer = lazy(async () => ({
   default: (await import('./FlowLayer')).FlowLayer,
 }));
@@ -47,6 +53,7 @@ interface MapContainerProps {
   selectedMetric?: MetricType;
   tileDate?: string; // Date for temporal tile data (YYYY-MM-DD)
   tileGranularity?: Granularity;
+  tileCacheBustKey?: string | number;
   overlayEnabled?: boolean;
   overlayAllowNetwork?: boolean;
   onOverlayLoadingChange?: (isLoading: boolean) => void;
@@ -184,6 +191,7 @@ export function MapView({
   selectedMetric,
   tileDate,
   tileGranularity,
+  tileCacheBustKey,
   overlayEnabled = true,
   overlayAllowNetwork = true,
   onOverlayLoadingChange,
@@ -284,6 +292,16 @@ export function MapView({
     staleTime: 1000 * 60 * 60, // tokens are short-lived; keep cache bounded
   });
 
+  const tileTemplateWithCacheBust = useMemo(() => {
+    if (!tileTemplate?.tile_url) return tileTemplate;
+    const bustedUrl = withCacheBust(tileTemplate.tile_url, tileCacheBustKey);
+    if (bustedUrl === tileTemplate.tile_url) return tileTemplate;
+    return {
+      ...tileTemplate,
+      tile_url: bustedUrl,
+    };
+  }, [tileTemplate, tileCacheBustKey]);
+
   // Double-buffer tile layers so switching dates doesn't briefly remove the overlay while tiles load.
   const [activeTileTemplate, setActiveTileTemplate] = useState<TileTemplateResponse | null>(null);
   const [pendingTileTemplate, setPendingTileTemplate] = useState<TileTemplateResponse | null>(null);
@@ -301,7 +319,7 @@ export function MapView({
       return;
     }
 
-    if (!tileTemplate?.tile_url) {
+    if (!tileTemplateWithCacheBust?.tile_url) {
       setActiveTileTemplate(null);
       setPendingTileTemplate(null);
       return;
@@ -310,43 +328,43 @@ export function MapView({
     // If the overlay isn't currently visible (zoom-gated), just track the latest template.
     // Double-buffering is only needed while the overlay is on-screen to prevent flicker.
     if (!metricLayerVisible) {
-      if (!activeTileTemplate || activeTileTemplate.tile_url !== tileTemplate.tile_url) {
-        setActiveTileTemplate(tileTemplate);
+      if (!activeTileTemplate || activeTileTemplate.tile_url !== tileTemplateWithCacheBust.tile_url) {
+        setActiveTileTemplate(tileTemplateWithCacheBust);
       }
       if (pendingTileTemplate) setPendingTileTemplate(null);
       return;
     }
 
     if (!activeTileTemplate) {
-      setActiveTileTemplate(tileTemplate);
+      setActiveTileTemplate(tileTemplateWithCacheBust);
       setPendingTileTemplate(null);
       return;
     }
 
     // Metric/granularity changes are semantic switches; don't keep showing the old overlay.
     if (
-      activeTileTemplate.metric !== tileTemplate.metric ||
-      activeTileTemplate.granularity !== tileTemplate.granularity
+      activeTileTemplate.metric !== tileTemplateWithCacheBust.metric ||
+      activeTileTemplate.granularity !== tileTemplateWithCacheBust.granularity
     ) {
-      setActiveTileTemplate(tileTemplate);
+      setActiveTileTemplate(tileTemplateWithCacheBust);
       setPendingTileTemplate(null);
       return;
     }
 
-    if (activeTileTemplate.tile_url === tileTemplate.tile_url) {
+    if (activeTileTemplate.tile_url === tileTemplateWithCacheBust.tile_url) {
       setPendingTileTemplate(null);
       return;
     }
 
-    if (pendingTileTemplate?.tile_url !== tileTemplate.tile_url) {
-      setPendingTileTemplate(tileTemplate);
+    if (pendingTileTemplate?.tile_url !== tileTemplateWithCacheBust.tile_url) {
+      setPendingTileTemplate(tileTemplateWithCacheBust);
     }
   }, [
     activeTileTemplate,
     metricLayerMounted,
     metricLayerVisible,
     pendingTileTemplate,
-    tileTemplate,
+    tileTemplateWithCacheBust,
   ]);
 
   const promotePendingLayer = useCallback((tileUrl: string) => {
@@ -380,13 +398,13 @@ export function MapView({
   }, [metricLayerMounted, metricLayerVisible]);
 
   const overlayHasUnappliedTemplate = Boolean(
-    metricLayerMounted &&
+      metricLayerMounted &&
       metricLayerVisible &&
       activeTileTemplate?.tile_url &&
-      tileTemplate?.tile_url &&
-      activeTileTemplate.metric === tileTemplate.metric &&
-      activeTileTemplate.granularity === tileTemplate.granularity &&
-      activeTileTemplate.tile_url !== tileTemplate.tile_url
+      tileTemplateWithCacheBust?.tile_url &&
+      activeTileTemplate.metric === tileTemplateWithCacheBust.metric &&
+      activeTileTemplate.granularity === tileTemplateWithCacheBust.granularity &&
+      activeTileTemplate.tile_url !== tileTemplateWithCacheBust.tile_url
   );
   const overlayIsLoading = Boolean(
     overlayEnabled &&
@@ -410,8 +428,8 @@ export function MapView({
   }, [onOverlayLoadingChange]);
 
   const legendGradientStyle =
-    tileTemplate?.palette?.length
-      ? { background: `linear-gradient(to right, ${tileTemplate.palette.join(', ')})` }
+    tileTemplateWithCacheBust?.palette?.length
+      ? { background: `linear-gradient(to right, ${tileTemplateWithCacheBust.palette.join(', ')})` }
       : undefined;
 
   const handleCreated = (e: unknown) => {
@@ -585,7 +603,7 @@ export function MapView({
           metricLayerVisible &&
           !tileTemplateIsLoading &&
           !tileTemplateIsError &&
-          !tileTemplate?.tile_url && (
+          !tileTemplateWithCacheBust?.tile_url && (
             <div className="map-overlay-hint">No overlay available for this metric/date.</div>
           )}
         {overlayEnabled && selectedMetric && (

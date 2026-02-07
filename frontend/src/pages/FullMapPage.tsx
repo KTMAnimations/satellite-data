@@ -5,6 +5,7 @@ import { MapView } from '../components/Map/MapContainer';
 import { HeatmapLegend } from '../components/Map/HeatmapLegend';
 import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
+import api from '../services/api';
 import type { Granularity, MetricType } from '../types';
 import {
   estimateBucketCount,
@@ -73,6 +74,8 @@ export function FullMapPage() {
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [currentTimelineDate, setCurrentTimelineDate] = useState<Date | null>(null);
   const [overlayIsLoading, setOverlayIsLoading] = useState(false);
+  const [isClearingTileCache, setIsClearingTileCache] = useState(false);
+  const [tileCacheBustByMetric, setTileCacheBustByMetric] = useState<Partial<Record<MetricType, number>>>({});
   const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenEnabled = typeof document !== 'undefined' && document.fullscreenEnabled;
@@ -103,9 +106,23 @@ export function FullMapPage() {
     if (timelineDates.length > 0) setCurrentTimelineDate(timelineDates[0]);
   }, [timelineDates]);
 
-  const handleClearCache = () => {
-    queryClient.resetQueries({ queryKey: ['tiles'] });
-  };
+  const handleClearCache = useCallback(async () => {
+    if (isClearingTileCache) return;
+    setIsClearingTileCache(true);
+    try {
+      await api.clearTileCacheMetric(selectedMapMetric);
+    } catch (err) {
+      console.warn(`Failed to clear tile cache for ${selectedMapMetric}:`, err);
+    } finally {
+      setTileCacheBustByMetric((prev) => ({
+        ...prev,
+        [selectedMapMetric]: Date.now(),
+      }));
+      queryClient.resetQueries({ queryKey: ['tiles'] });
+      queryClient.resetQueries({ queryKey: ['tiles', 'template', selectedMapMetric] });
+      setIsClearingTileCache(false);
+    }
+  }, [isClearingTileCache, queryClient, selectedMapMetric]);
 
   const handleToggleFullscreen = useCallback(async () => {
     const target = fullscreenTargetRef.current;
@@ -151,6 +168,7 @@ export function FullMapPage() {
     ?? formatDateYYYYMMDD(dateRange.start)
     ?? formatDateYYYYMMDD(new Date())
     ?? new Date().toISOString().split('T')[0];
+  const activeTileCacheBustKey = tileCacheBustByMetric[selectedMapMetric];
 
   return (
     <div className="map-page">
@@ -165,9 +183,12 @@ export function FullMapPage() {
           <button
             type="button"
             className="btn btn-outline btn-icon map-page-cache-btn"
-            onClick={handleClearCache}
-            aria-label="Clear cached tiles"
-            title="Clear cached tiles"
+            onClick={() => {
+              void handleClearCache();
+            }}
+            aria-label={`Clear cached ${selectedMapMetric} tiles`}
+            title={`Clear cached ${selectedMapMetric} tiles`}
+            disabled={isClearingTileCache}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 12a9 9 0 10-3.1 6.7" />
@@ -259,6 +280,7 @@ export function FullMapPage() {
             overlayEnabled={overlayEnabled}
             tileGranularity={granularity}
             tileDate={tileDate}
+            tileCacheBustKey={activeTileCacheBustKey}
             onOverlayLoadingChange={setOverlayIsLoading}
             onMapReady={setMapInstance}
             selectedRegion={null}
