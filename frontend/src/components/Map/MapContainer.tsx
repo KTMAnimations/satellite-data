@@ -454,6 +454,7 @@ export function MapView({
             attribution={CARTO_DARK_ATTRIBUTION}
             url={CARTO_DARK_RASTER_URL}
             subdomains={['a', 'b', 'c', 'd']}
+            updateWhenIdle={false}
             crossOrigin
           />
         ) : (
@@ -463,6 +464,7 @@ export function MapView({
             url={MAPTILER_OMT_RASTER_URL}
             tileSize={512}
             zoomOffset={-1}
+            updateWhenIdle={false}
             crossOrigin
           />
         )}
@@ -474,7 +476,7 @@ export function MapView({
             url={activeTileTemplate.tile_url}
             opacity={activeTileTemplate.opacity}
             attribution={activeTileTemplate.attribution ?? undefined}
-            updateWhenIdle
+            updateWhenIdle={false}
             updateWhenZooming={false}
             keepBuffer={0}
             eventHandlers={activeOverlayEventHandlers}
@@ -487,7 +489,7 @@ export function MapView({
             opacity={0}
             // Avoid duplicate attributions while the pending layer is hidden.
             attribution={undefined}
-            updateWhenIdle
+            updateWhenIdle={false}
             updateWhenZooming={false}
             keepBuffer={0}
             eventHandlers={pendingOverlayEventHandlers}
