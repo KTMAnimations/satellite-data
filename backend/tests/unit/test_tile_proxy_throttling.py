@@ -42,7 +42,7 @@ def test_tile_proxy_global_gee_throttle(monkeypatch):
                 active -= 1
             return b"PNG"
 
-    def stub_get_tile_fetcher(metric, date_bucket: str, granularity: str):  # type: ignore[no-untyped-def]
+    def stub_get_tile_fetcher(metric, date_bucket: str, granularity: str, *, z=None):  # type: ignore[no-untyped-def]
         return StubFetcher()
 
     monkeypatch.setattr(tiles_module, "get_tile_fetcher", stub_get_tile_fetcher)
@@ -81,7 +81,7 @@ def test_tile_proxy_png_disk_cache(monkeypatch, tmp_path):
                 fetch_count += 1
             return b"PNG"
 
-    def stub_get_tile_fetcher(metric, date_bucket: str, granularity: str):  # type: ignore[no-untyped-def]
+    def stub_get_tile_fetcher(metric, date_bucket: str, granularity: str, *, z=None):  # type: ignore[no-untyped-def]
         return StubFetcher()
 
     monkeypatch.setattr(tiles_module, "get_tile_fetcher", stub_get_tile_fetcher)
@@ -97,3 +97,31 @@ def test_tile_proxy_png_disk_cache(monkeypatch, tmp_path):
     asyncio.run(run())
 
     assert fetch_count == 1
+
+
+def test_tile_proxy_passes_zoom_to_fetcher(monkeypatch):
+    monkeypatch.setenv("TILE_CACHE_MAX_MB", "0")
+    app = _import_fresh_app()
+
+    from app.routes import tiles as tiles_module
+
+    seen_zoom: list[int | None] = []
+
+    class StubFetcher:
+        def fetch_tile(self, x: int, y: int, z: int) -> bytes:
+            return b"PNG"
+
+    def stub_get_tile_fetcher(metric, date_bucket: str, granularity: str, *, z=None):  # type: ignore[no-untyped-def]
+        seen_zoom.append(z)
+        return StubFetcher()
+
+    monkeypatch.setattr(tiles_module, "get_tile_fetcher", stub_get_tile_fetcher)
+
+    async def run() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.get("/api/v1/tiles/ndvi/weekly/2024-01-01/6/3/0.png")
+            assert res.status_code == 200
+
+    asyncio.run(run())
+    assert seen_zoom == [6]

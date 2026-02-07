@@ -140,7 +140,7 @@ def _evict_if_needed(cache_dir: Path, max_bytes: int) -> None:
 
 
 def _fetch_tile_png(metric: MetricId, date_bucket: str, granularity: str, x: int, y: int, z: int) -> bytes:
-    fetcher = get_tile_fetcher(metric, date_bucket, granularity)  # type: ignore[arg-type]
+    fetcher = get_tile_fetcher(metric, date_bucket, granularity, z=z)  # type: ignore[arg-type]
     return fetcher.fetch_tile(x, y, z)
 
 

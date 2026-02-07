@@ -715,6 +715,42 @@ def build_metric_image(metric: MetricId, start, end, geom):
     raise ValueError(f"Unsupported metric: {metric}")
 
 
+def build_metric_image_for_tiles(metric: MetricId, start, end, geom, *, z: int | None):
+    """
+    Build a tile-optimized image graph for map rendering.
+
+    At very low zooms, some high-resolution products are unnecessarily expensive.
+    This function swaps in cheaper proxies where appropriate while preserving
+    the same value ranges and semantics used by map overlays.
+    """
+    import ee
+
+    # Low-zoom NDVI: use MODIS-only composite (global, coarse) instead of
+    # Sentinel-2 + cloud masking. This keeps z<=6 renders responsive and avoids
+    # global S2 graph explosions for world-scale tiles.
+    if metric == "ndvi" and z is not None and z <= 6:
+        band = metric
+        modis_buffer_days = 16
+        modis = (
+            ee.ImageCollection("MODIS/061/MOD13Q1")
+            .filterBounds(geom)
+            .filterDate(start.advance(-modis_buffer_days, "day"), end.advance(modis_buffer_days, "day"))
+        )
+        modis_has_images = modis.size().gt(0)
+
+        land_cover = ee.ImageCollection("MODIS/061/MCD12Q1").sort("system:time_start", False).first()
+        land_mask = land_cover.select(["LC_Type1"]).neq(0)
+
+        modis_median = modis.median()
+        modis_ndvi_raw = modis_median.select(["NDVI"]).multiply(0.0001).clamp(-1, 1).rename([band])
+        modis_qa_mask = modis_median.select(["SummaryQA"]).lt(3)
+        modis_ndvi = modis_ndvi_raw.updateMask(modis_qa_mask).updateMask(land_mask)
+        modis_ndvi = ee.Image(ee.Algorithms.If(modis_has_images, modis_ndvi, _empty_masked_image(band)))
+        return modis_ndvi.clip(geom)
+
+    return build_metric_image(metric, start, end, geom)
+
+
 def bucket_starts(start_date: date, end_date: date, granularity: Granularity) -> list[date]:
     if start_date > end_date:
         raise ValueError("start_date must be <= end_date")
@@ -884,7 +920,13 @@ _tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_cache_version = 23
 
 
-def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity) -> Any:
+def _tile_render_variant(metric: MetricId, *, z: int | None) -> str:
+    if metric == "ndvi" and z is not None and z <= 6:
+        return "ndvi_low_zoom_proxy"
+    return "default"
+
+
+def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularity, *, z: int | None = None) -> Any:
     """
     Return an ee.data.TileFetcher for fetching PNG tiles server-side.
 
@@ -896,7 +938,8 @@ def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularit
     import ee
 
     settings = get_settings()
-    cache_key = f"v{_tile_cache_version}:{metric}:{granularity}:{date_bucket}"
+    variant = _tile_render_variant(metric, z=z)
+    cache_key = f"v{_tile_cache_version}:{metric}:{granularity}:{date_bucket}:{variant}"
     now = time.time()
     cached = _tile_fetcher_cache.get(cache_key)
     if cached and now - cached[0] < settings.tile_token_ttl_seconds:
@@ -914,7 +957,7 @@ def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularit
     start = ee.Date(start_py.isoformat())
     end = ee.Date(end_py.isoformat())
     geom = ee.Geometry.Rectangle(list(GLOBAL_TILE_BOUNDS_WGS84), proj="EPSG:4326", geodesic=False)
-    img = build_metric_image(metric, start, end, geom)
+    img = build_metric_image_for_tiles(metric, start, end, geom, z=z)
 
     vmin, vmax = metric_def.value_range
     img = img.clamp(vmin, vmax)
