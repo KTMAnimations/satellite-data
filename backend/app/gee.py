@@ -761,7 +761,12 @@ def build_metric_image_for_tiles(metric: MetricId, start, end, geom, *, z: int |
 
         # Low-zoom parking: reuse coarse built-surface fraction proxy.
         if metric == "parking":
-            return build_metric_image("urban_density", start, end, geom).rename([metric])
+            # GHSL built-surface fractions are often very small outside dense
+            # cores, which can render as effectively invisible at global zooms.
+            # Apply a gentle sqrt contrast boost so sparse urbanized areas stay
+            # visible while preserving the 0..1 range and ordering.
+            urban = build_metric_image("urban_density", start, end, geom)
+            return urban.sqrt().clamp(0, 1).rename([metric])
 
         # Low-zoom built-up layer: use annual MODIS land-cover built-up class.
         if metric == "land_cover":
