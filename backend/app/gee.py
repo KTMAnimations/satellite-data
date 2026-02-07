@@ -170,7 +170,7 @@ METRICS: dict[MetricId, MetricDefinition] = {
         unit="mm",
         # Narrow ET viz range so map overlays use more of the palette. Current
         # ET values (mean of MOD16 8-day ET) are often in the low-to-mid teens.
-        value_range=(0.0, 20.0),
+        value_range=(0.0, 40.0),
         palette=["a6611a", "bf812d", "dfc27d", "e6d8b2", "f5f5dc", "c7eae5", "80cdc1", "35978f", "01665e", "003c30"],
         default_granularity="monthly",
         supported_granularities={"monthly"},
