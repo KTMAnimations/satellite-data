@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -10,6 +11,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _default_gee_max_concurrent_requests() -> int:
+    """
+    Default global Earth Engine concurrency limit.
+
+    Earth Engine calls are network-bound, but too much parallelism can saturate the
+    threadpool and amplify EE quota/latency issues during fast pans/zooms.
+    """
+    cpu = os.cpu_count() or 1
+    return max(2, min(8, cpu + 2))
 
 
 class Settings(BaseSettings):
@@ -54,6 +66,7 @@ class Settings(BaseSettings):
 
     # Limits
     max_timeseries_points: int = Field(default=2000, ge=1)
+    gee_max_concurrent_requests: int = Field(default_factory=_default_gee_max_concurrent_requests, ge=1)
 
     # Tile/viz defaults
     default_tile_opacity: float = Field(default=0.7, ge=0.0, le=1.0)

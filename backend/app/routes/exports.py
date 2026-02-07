@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.gee_concurrency import gee_to_thread
 from app.gee import METRICS, build_metric_image, bucket_end, bucket_starts, geojson_to_ee_geometry, initialize_ee
 from app.models import ExportJob, Region
 from app.schemas import AnimationRequest, CSVExportRequest, ExportRequest, ExportResponse
@@ -95,7 +96,7 @@ async def _generate_csv(job_id: str, request: CSVExportRequest, db_url: str) -> 
                 # Monthly CSV for exports (keeps file size manageable)
                 from app.gee import compute_time_series
 
-                series = await asyncio.to_thread(
+                series = await gee_to_thread(
                     compute_time_series,
                     geometry_geojson=geometry,
                     metric=metric,
@@ -158,7 +159,7 @@ async def _generate_pdf(job_id: str, request: ExportRequest, db_url: str) -> Non
 
         summary_rows: list[list[str]] = [["Metric", "Unit", "Mean", "Min", "Max", "Points"]]
         for metric in metrics:
-            series = await asyncio.to_thread(
+            series = await gee_to_thread(
                 compute_time_series,
                 geometry_geojson=geometry,
                 metric=metric,
@@ -265,7 +266,7 @@ async def _generate_animation(job_id: str, request: AnimationRequest, db_url: st
 
                 img = build_metric_image(request.metric, ee_start, ee_end, geom)
                 vmin, vmax = metric_def.value_range
-                thumb = await asyncio.to_thread(
+                thumb = await gee_to_thread(
                     img.getThumbURL,
                     {
                         "region": geom,

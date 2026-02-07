@@ -48,5 +48,6 @@ Open:
 
 ## Notes
 
-- Map overlays load tiles directly from Earth Engine; an internet connection and valid EE credentials are required.
+- Map overlays load Earth Engine tiles via the backend tile proxy; an internet connection and valid EE credentials are required.
+- If you see slow tile loads or EE quota errors during fast pans/zooms, tune `GEE_MAX_CONCURRENT_REQUESTS` and the tile cache settings in `.env`.
 - Exports run as lightweight background tasks inside the API process (no Redis/Celery).

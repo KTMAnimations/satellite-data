@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.gee_concurrency import gee_to_thread
 from app.gee import METRICS, build_metric_image, geojson_to_ee_geometry, initialize_ee
 from app.models import Region
 from app.schemas import CompareRequest, CompareResponse, PeriodSummary
@@ -62,7 +63,7 @@ async def compare_periods(request: CompareRequest, db: AsyncSession = Depends(ge
     async def period_averages(start_date, end_date) -> dict[str, float]:
         async def compute_one(metric: str) -> tuple[str, float] | None:
             async with semaphore:
-                return await asyncio.to_thread(_metric_average, metric, start_date, end_date)
+                return await gee_to_thread(_metric_average, metric, start_date, end_date)
 
         results = await asyncio.gather(*(compute_one(m) for m in metrics))
         return {k: v for item in results if item is not None for k, v in [item]}

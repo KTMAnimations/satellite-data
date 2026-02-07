@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.gee_concurrency import gee_to_thread
 from app.gee import METRICS, bucket_starts, compute_time_series, format_bucket_date
 from app.models import MetricObservation, Region
 from app.schemas import MetricData, MetricDataPoint, MetricsResponse, MetricId, SeasonalAverage, SeasonalSummary
@@ -154,7 +155,7 @@ async def get_region_metrics(
     async def compute_one(metric: MetricId) -> tuple[MetricId, list[tuple[str, float]]]:
         async with semaphore:
             try:
-                series = await asyncio.to_thread(
+                series = await gee_to_thread(
                     compute_time_series,
                     geometry_geojson=geometry,
                     metric=metric,
