@@ -168,7 +168,9 @@ METRICS: dict[MetricId, MetricDefinition] = {
         id="evapotranspiration",
         label="Evapotranspiration",
         unit="mm",
-        value_range=(0.0, 300.0),
+        # Narrow ET viz range so map overlays use more of the palette. Current
+        # ET values (mean of MOD16 8-day ET) are often in the low-to-mid teens.
+        value_range=(0.0, 20.0),
         palette=["a6611a", "bf812d", "dfc27d", "e6d8b2", "f5f5dc", "c7eae5", "80cdc1", "35978f", "01665e", "003c30"],
         default_granularity="monthly",
         supported_granularities={"monthly"},
@@ -994,7 +996,7 @@ class _BoundedTTLCache(dict):
 
 _tile_template_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
-_tile_cache_version = 24
+_tile_cache_version = 26
 
 
 def _tile_render_variant(metric: MetricId, *, z: int | None) -> str:

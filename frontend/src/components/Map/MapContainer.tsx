@@ -289,7 +289,7 @@ export function MapView({
       if (previousData.granularity !== effectiveGranularity) return undefined;
       return previousData;
     },
-    staleTime: 1000 * 60 * 60, // tokens are short-lived; keep cache bounded
+    staleTime: 1000 * 60 * 2, // refresh template metadata reasonably often
   });
 
   const tileTemplateWithCacheBust = useMemo(() => {
