@@ -640,7 +640,8 @@ METRICS.update(
             default_granularity="daily",
             supported_granularities={"daily", "monthly"},
             scale_m=500,
-            transparent_below_normalized=0.0,
+            # Keep no-snow pixels (value ~= 0) transparent.
+            transparent_below_normalized=0.0001,
         ),
         "fractional_snow_cover": MetricDefinition(
             id="fractional_snow_cover",
@@ -1901,7 +1902,17 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric in {"elevation", "slope", "aspect", "terrain_ruggedness"}:
-        dem = ee.Image("USGS/SRTMGL1_003").select(["elevation"])
+        # SRTM ends around 60N/56S, which causes visible horizontal cut lines at
+        # higher latitudes (e.g., around northern UK/Scandinavia). Use Copernicus
+        # GLO-30 as the primary global DEM and backfill any voids from NASADEM
+        # and SRTM for continuity.
+        dem = (
+            ee.ImageCollection("COPERNICUS/DEM/GLO30")
+            .select(["DEM"], ["elevation"])
+            .mosaic()
+            .unmask(ee.Image("NASA/NASADEM_HGT/001").select(["elevation"]))
+            .unmask(ee.Image("USGS/SRTMGL1_003").select(["elevation"]))
+        )
         if metric == "elevation":
             image = dem.rename([band])
         elif metric == "slope":
@@ -1938,18 +1949,48 @@ def build_metric_image(metric: MetricId, start, end, geom):
         "travel_time_to_cities",
         "human_modification",
     }:
+        def _ghsl_epoch_for_year() -> ee.Number:
+            year = ee.Number.parse(start.format("YYYY"))
+            epochs = ee.List([1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2025, 2030])
+
+            def pick_epoch(e, acc):
+                e_num = ee.Number(e)
+                acc_num = ee.Number(acc)
+                return ee.Number(ee.Algorithms.If(e_num.lte(year), e_num, acc_num))
+
+            return ee.Number(epochs.iterate(pick_epoch, ee.Number(epochs.get(0))))
+
+        def _ghsl_built_surface_fraction() -> ee.Image:
+            idx = _ghsl_epoch_for_year().format()
+            collection = ee.ImageCollection("JRC/GHSL/P2023A/GHS_BUILT_S")
+            filtered = collection.filter(ee.Filter.eq("system:index", idx))
+            image = ee.Image(
+                ee.Algorithms.If(
+                    filtered.size().gt(0),
+                    filtered.first(),
+                    collection.mosaic(),
+                )
+            )
+            return image.select(["built_surface"]).divide(10000).clamp(0, 1)
+
         if metric in {"population_count", "population_density"}:
             all_pop = ee.ImageCollection("WorldPop/GP/100m/pop").filterBounds(geom)
             has_any = all_pop.size().gt(0)
             year = ee.Number.parse(start.format("YYYY"))
-            y0 = ee.Date.fromYMD(year, 1, 1)
-            y1 = y0.advance(1, "year")
-            by_year = all_pop.filterDate(y0, y1)
-            latest = all_pop.sort("system:time_start", False).first()
+            by_year = all_pop.filter(ee.Filter.eq("year", year))
+            latest_year = ee.Number(ee.Algorithms.If(has_any, all_pop.aggregate_max("year"), year))
+            latest_year_stack = all_pop.filter(ee.Filter.eq("year", latest_year))
+            selected_stack = ee.ImageCollection(
+                ee.Algorithms.If(
+                    by_year.size().gt(0),
+                    by_year,
+                    latest_year_stack,
+                )
+            )
             pop = ee.Image(
                 ee.Algorithms.If(
                     has_any,
-                    ee.Algorithms.If(by_year.size().gt(0), by_year.mean(), latest),
+                    selected_stack.mosaic(),
                     _empty_masked_image("population"),
                 )
             ).select([0], ["population"])
@@ -1960,32 +2001,51 @@ def build_metric_image(metric: MetricId, start, end, geom):
             return image.clip(geom)
 
         if metric in {"building_presence", "building_height", "building_count_proxy"}:
-            collection = (
+            all_buildings = (
                 ee.ImageCollection("GOOGLE/Research/open-buildings-temporal/v1")
                 .filterBounds(geom)
-                .filterDate(start, end)
             )
-            has_images = collection.size().gt(0)
+            has_images = all_buildings.size().gt(0)
+            collection = all_buildings.filterDate(start, end)
+            latest_ts = ee.Number(ee.Algorithms.If(has_images, all_buildings.aggregate_max("system:time_start"), 0))
+            latest_snapshot = all_buildings.filter(ee.Filter.eq("system:time_start", latest_ts))
+            selected_collection = ee.ImageCollection(
+                ee.Algorithms.If(collection.size().gt(0), collection, latest_snapshot)
+            )
             source_band = {
                 "building_presence": "building_presence",
                 "building_height": "building_height",
                 "building_count_proxy": "building_fractional_count",
             }[metric]
-            image = collection.select([source_band]).mean().rename([band])
-            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+            open_image = selected_collection.select([source_band]).mean().rename([band])
+            if metric == "building_presence":
+                fallback = _ghsl_built_surface_fraction().rename([band])
+            elif metric == "building_height":
+                fallback = ee.ImageCollection("JRC/GHSL/P2023A/GHS_BUILT_H").mosaic().select(["built_height"], [band])
+            else:
+                # Built-surface area per 100m cell (0..1) scaled to 0..100.
+                fallback = _ghsl_built_surface_fraction().multiply(100).rename([band])
+            image = ee.Image(ee.Algorithms.If(has_images, open_image.unmask(fallback), fallback))
+            return image.clip(geom)
 
         if metric == "building_footprints_density":
             # Vector polygon reduction is very expensive at global tile scale.
             # Use temporal raster building-presence as a footprint-density proxy.
-            collection = (
+            all_buildings = (
                 ee.ImageCollection("GOOGLE/Research/open-buildings-temporal/v1")
                 .filterBounds(geom)
-                .filterDate(start, end)
-                .select(["building_presence"])
             )
-            has_images = collection.size().gt(0)
-            image = collection.mean().rename([band])
-            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+            has_images = all_buildings.size().gt(0)
+            collection = all_buildings.filterDate(start, end)
+            latest_ts = ee.Number(ee.Algorithms.If(has_images, all_buildings.aggregate_max("system:time_start"), 0))
+            latest_snapshot = all_buildings.filter(ee.Filter.eq("system:time_start", latest_ts))
+            selected_collection = ee.ImageCollection(
+                ee.Algorithms.If(collection.size().gt(0), collection, latest_snapshot)
+            ).select(["building_presence"])
+            open_image = selected_collection.mean().rename([band])
+            fallback = _ghsl_built_surface_fraction().rename([band])
+            image = ee.Image(ee.Algorithms.If(has_images, open_image.unmask(fallback), fallback))
+            return image.clip(geom)
 
         if metric == "travel_time_to_cities":
             image = ee.Image(
@@ -2054,26 +2114,36 @@ def build_metric_image(metric: MetricId, start, end, geom):
             has_images = collection.size().gt(0)
             image = collection.mean().multiply(0.01).rename([band])
             return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
-        if metric == "ocean_chlorophyll":
-            collection = (
+        if metric in {"ocean_chlorophyll", "ocean_poc"}:
+            source_band = "chlor_a" if metric == "ocean_chlorophyll" else "poc"
+            # MODIS ocean-color collections in EE currently end in 2022.
+            # For newer requested buckets, fall back to same-month climatology
+            # and finally to the latest available image to avoid blank overlays.
+            base = (
                 ee.ImageCollection("NASA/OCEANDATA/MODIS-Aqua/L3SMI")
+                .merge(ee.ImageCollection("NASA/OCEANDATA/MODIS-Terra/L3SMI"))
                 .filterBounds(geom)
-                .filterDate(start, end)
-                .select(["chlor_a"])
+                .select([source_band], [band])
             )
-            has_images = collection.size().gt(0)
-            image = collection.mean().rename([band])
-            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
-        if metric == "ocean_poc":
-            collection = (
-                ee.ImageCollection("NASA/OCEANDATA/MODIS-Aqua/L3SMI")
-                .filterBounds(geom)
-                .filterDate(start, end)
-                .select(["poc"])
-            )
-            has_images = collection.size().gt(0)
-            image = collection.mean().rename([band])
-            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+            requested = base.filterDate(start, end)
+            requested_has = requested.size().gt(0)
+
+            month = ee.Number.parse(start.format("M"))
+            climatology = base.filter(ee.Filter.calendarRange(month, month, "month"))
+            climatology_has = climatology.size().gt(0)
+
+            base_has = base.size().gt(0)
+            latest = ee.Image(ee.Algorithms.If(base_has, base.sort("system:time_start", False).first(), _empty_masked_image(band)))
+            fallback = ee.Image(
+                ee.Algorithms.If(
+                    climatology_has,
+                    climatology.mean(),
+                    latest,
+                )
+            ).rename([band])
+
+            image = ee.Image(ee.Algorithms.If(requested_has, requested.mean(), fallback)).rename([band])
+            return image.clip(geom)
 
         image = ee.Image("NOAA/NGDC/ETOPO1").select(["bedrock"]).rename([band])
         return image.clip(geom)
@@ -2352,7 +2422,7 @@ class _BoundedTTLCache(dict):
 
 _tile_template_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
-_tile_cache_version = 27
+_tile_cache_version = 32
 
 
 def _tile_visualization_range(metric_def: MetricDefinition) -> tuple[float, float]:

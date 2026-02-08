@@ -80,3 +80,29 @@ def test_tile_template_rejects_invalid_date_bucket_format():
             assert res.status_code == 400
 
     asyncio.run(run())
+
+
+def test_tile_template_snow_cover_uses_default_opacity():
+    app = _import_fresh_app()
+
+    async def run() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            ndvi_res = await client.get(
+                "/api/v1/tiles/template",
+                params={"metric": "ndvi", "date_bucket": "2024-02", "granularity": "monthly"},
+            )
+            assert ndvi_res.status_code == 200
+            ndvi_data = ndvi_res.json()
+
+            snow_res = await client.get(
+                "/api/v1/tiles/template",
+                params={"metric": "snow_cover", "date_bucket": "2024-02", "granularity": "monthly"},
+            )
+            assert snow_res.status_code == 200
+            snow_data = snow_res.json()
+
+            assert snow_data["opacity"] == ndvi_data["opacity"]
+            assert snow_data["opacity"] > 0.0
+
+    asyncio.run(run())

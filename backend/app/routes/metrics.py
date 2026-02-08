@@ -20,7 +20,7 @@ router = APIRouter()
 # Used to invalidate cached metric observations in SQLite when computation logic changes.
 # Bump this when making non-backwards-compatible changes to `compute_time_series` inputs
 # or any metric implementation in `app/gee.py`.
-METRICS_CACHE_SOURCE = "earth_engine:v6"
+METRICS_CACHE_SOURCE = "earth_engine:v10"
 
 
 def _parse_month_from_bucket(bucket: str) -> int | None:
