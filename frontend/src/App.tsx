@@ -28,6 +28,7 @@ const ApiDocsPage = lazy(async () => ({
 function App() {
   return (
     <Routes>
+      <Route path="/docs" element={<ApiDocsPage />} />
       <Route path="/" element={<Layout />}>
         <Route index element={<Navigate to="/map" replace />} />
         <Route path="map" element={<FullMapPage />} />
@@ -38,7 +39,6 @@ function App() {
         <Route path="map/:regionId" element={<MapPage />} />
         <Route path="compare/:regionId" element={<CompareView />} />
         <Route path="exports" element={<ExportCenter />} />
-        <Route path="docs" element={<ApiDocsPage />} />
       </Route>
     </Routes>
   );

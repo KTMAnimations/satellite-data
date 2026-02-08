@@ -97,7 +97,11 @@ export function Layout() {
         </nav>
 
         <div className="header-right">
-          <Link to="/docs" className="header-link">
+          <Link
+            to="/docs"
+            state={{ from: `${location.pathname}${location.search}` }}
+            className="header-link"
+          >
             Docs
           </Link>
         </div>
