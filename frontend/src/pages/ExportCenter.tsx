@@ -29,6 +29,8 @@ export function ExportCenter() {
   const [endDate, setEndDate] = useState('2023-12-31');
   const [animationMetric, setAnimationMetric] = useState<MetricType>('nightlights');
   const [animationFormat, setAnimationFormat] = useState<'gif'>('gif');
+  const [animationIncludeBasemap, setAnimationIncludeBasemap] = useState(true);
+  const [animationOverlayOpacity, setAnimationOverlayOpacity] = useState(0.60);
   const exportQueue = useStore((state) => state.exportQueue);
   const addExportToQueue = useStore((state) => state.addExportToQueue);
   const setExportQueue = useStore((state) => state.setExportQueue);
@@ -69,6 +71,8 @@ export function ExportCenter() {
         region_id: selectedRegionId,
         metric: animationMetric,
         format: animationFormat,
+        include_basemap: animationIncludeBasemap,
+        overlay_opacity: animationOverlayOpacity,
         start_date: startDate,
         end_date: endDate,
         frame_duration_ms: 500,
@@ -269,6 +273,28 @@ export function ExportCenter() {
                   </label>
                 </div>
               </div>
+              <div className="form-group">
+                <label className="checkbox-label checkbox-label-inline">
+                  <input
+                    type="checkbox"
+                    checked={animationIncludeBasemap}
+                    onChange={(e) => setAnimationIncludeBasemap(e.target.checked)}
+                  />
+                  Include background map
+                </label>
+              </div>
+              <div className="form-group">
+                <label>Overlay Opacity: {Math.round(animationOverlayOpacity * 100)}%</label>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value={animationOverlayOpacity}
+                  disabled={!animationIncludeBasemap}
+                  onChange={(e) => setAnimationOverlayOpacity(Number(e.target.value))}
+                />
+              </div>
             </>
           )}
 
@@ -284,7 +310,7 @@ export function ExportCenter() {
           >
             {pdfMutation.isPending || csvMutation.isPending || animationMutation.isPending
               ? 'Generating...'
-              : `Generate ${exportFormat.toUpperCase()}`}
+              : `Generate ${exportFormat === 'animation' ? 'Animation' : exportFormat.toUpperCase()}`}
           </button>
         </div>
 

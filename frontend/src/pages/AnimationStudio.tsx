@@ -69,6 +69,8 @@ export function AnimationStudio() {
   const [exportFormat, setExportFormat] = useState<'gif'>('gif');
   const [frameDuration, setFrameDuration] = useState(500);
   const [resolution, setResolution] = useState({ width: 800, height: 600 });
+  const [includeBasemap, setIncludeBasemap] = useState(true);
+  const [overlayOpacity, setOverlayOpacity] = useState(0.60);
   const [exportId, setExportId] = useState<string | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
@@ -124,6 +126,8 @@ export function AnimationStudio() {
         region_id: selectedRegion!.id,
         metric: selectedMetric,
         format: exportFormat,
+        include_basemap: includeBasemap,
+        overlay_opacity: overlayOpacity,
         start_date: formatDateYYYYMMDD(dateRange.start) ?? dateRange.start.toISOString().split('T')[0],
         end_date: formatDateYYYYMMDD(dateRange.end) ?? dateRange.end.toISOString().split('T')[0],
         frame_duration_ms: frameDuration,
@@ -391,6 +395,33 @@ export function AnimationStudio() {
                   onChange={(e) => setFrameDuration(Number(e.target.value))}
                 />
                 <span className="value">{frameDuration}ms</span>
+              </div>
+            </div>
+
+            <div className="setting-group">
+              <label className="setting-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={includeBasemap}
+                  onChange={(e) => setIncludeBasemap(e.target.checked)}
+                />
+                Include Background Map
+              </label>
+            </div>
+
+            <div className="setting-group">
+              <label>Overlay Opacity</label>
+              <div className="slider-with-value">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value={overlayOpacity}
+                  disabled={!includeBasemap}
+                  onChange={(e) => setOverlayOpacity(Number(e.target.value))}
+                />
+                <span className="value">{Math.round(overlayOpacity * 100)}%</span>
               </div>
             </div>
 
