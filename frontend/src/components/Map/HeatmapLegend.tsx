@@ -1,6 +1,7 @@
 import type { Granularity, MetricType } from '../../types';
 import { useTileTemplate } from '../../hooks/useTileTemplate';
 import { getMetricLabel } from '../../config/metrics';
+import { COLORMAPS } from './metricStyles';
 import './HeatmapLegend.css';
 
 interface HeatmapLegendProps {
@@ -153,9 +154,12 @@ export function HeatmapLegend({
   const dateBucket = tileDate && tileGranularity ? toDateBucket(tileDate, tileGranularity) : undefined;
 
   const { data: tileTemplate } = useTileTemplate(metric, dateBucket, tileGranularity);
+  const fallbackGradient = COLORMAPS[metric]?.length
+    ? `linear-gradient(90deg, ${COLORMAPS[metric]!.join(', ')})`
+    : resolvedConfig.gradient;
 
   const gradient =
-    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : resolvedConfig.gradient;
+    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : fallbackGradient;
 
   return (
     <div className="heatmap-legend">
@@ -203,9 +207,12 @@ export function HeatmapLegendCompact({
   const dateBucket = tileDate && tileGranularity ? toDateBucket(tileDate, tileGranularity) : undefined;
 
   const { data: tileTemplate } = useTileTemplate(metric, dateBucket, tileGranularity);
+  const fallbackGradient = COLORMAPS[metric]?.length
+    ? `linear-gradient(90deg, ${COLORMAPS[metric]!.join(', ')})`
+    : resolvedConfig.gradient;
 
   const gradient =
-    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : resolvedConfig.gradient;
+    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : fallbackGradient;
 
   return (
     <div className="heatmap-legend-compact">

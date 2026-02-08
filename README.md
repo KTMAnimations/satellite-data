@@ -6,7 +6,7 @@ This repo is optimized for **personal/local use** and runs **without Docker**:
 - **Backend:** FastAPI + SQLite + Google Earth Engine (server-side compute + map tiles)
 - **Frontend:** React + Vite + Leaflet
 
-## Quickstart (no Docker)
+## Quickstart (no Docker, no venv)
 
 ### 1) Configure environment
 
@@ -19,15 +19,21 @@ For Earth Engine you can either:
 ### 2) Backend
 
 ```bash
+# from repo root:
+# cd /Users/kaivaid/satellite-data
+
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+python3 -m pip install --user -r requirements.txt
 
 # predefined regions are auto-seeded on first API request (if missing)
 # (optional) you can also run the seeder manually:
 # python ../scripts/seed_regions.py
 
-uvicorn app.main:app --reload --port 8000
+# run from backend/ directory
+python3 -m uvicorn app.main:app --reload --port 8000
+
+# or run from repo root without cd:
+# python3 -m uvicorn --app-dir backend app.main:app --reload --port 8000
 ```
 
 ### 3) Frontend

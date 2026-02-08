@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TimeSeriesChart } from '../../components/Charts/TimeSeriesChart';
+import { emptyMetricRecord } from '../../config/metrics';
 
 // Mock D3 to prevent canvas rendering issues
 vi.mock('d3', async () => {
@@ -31,23 +32,7 @@ describe('TimeSeriesChart', () => {
   });
 
   const emptyMetric = { unit: '', data: [] };
-  const baseData = {
-    nightlights: { ...emptyMetric },
-    ndvi: { ...emptyMetric },
-    urban_density: { ...emptyMetric },
-    parking: { ...emptyMetric },
-    land_cover: { ...emptyMetric },
-    surface_water: { ...emptyMetric },
-    no2: { ...emptyMetric },
-    temperature: { ...emptyMetric },
-    precipitation: { ...emptyMetric },
-    aerosol: { ...emptyMetric },
-    cropland: { ...emptyMetric },
-    evapotranspiration: { ...emptyMetric },
-    soil_moisture: { ...emptyMetric },
-    impervious: { ...emptyMetric },
-    canopy_height: { ...emptyMetric },
-  } as const;
+  const baseData = emptyMetricRecord({ ...emptyMetric });
 
   it('shows empty-state message when selected metrics have no data', () => {
     const { container } = render(

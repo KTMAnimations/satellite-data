@@ -68,7 +68,7 @@ test.describe('Global metrics & time periods', () => {
       // Ensure the map metric selector has all metric options.
       const metricSelect = page.locator('select.metric-select');
       await expect(metricSelect).toBeVisible();
-      expect(await metricSelect.locator('option').count()).toBeGreaterThan(15);
+      await expect(metricSelect.locator('option')).toHaveCount(METRIC_OPTIONS.length);
     });
   }
 

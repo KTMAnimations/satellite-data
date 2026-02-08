@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SeasonalBarChart } from '../../components/Charts/SeasonalBarChart';
+import { emptyMetricRecord } from '../../config/metrics';
 
 // Mock D3
 vi.mock('d3', async () => {
@@ -27,23 +28,7 @@ vi.mock('d3', async () => {
 });
 
 describe('SeasonalBarChart', () => {
-  const emptyAverage = {
-    ndvi: null,
-    nightlights: null,
-    urban_density: null,
-    parking: null,
-    land_cover: null,
-    surface_water: null,
-    no2: null,
-    temperature: null,
-    precipitation: null,
-    aerosol: null,
-    cropland: null,
-    evapotranspiration: null,
-    soil_moisture: null,
-    impervious: null,
-    canopy_height: null,
-  } as const;
+  const emptyAverage = emptyMetricRecord<number | null>(null);
 
   it('shows empty-state message when no seasonal data is available', () => {
     render(
