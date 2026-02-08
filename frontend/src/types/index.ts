@@ -227,3 +227,63 @@ export interface Preset {
 export interface PresetListResponse {
   presets: Preset[];
 }
+
+// Admin / telemetry
+export interface AdminIpSummary {
+  ip_address: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  instance_count: number;
+  event_count: number;
+}
+
+export interface AdminIpListResponse {
+  ips: AdminIpSummary[];
+  total: number;
+}
+
+export interface AdminInstanceSummary {
+  instance_id: string;
+  device_id: string | null;
+  user_agent: string | null;
+  accept_language: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  last_path: string | null;
+  event_count: number;
+}
+
+export interface AdminIpDetailResponse {
+  ip: AdminIpSummary;
+  instances: AdminInstanceSummary[];
+}
+
+export interface AdminInstanceDetailResponse {
+  instance_id: string;
+  device_id: string | null;
+  ip_address: string;
+  user_agent: string | null;
+  accept_language: string | null;
+  meta: Record<string, unknown>;
+  first_seen_at: string;
+  last_seen_at: string;
+  last_path: string | null;
+  total_events: number;
+  event_type_counts: Record<string, number>;
+  distinct_paths: number;
+}
+
+export interface AdminTelemetryEvent {
+  id: number;
+  event_type: string;
+  client_ts_ms: number | null;
+  received_at: string;
+  path: string | null;
+  data: Record<string, unknown> | null;
+}
+
+export interface AdminInstanceEventsResponse {
+  instance_id: string;
+  events: AdminTelemetryEvent[];
+  total: number;
+}

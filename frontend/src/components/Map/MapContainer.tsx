@@ -13,6 +13,7 @@ import { shallow } from 'zustand/shallow';
 import { useStore } from '../../store';
 import type { Granularity, MapState, Region, GeoJSONPolygon, MetricType, TileTemplateResponse } from '../../types';
 import api from '../../services/api';
+import { telemetry } from '../../services/telemetry';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
 import { DEFAULT_METRIC_OVERLAY_MIN_ZOOM, MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
 import { formatApiError } from '../../utils/errors';
@@ -170,6 +171,12 @@ function MapEvents({ contextRegionId }: { contextRegionId: string | null }) {
       }, 150);
     },
     zoomend: (e) => {
+      const center = e.target.getCenter();
+      telemetry.log('map_zoom', {
+        center: [center.lat, center.lng],
+        zoom: e.target.getZoom(),
+        contextRegionId,
+      });
       patchRef.current = { ...patchRef.current, zoom: e.target.getZoom() };
       if (pendingRef.current) clearTimeout(pendingRef.current);
       pendingRef.current = setTimeout(() => {

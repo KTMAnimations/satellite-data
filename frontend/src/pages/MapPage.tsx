@@ -7,6 +7,7 @@ import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
 import { useRegion } from '../hooks/useRegion';
 import api from '../services/api';
+import { telemetry } from '../services/telemetry';
 import type { Map as LeafletMap } from 'leaflet';
 import type { Granularity, MetricType } from '../types';
 import {
@@ -225,6 +226,14 @@ export function MapPage() {
             onChange={(e) => {
               const nextMetric = e.target.value as MetricType;
               if (nextMetric === selectedMapMetric) return;
+              const { center, zoom } = useStore.getState().mapState;
+              telemetry.log('map_metric_select', {
+                metric: nextMetric,
+                prev_metric: selectedMapMetric,
+                center,
+                zoom,
+                region_id: regionId ?? null,
+              });
               // Cancel in-flight metric/tile-template queries for the previous metric so we
               // don't keep doing backend work after the user switches.
               if (regionId) {

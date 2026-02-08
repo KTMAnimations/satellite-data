@@ -15,6 +15,10 @@ import type {
   MetricType,
   TileTemplateResponse,
   TileCacheClearResponse,
+  AdminIpDetailResponse,
+  AdminIpListResponse,
+  AdminInstanceDetailResponse,
+  AdminInstanceEventsResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -35,6 +39,12 @@ class APIClient {
       timeout: 30000,
       paramsSerializer: { indexes: null },
     });
+  }
+
+  private adminHeaders(token: string | undefined): Record<string, string> | undefined {
+    const t = (token ?? '').trim();
+    if (!t) return undefined;
+    return { Authorization: `Bearer ${t}` };
   }
 
   // Regions
@@ -148,6 +158,54 @@ class APIClient {
 
   async clearTileCacheMetric(metric: MetricType, options?: RequestOptions): Promise<TileCacheClearResponse> {
     const response = await this.client.delete<TileCacheClearResponse>(`/tiles/cache/${metric}`, {
+      signal: options?.signal,
+    });
+    return response.data;
+  }
+
+  // Admin
+  async adminListIps(
+    params?: { limit?: number; offset?: number },
+    token?: string,
+    options?: RequestOptions
+  ): Promise<AdminIpListResponse> {
+    const response = await this.client.get<AdminIpListResponse>('/admin/ips', {
+      params,
+      headers: this.adminHeaders(token),
+      signal: options?.signal,
+    });
+    return response.data;
+  }
+
+  async adminGetIpDetail(ipAddress: string, token?: string, options?: RequestOptions): Promise<AdminIpDetailResponse> {
+    const response = await this.client.get<AdminIpDetailResponse>(`/admin/ips/${encodeURIComponent(ipAddress)}`, {
+      headers: this.adminHeaders(token),
+      signal: options?.signal,
+    });
+    return response.data;
+  }
+
+  async adminGetInstanceDetail(
+    instanceId: string,
+    token?: string,
+    options?: RequestOptions
+  ): Promise<AdminInstanceDetailResponse> {
+    const response = await this.client.get<AdminInstanceDetailResponse>(`/admin/instances/${instanceId}`, {
+      headers: this.adminHeaders(token),
+      signal: options?.signal,
+    });
+    return response.data;
+  }
+
+  async adminListInstanceEvents(
+    instanceId: string,
+    params?: { limit?: number; offset?: number },
+    token?: string,
+    options?: RequestOptions
+  ): Promise<AdminInstanceEventsResponse> {
+    const response = await this.client.get<AdminInstanceEventsResponse>(`/admin/instances/${instanceId}/events`, {
+      params,
+      headers: this.adminHeaders(token),
       signal: options?.signal,
     });
     return response.data;

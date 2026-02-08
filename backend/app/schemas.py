@@ -226,3 +226,93 @@ class PresetResponse(BaseModel):
 
 class PresetListResponse(BaseModel):
     presets: list[PresetResponse]
+
+
+class TelemetryRegisterRequest(BaseModel):
+    instance_id: str = Field(..., min_length=1, max_length=64)
+    device_id: str | None = Field(None, max_length=64)
+    meta: dict[str, Any] = Field(default_factory=dict)
+    path: str | None = Field(None, max_length=2048)
+
+
+class TelemetryRegisterResponse(BaseModel):
+    instance_id: str
+    ip_address: str
+    first_seen_at: datetime
+    last_seen_at: datetime
+
+
+class TelemetryEventIn(BaseModel):
+    type: str = Field(..., min_length=1, max_length=64)
+    client_ts_ms: int | None = Field(None, ge=0)
+    path: str | None = Field(None, max_length=2048)
+    data: dict[str, Any] | None = None
+
+
+class TelemetryEventsRequest(BaseModel):
+    instance_id: str = Field(..., min_length=1, max_length=64)
+    device_id: str | None = Field(None, max_length=64)
+    events: list[TelemetryEventIn] = Field(..., min_length=1, max_length=200)
+
+
+class TelemetryEventsResponse(BaseModel):
+    inserted: int
+
+
+class AdminIpSummary(BaseModel):
+    ip_address: str
+    first_seen_at: datetime
+    last_seen_at: datetime
+    instance_count: int
+    event_count: int
+
+
+class AdminIpListResponse(BaseModel):
+    ips: list[AdminIpSummary]
+    total: int
+
+
+class AdminInstanceSummary(BaseModel):
+    instance_id: str
+    device_id: str | None
+    user_agent: str | None
+    accept_language: str | None
+    first_seen_at: datetime
+    last_seen_at: datetime
+    last_path: str | None
+    event_count: int
+
+
+class AdminIpDetailResponse(BaseModel):
+    ip: AdminIpSummary
+    instances: list[AdminInstanceSummary]
+
+
+class AdminInstanceDetailResponse(BaseModel):
+    instance_id: str
+    device_id: str | None
+    ip_address: str
+    user_agent: str | None
+    accept_language: str | None
+    meta: dict[str, Any]
+    first_seen_at: datetime
+    last_seen_at: datetime
+    last_path: str | None
+    total_events: int
+    event_type_counts: dict[str, int]
+    distinct_paths: int
+
+
+class AdminTelemetryEvent(BaseModel):
+    id: int
+    event_type: str
+    client_ts_ms: int | None
+    received_at: datetime
+    path: str | None
+    data: dict[str, Any] | None
+
+
+class AdminInstanceEventsResponse(BaseModel):
+    instance_id: str
+    events: list[AdminTelemetryEvent]
+    total: int

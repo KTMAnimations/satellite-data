@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.schemas import MetricId
@@ -61,3 +61,30 @@ class MetricObservation(Base):
     unit: Mapped[str] = mapped_column(String(50), nullable=False)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="earth_engine")
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+
+class TelemetryInstance(Base):
+    __tablename__ = "telemetry_instances"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    device_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    ip_address: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    accept_language: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    meta_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False, index=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False, index=True)
+    last_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class TelemetryEvent(Base):
+    __tablename__ = "telemetry_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    instance_id: Mapped[str] = mapped_column(String(64), ForeignKey("telemetry_instances.id"), nullable=False, index=True)
+    ip_address: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    client_ts_ms: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False, index=True)
+    path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    data_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")

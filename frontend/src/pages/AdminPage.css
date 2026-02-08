@@ -1,0 +1,258 @@
+.admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem 2rem 2rem;
+}
+
+.admin-header {
+  padding: 1.25rem 1.5rem;
+}
+
+.admin-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.admin-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+.admin-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.admin-auth {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-auth-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.admin-auth-input {
+  min-width: 320px;
+}
+
+.admin-header-links {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-body {
+  padding: 1.25rem 1.5rem;
+}
+
+.admin-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-muted {
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+}
+
+.admin-error {
+  color: var(--metric-alert);
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+}
+
+.admin-kv {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.5rem 1rem;
+  padding: 0.75rem;
+  background: var(--surface-recessed);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin: 0.75rem 0 1rem;
+}
+
+.admin-k {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-right: 0.35rem;
+}
+
+.admin-subtitle {
+  margin: 1.25rem 0 0.5rem;
+}
+
+.admin-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+
+.admin-table th {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: var(--surface-recessed);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.admin-row-clickable {
+  cursor: pointer;
+}
+
+.admin-row-clickable:hover {
+  background: var(--accent-primary-light);
+}
+
+.admin-ellipsis {
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-pre {
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-recessed);
+  padding: 0.75rem;
+}
+
+.admin-pre pre {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.admin-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-log-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+}
+
+.admin-log-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-log-ts {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.admin-log-delta {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.admin-log-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.admin-log-type {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.admin-log-path {
+  color: var(--text-secondary);
+}
+
+.admin-log-data {
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-recessed);
+  padding: 0.5rem 0.6rem;
+}
+
+.admin-log-data pre {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 900px) {
+  .admin-page {
+    padding: 1rem;
+  }
+
+  .admin-auth-input {
+    min-width: 220px;
+    width: 100%;
+  }
+
+  .admin-log-row {
+    grid-template-columns: 1fr;
+  }
+}
+

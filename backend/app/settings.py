@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     environment: Literal["development", "production"] = "development"
     debug: bool = True
+    admin_token: str | None = None
 
     # CORS
     cors_origins: list[str] = [

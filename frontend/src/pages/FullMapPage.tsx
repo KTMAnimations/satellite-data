@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Map as LeafletMap } from 'leaflet';
+import { useSearchParams } from 'react-router-dom';
 import { MapView } from '../components/Map/MapContainer';
 import { HeatmapLegend } from '../components/Map/HeatmapLegend';
 import { TimeSlider } from '../components/Charts/TimeSlider';
 import { useStore } from '../store';
 import api from '../services/api';
+import { telemetry } from '../services/telemetry';
 import type { Granularity, MetricType } from '../types';
 import {
   estimateBucketCount,
@@ -50,6 +52,7 @@ export function FullMapPage() {
   const { dateRange, setDateRange } = useStore();
   const queryClient = useQueryClient();
   const fullscreenTargetRef = useRef<HTMLDivElement | null>(null);
+  const [searchParams] = useSearchParams();
 
   const [selectedMapMetric, setSelectedMapMetric] = useState<MetricType>('nightlights');
   const [selectedGranularity, setSelectedGranularity] = useState<Granularity | null>(null);
@@ -62,6 +65,27 @@ export function FullMapPage() {
   const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenEnabled = typeof document !== 'undefined' && document.fullscreenEnabled;
+
+  useEffect(() => {
+    const metricParam = (searchParams.get('metric') ?? '').trim();
+    if (!metricParam) return;
+    const isValid = METRIC_OPTIONS.some((opt) => opt.value === metricParam);
+    if (!isValid) return;
+    setSelectedMapMetric((prev) => (prev === metricParam ? prev : (metricParam as MetricType)));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    const lat = Number((searchParams.get('lat') ?? '').trim());
+    const lng = Number((searchParams.get('lng') ?? '').trim());
+    const zoom = Number((searchParams.get('zoom') ?? '').trim());
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return;
+
+    mapInstance.setView([lat, lng], zoom, { animate: false });
+    useStore.getState().updateMapState({ center: [lat, lng], zoom });
+  }, [mapInstance, searchParams]);
 
   const supportedGranularities = METRIC_SUPPORTED_GRANULARITIES[selectedMapMetric];
   const recommendedGranularity = getRecommendedGranularity(selectedMapMetric, dateRange);
@@ -205,6 +229,14 @@ export function FullMapPage() {
             onChange={(e) => {
               const nextMetric = e.target.value as MetricType;
               if (nextMetric === selectedMapMetric) return;
+              const { center, zoom } = useStore.getState().mapState;
+              telemetry.log('map_metric_select', {
+                metric: nextMetric,
+                prev_metric: selectedMapMetric,
+                center,
+                zoom,
+                region_id: null,
+              });
               void queryClient.cancelQueries({ queryKey: ['tiles', 'template', selectedMapMetric] });
               setSelectedMapMetric(nextMetric);
             }}

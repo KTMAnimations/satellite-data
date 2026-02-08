@@ -27,6 +27,27 @@ WEB_MERCATOR_MAX_LAT = 85.05112878
 # (western hemisphere only) depending on Earth Engine tile rendering internals.
 GLOBAL_TILE_BOUNDS_WGS84 = (-179.999, -WEB_MERCATOR_MAX_LAT, 179.999, WEB_MERCATOR_MAX_LAT)
 
+# CHIRPS precipitation coverage is approximately 50°S..50°N.
+# Feather the transition to ERA5 over a latitude band so the source switch
+# does not appear as a hard horizontal seam near North America and Europe.
+_PRECIP_CHIRPS_MAX_ABS_LAT = 50.0
+_PRECIP_CHIRPS_ERA5_BLEND_HALF_WIDTH_DEG = 6.0
+
+
+def _precipitation_blend_lat_bounds() -> tuple[float, float]:
+    start = _PRECIP_CHIRPS_MAX_ABS_LAT - _PRECIP_CHIRPS_ERA5_BLEND_HALF_WIDTH_DEG
+    end = _PRECIP_CHIRPS_MAX_ABS_LAT + _PRECIP_CHIRPS_ERA5_BLEND_HALF_WIDTH_DEG
+    return start, end
+
+
+def _precipitation_era5_weight_for_abs_lat(abs_lat: float) -> float:
+    start, end = _precipitation_blend_lat_bounds()
+    if abs_lat <= start:
+        return 0.0
+    if abs_lat >= end:
+        return 1.0
+    return (abs_lat - start) / (end - start)
+
 
 @dataclass(frozen=True)
 class MetricDefinition:
@@ -496,7 +517,8 @@ def build_metric_image(metric: MetricId, start, end, geom):
 
     if metric == "precipitation":
         # CHIRPS has better spatial resolution but only covers ~50°S..50°N.
-        # Blend in ERA5-Land precipitation to avoid a hard latitude cutoff.
+        # Blend in ERA5-Land precipitation with a feathered latitude transition
+        # so there is no hard source seam at the CHIRPS coverage edge.
         chirps = (
             ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
             .filterBounds(geom)
@@ -518,7 +540,25 @@ def build_metric_image(metric: MetricId, start, end, geom):
 
         chirps_img = ee.Image(ee.Algorithms.If(chirps_has_images, chirps_img, _empty_masked_image(band)))
         era5_img = ee.Image(ee.Algorithms.If(era5_has_images, era5_img, _empty_masked_image(band)))
-        return chirps_img.unmask(era5_img).clip(geom)
+
+        has_both = chirps_has_images.And(era5_has_images)
+        blend_start_lat, blend_end_lat = _precipitation_blend_lat_bounds()
+        abs_lat = ee.Image.pixelLonLat().select(["latitude"]).abs()
+        era5_weight = abs_lat.subtract(blend_start_lat).divide(blend_end_lat - blend_start_lat).clamp(0, 1)
+        chirps_weight = ee.Image(1).subtract(era5_weight)
+
+        blended = (
+            chirps_img.unmask(0)
+            .multiply(chirps_weight)
+            .add(era5_img.unmask(0).multiply(era5_weight))
+            .rename([band])
+        )
+        combined_mask = chirps_img.mask().unmask(0).max(era5_img.mask().unmask(0))
+        blended = blended.updateMask(combined_mask.gt(0))
+
+        fallback = chirps_img.unmask(era5_img)
+        image = ee.Image(ee.Algorithms.If(has_both, blended, fallback))
+        return image.clip(geom)
 
     if metric == "aerosol":
         # Sentinel-5P (S5P) collections are per-orbit (many images per day). A
