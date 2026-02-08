@@ -61,7 +61,7 @@ test.describe('Overlay Tiles', () => {
     test.setTimeout(420_000);
 
     const metrics = Object.keys(METRIC_DEFAULT_GRANULARITY) as MetricType[];
-    expect(metrics.length).toBe(17);
+    expect(metrics.length).toBe(75);
 
     // Use a US metro coordinate so all datasets have a fair chance of returning data.
     const phoenix = { lat: 33.4484, lon: -112.074 };

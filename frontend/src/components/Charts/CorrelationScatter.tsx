@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricType } from '../../types';
+import { METRIC_COLORS, METRIC_LABELS } from '../../config/metrics';
 import './Charts.css';
 import { ensureGlobalChartTooltip, hideGlobalChartTooltip, showGlobalChartTooltip } from './chartTooltip';
 
@@ -19,42 +20,6 @@ interface CorrelationScatterProps {
   height?: number;
   showTrendline?: boolean;
 }
-
-const METRIC_LABELS: Record<MetricType, string> = {
-  ndvi: 'NDVI',
-  nightlights: 'Nighttime Lights',
-  urban_density: 'Urban Density',
-  parking: 'Parking Occupancy',
-  land_cover: 'Land Cover',
-  surface_water: 'Surface Water',
-  no2: 'NO₂',
-  temperature: 'Temperature',
-  precipitation: 'Precipitation',
-  aerosol: 'Aerosol',
-  cropland: 'Cropland',
-  evapotranspiration: 'Evapotranspiration',
-  soil_moisture: 'Soil Moisture',
-  impervious: 'Impervious Surface',
-  canopy_height: 'Canopy Height',
-};
-
-const METRIC_COLORS: Record<MetricType, string> = {
-  ndvi: '#059669',           // Emerald-600
-  nightlights: '#D97706',    // Amber-600
-  urban_density: '#7C3AED',  // Violet-600
-  parking: '#0D9488',        // Teal-600
-  land_cover: '#9333EA',     // Purple-600
-  surface_water: '#2563EB',  // Blue-600
-  no2: '#6366F1',            // Indigo-600
-  temperature: '#EF4444',    // Red-500
-  precipitation: '#3B82F6',  // Blue-500
-  aerosol: '#92400E',        // Brown-600
-  cropland: '#16A34A',       // Green-600
-  evapotranspiration: '#0D9488', // Teal-600
-  soil_moisture: '#7C3AED',  // Violet-600
-  impervious: '#6B7280',     // Gray-500
-  canopy_height: '#15803D',  // Green-700
-};
 
 // Calculate linear regression
 function linearRegression(data: DataPoint[]): { slope: number; intercept: number; r2: number } {

@@ -2,6 +2,7 @@ import { memo, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { SeasonalSummary, MetricType } from '../../types';
 import { clamp01, normalizeMetricValue } from '../../utils/metrics';
+import { ALL_METRIC_TYPES, METRIC_LABELS } from '../../config/metrics';
 import './Charts.css';
 
 interface SeasonalBarChartProps {
@@ -11,30 +12,12 @@ interface SeasonalBarChartProps {
   height?: number;
 }
 
-const METRIC_LABELS: Record<MetricType, string> = {
-  ndvi: 'NDVI',
-  nightlights: 'Nighttime Lights',
-  urban_density: 'Urban Density',
-  parking: 'Parking',
-  land_cover: 'Land Cover',
-  surface_water: 'Surface Water',
-  no2: 'NO₂',
-  temperature: 'Temperature',
-  precipitation: 'Precipitation',
-  aerosol: 'Aerosol',
-  cropland: 'Cropland',
-  evapotranspiration: 'Evapotranspiration',
-  soil_moisture: 'Soil Moisture',
-  impervious: 'Impervious Surface',
-  canopy_height: 'Canopy Height',
-};
-
 export const SeasonalBarChart = memo(function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 300 }: SeasonalBarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Prepare data - only include metrics that are selected AND have data in BOTH seasons
   // If no selectedMetrics provided, show all metrics that have data
-  const allMetrics: MetricType[] = Object.keys(METRIC_LABELS) as MetricType[];
+  const allMetrics: MetricType[] = ALL_METRIC_TYPES;
   const metricsToShow = selectedMetrics && selectedMetrics.length > 0 ? selectedMetrics : allMetrics;
   const chartData = metricsToShow
     .filter(

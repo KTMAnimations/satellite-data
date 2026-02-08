@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 
 
 MetricId = Literal[
-    "ndvi",
     "nightlights",
+    "ndvi",
     "urban_density",
     "parking",
     "land_cover",
@@ -22,6 +22,66 @@ MetricId = Literal[
     "soil_moisture",
     "impervious",
     "canopy_height",
+    "co_column_density",
+    "so2_column_density",
+    "o3_total_column",
+    "tropospheric_ozone_column",
+    "methane_mixing_ratio",
+    "formaldehyde_column",
+    "aerosol_layer_height",
+    "cloud_fraction",
+    "cloud_top_height",
+    "aod_550",
+    "active_fire_hotspots",
+    "burned_area_fraction",
+    "burn_day_of_year",
+    "river_flood_depth_rp100",
+    "water_recurrence",
+    "snow_cover",
+    "snow_albedo",
+    "terrestrial_water_storage",
+    "drought_pdsi",
+    "climatic_water_deficit",
+    "runoff",
+    "snow_water_equivalent",
+    "vegetation_water_deficit",
+    "wind_speed_climate",
+    "evi_modis",
+    "lai",
+    "fpar",
+    "gpp_8day",
+    "npp_annual",
+    "phenology_greenup",
+    "phenology_senescence",
+    "landsat_ndwi_8day",
+    "landsat_evi_8day",
+    "forest_loss_year",
+    "forest_loss_fraction",
+    "tree_cover_2000",
+    "forest_gain",
+    "population_count_ghsl",
+    "population_count_worldpop",
+    "population_density_gpw",
+    "built_height",
+    "built_volume_total",
+    "built_volume_nonres",
+    "degree_of_urbanization",
+    "radar_backscatter_vv",
+    "radar_backscatter_vh",
+    "elevation_dem30",
+    "elevation_srtm",
+    "dw_trees",
+    "dw_grass",
+    "dw_flooded_vegetation",
+    "dw_shrub_scrub",
+    "dw_bare",
+    "dw_snow_ice",
+    "wind_speed_10m",
+    "relative_humidity_2m",
+    "surface_pressure",
+    "solar_radiation_down",
+    "snow_depth_era5",
+    "runoff_era5",
 ]
 
 
@@ -71,8 +131,8 @@ class MetricData(BaseModel):
 
 class SeasonalAverage(BaseModel):
     # Keep keys stable for the frontend; values are null when unavailable.
-    ndvi: float | None = None
     nightlights: float | None = None
+    ndvi: float | None = None
     urban_density: float | None = None
     parking: float | None = None
     land_cover: float | None = None
@@ -86,6 +146,66 @@ class SeasonalAverage(BaseModel):
     soil_moisture: float | None = None
     impervious: float | None = None
     canopy_height: float | None = None
+    co_column_density: float | None = None
+    so2_column_density: float | None = None
+    o3_total_column: float | None = None
+    tropospheric_ozone_column: float | None = None
+    methane_mixing_ratio: float | None = None
+    formaldehyde_column: float | None = None
+    aerosol_layer_height: float | None = None
+    cloud_fraction: float | None = None
+    cloud_top_height: float | None = None
+    aod_550: float | None = None
+    active_fire_hotspots: float | None = None
+    burned_area_fraction: float | None = None
+    burn_day_of_year: float | None = None
+    river_flood_depth_rp100: float | None = None
+    water_recurrence: float | None = None
+    snow_cover: float | None = None
+    snow_albedo: float | None = None
+    terrestrial_water_storage: float | None = None
+    drought_pdsi: float | None = None
+    climatic_water_deficit: float | None = None
+    runoff: float | None = None
+    snow_water_equivalent: float | None = None
+    vegetation_water_deficit: float | None = None
+    wind_speed_climate: float | None = None
+    evi_modis: float | None = None
+    lai: float | None = None
+    fpar: float | None = None
+    gpp_8day: float | None = None
+    npp_annual: float | None = None
+    phenology_greenup: float | None = None
+    phenology_senescence: float | None = None
+    landsat_ndwi_8day: float | None = None
+    landsat_evi_8day: float | None = None
+    forest_loss_year: float | None = None
+    forest_loss_fraction: float | None = None
+    tree_cover_2000: float | None = None
+    forest_gain: float | None = None
+    population_count_ghsl: float | None = None
+    population_count_worldpop: float | None = None
+    population_density_gpw: float | None = None
+    built_height: float | None = None
+    built_volume_total: float | None = None
+    built_volume_nonres: float | None = None
+    degree_of_urbanization: float | None = None
+    radar_backscatter_vv: float | None = None
+    radar_backscatter_vh: float | None = None
+    elevation_dem30: float | None = None
+    elevation_srtm: float | None = None
+    dw_trees: float | None = None
+    dw_grass: float | None = None
+    dw_flooded_vegetation: float | None = None
+    dw_shrub_scrub: float | None = None
+    dw_bare: float | None = None
+    dw_snow_ice: float | None = None
+    wind_speed_10m: float | None = None
+    relative_humidity_2m: float | None = None
+    surface_pressure: float | None = None
+    solar_radiation_down: float | None = None
+    snow_depth_era5: float | None = None
+    runoff_era5: float | None = None
 
 
 class SeasonalSummary(BaseModel):

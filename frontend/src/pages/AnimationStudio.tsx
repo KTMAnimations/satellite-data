@@ -13,6 +13,7 @@ import type { Granularity, Region, MetricType } from '../types';
 import {
   estimateBucketCount,
   getRecommendedGranularity,
+  METRIC_OPTIONS,
   METRICS_MAX_TIMESERIES_POINTS_DEFAULT,
   METRIC_SUPPORTED_GRANULARITIES,
 } from '../config/metrics';
@@ -23,29 +24,6 @@ import './AnimationStudio.css';
 function formatGranularityLabel(granularity: string): string {
   return granularity ? `${granularity.slice(0, 1).toUpperCase()}${granularity.slice(1)}` : granularity;
 }
-
-const METRIC_OPTIONS: { value: MetricType; label: string; description: string }[] = [
-  // Original metrics
-  { value: 'nightlights', label: 'Nighttime Lights', description: 'Urban activity proxy (daily available)' },
-  { value: 'ndvi', label: 'NDVI', description: 'Vegetation index showing greenness' },
-  { value: 'urban_density', label: 'Urban Density', description: 'Built-up area estimation' },
-  { value: 'parking', label: 'Parking Occupancy', description: 'Parking lot fill levels' },
-  // Phase 1: Core datasets
-  { value: 'land_cover', label: 'Land Cover', description: 'Dynamic World built-up probability' },
-  { value: 'surface_water', label: 'Surface Water', description: 'JRC monthly history (to 2021) + Dynamic World water (recent)' },
-  // Phase 2: Air quality & weather
-  { value: 'no2', label: 'NO₂', description: 'Tropospheric nitrogen dioxide' },
-  { value: 'temperature', label: 'Temperature', description: 'ERA5-Land 2m air temperature' },
-  { value: 'precipitation', label: 'Precipitation', description: 'ERA5-Land total precipitation' },
-  { value: 'aerosol', label: 'Aerosol', description: 'UV Aerosol Index (smoke/dust)' },
-  // Phase 3: Agriculture
-  { value: 'cropland', label: 'Cropland', description: 'WorldCover cropland mask × Dynamic World crops probability' },
-  { value: 'evapotranspiration', label: 'Evapotranspiration', description: 'OpenET water use' },
-  { value: 'soil_moisture', label: 'Soil Moisture', description: 'SMAP root-zone moisture' },
-  // Phase 4: Historical & specialized
-  { value: 'impervious', label: 'Impervious Surface', description: 'GAIA urban expansion (1985–2018)' },
-  { value: 'canopy_height', label: 'Canopy Height', description: 'GEDI composites (limited coverage) + static fallback' },
-];
 
 const FORMAT_OPTIONS: Array<{ value: 'gif'; label: string; description: string }> = [
   { value: 'gif', label: 'GIF', description: 'Animated image, widely compatible' },

@@ -226,6 +226,672 @@ METRICS: dict[MetricId, MetricDefinition] = {
     ),
 }
 
+# Extended global metrics (must stay in sync with frontend/src/config/*).
+METRICS.update(
+    {
+        "co_column_density": MetricDefinition(
+            id="co_column_density",
+            label="CO Column Density",
+            unit="mol/m²",
+            value_range=(0.0, 0.06),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "fee090", "fdae61", "f46d43", "d73027", "a50026"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=10000,
+            transparent_below_normalized=0.0,
+        ),
+        "so2_column_density": MetricDefinition(
+            id="so2_column_density",
+            label="SO2 Column Density",
+            unit="mol/m²",
+            value_range=(0.0, 0.0005),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "fee090", "fdae61", "f46d43", "d73027", "a50026"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=10000,
+            transparent_below_normalized=0.0,
+        ),
+        "o3_total_column": MetricDefinition(
+            id="o3_total_column",
+            label="O3 Total Column",
+            unit="mol/m²",
+            value_range=(0.1, 0.2),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "fee090", "fdae61", "f46d43", "d73027", "a50026"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=10000,
+            transparent_below_normalized=0.0,
+        ),
+        "tropospheric_ozone_column": MetricDefinition(
+            id="tropospheric_ozone_column",
+            label="Tropospheric Ozone",
+            unit="mol/m²",
+            value_range=(0.0, 0.06),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "fee090", "fdae61", "f46d43", "d73027", "a50026"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=55000,
+            transparent_below_normalized=0.0,
+        ),
+        "methane_mixing_ratio": MetricDefinition(
+            id="methane_mixing_ratio",
+            label="Methane Mixing Ratio",
+            unit="mol fraction",
+            value_range=(1500.0, 2200.0),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "fee090", "fdae61", "f46d43", "d73027", "a50026"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=10000,
+            transparent_below_normalized=0.0,
+        ),
+        "formaldehyde_column": MetricDefinition(
+            id="formaldehyde_column",
+            label="Formaldehyde Column",
+            unit="mol/m²",
+            value_range=(0.0, 0.001),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "fee090", "fdae61", "f46d43", "d73027", "a50026"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=10000,
+            transparent_below_normalized=0.0,
+        ),
+        "aerosol_layer_height": MetricDefinition(
+            id="aerosol_layer_height",
+            label="Aerosol Layer Height",
+            unit="m",
+            value_range=(0.0, 10000.0),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "fee090", "fdae61", "f46d43", "d73027", "a50026"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=10000,
+            transparent_below_normalized=0.0,
+        ),
+        "cloud_fraction": MetricDefinition(
+            id="cloud_fraction",
+            label="Cloud Fraction",
+            unit="fraction (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["ffffff", "f0f9ff", "d6eaf8", "aed6f1", "85c1e9", "5dade2", "3498db", "2980b9", "1f618d", "154360"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=10000,
+            transparent_below_normalized=0.001,
+        ),
+        "cloud_top_height": MetricDefinition(
+            id="cloud_top_height",
+            label="Cloud Top Height",
+            unit="m",
+            value_range=(0.0, 20000.0),
+            palette=["ffffff", "f0f9ff", "d6eaf8", "aed6f1", "85c1e9", "5dade2", "3498db", "2980b9", "1f618d", "154360"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=10000,
+            transparent_below_normalized=0.0,
+        ),
+        "aod_550": MetricDefinition(
+            id="aod_550",
+            label="AOD 550nm",
+            unit="aod",
+            value_range=(0.0, 2.0),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "fee090", "fdae61", "f46d43", "d73027", "a50026"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=1000,
+            transparent_below_normalized=0.0,
+        ),
+        "active_fire_hotspots": MetricDefinition(
+            id="active_fire_hotspots",
+            label="Active Fire Hotspots",
+            unit="hotspots per pixel",
+            value_range=(0.0, 1.0),
+            palette=["ffffcc", "ffeda0", "fed976", "feb24c", "fd8d3c", "fc4e2a", "e31a1c", "bd0026", "800026", "4d0018"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=1000,
+            transparent_below_normalized=0.0,
+        ),
+        "burned_area_fraction": MetricDefinition(
+            id="burned_area_fraction",
+            label="Burned Area Fraction",
+            unit="ratio (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["ffffcc", "ffeda0", "fed976", "feb24c", "fd8d3c", "fc4e2a", "e31a1c", "bd0026", "800026", "4d0018"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.001,
+        ),
+        "burn_day_of_year": MetricDefinition(
+            id="burn_day_of_year",
+            label="Burn Day Of Year",
+            unit="day of year",
+            value_range=(1.0, 366.0),
+            palette=["ffffcc", "ffeda0", "fed976", "feb24c", "fd8d3c", "fc4e2a", "e31a1c", "bd0026", "800026", "4d0018"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "river_flood_depth_rp100": MetricDefinition(
+            id="river_flood_depth_rp100",
+            label="Flood Depth RP100",
+            unit="m",
+            value_range=(0.0, 15.0),
+            palette=["ffffff", "f0f9ff", "d6eaf8", "aed6f1", "85c1e9", "5dade2", "3498db", "2980b9", "1f618d", "154360"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=90,
+            transparent_below_normalized=0.0,
+        ),
+        "water_recurrence": MetricDefinition(
+            id="water_recurrence",
+            label="Water Recurrence",
+            unit="percent",
+            value_range=(0.0, 100.0),
+            palette=["ffffff", "f0f9ff", "d6eaf8", "aed6f1", "85c1e9", "5dade2", "3498db", "2980b9", "1f618d", "154360"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "snow_cover": MetricDefinition(
+            id="snow_cover",
+            label="Snow Cover",
+            unit="percent",
+            value_range=(0.0, 100.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "6a51a3", "54278f", "3f007d"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "snow_albedo": MetricDefinition(
+            id="snow_albedo",
+            label="Snow Albedo",
+            unit="percent",
+            value_range=(0.0, 100.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "6a51a3", "54278f", "3f007d"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "terrestrial_water_storage": MetricDefinition(
+            id="terrestrial_water_storage",
+            label="Terrestrial Water Storage",
+            unit="cm",
+            value_range=(-50.0, 50.0),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "ffffbf", "fee090", "fdae61", "f46d43", "a50026"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=55660,
+            transparent_below_normalized=0.0,
+        ),
+        "drought_pdsi": MetricDefinition(
+            id="drought_pdsi",
+            label="Drought PDSI",
+            unit="pdsi",
+            value_range=(-10.0, 10.0),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "ffffbf", "fee090", "fdae61", "f46d43", "a50026"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=5000,
+            transparent_below_normalized=0.0,
+        ),
+        "climatic_water_deficit": MetricDefinition(
+            id="climatic_water_deficit",
+            label="Climatic Water Deficit",
+            unit="mm",
+            value_range=(0.0, 500.0),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "ffffbf", "fee090", "fdae61", "f46d43", "a50026"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=5000,
+            transparent_below_normalized=0.0,
+        ),
+        "runoff": MetricDefinition(
+            id="runoff",
+            label="Runoff",
+            unit="mm",
+            value_range=(0.0, 1000.0),
+            palette=["ffffff", "f0f9ff", "d6eaf8", "aed6f1", "85c1e9", "5dade2", "3498db", "2980b9", "1f618d", "154360"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=5000,
+            transparent_below_normalized=0.0,
+        ),
+        "snow_water_equivalent": MetricDefinition(
+            id="snow_water_equivalent",
+            label="Snow Water Equivalent",
+            unit="mm",
+            value_range=(0.0, 2000.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "6a51a3", "54278f", "3f007d"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=5000,
+            transparent_below_normalized=0.0,
+        ),
+        "vegetation_water_deficit": MetricDefinition(
+            id="vegetation_water_deficit",
+            label="Vegetation Water Deficit",
+            unit="kPa",
+            value_range=(0.0, 6.0),
+            palette=["313695", "4575b4", "74add1", "abd9e9", "e0f3f8", "ffffbf", "fee090", "fdae61", "f46d43", "a50026"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=5000,
+            transparent_below_normalized=0.0,
+        ),
+        "wind_speed_climate": MetricDefinition(
+            id="wind_speed_climate",
+            label="Wind Speed Climate",
+            unit="m/s",
+            value_range=(0.0, 30.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "08519c", "08306b", "041a3d"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=5000,
+            transparent_below_normalized=0.0,
+        ),
+        "evi_modis": MetricDefinition(
+            id="evi_modis",
+            label="EVI MODIS",
+            unit="index",
+            value_range=(-0.2, 1.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=250,
+            transparent_below_normalized=0.001,
+        ),
+        "lai": MetricDefinition(
+            id="lai",
+            label="Leaf Area Index",
+            unit="m²/m²",
+            value_range=(0.0, 10.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "fpar": MetricDefinition(
+            id="fpar",
+            label="FPAR",
+            unit="fraction (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "gpp_8day": MetricDefinition(
+            id="gpp_8day",
+            label="GPP 8-Day",
+            unit="kg*C/m²",
+            value_range=(0.0, 0.004),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "npp_annual": MetricDefinition(
+            id="npp_annual",
+            label="NPP Annual",
+            unit="kg*C/m²",
+            value_range=(0.0, 0.02),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "phenology_greenup": MetricDefinition(
+            id="phenology_greenup",
+            label="Phenology Greenup",
+            unit="day of year",
+            value_range=(1.0, 366.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "phenology_senescence": MetricDefinition(
+            id="phenology_senescence",
+            label="Phenology Senescence",
+            unit="day of year",
+            value_range=(1.0, 366.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=500,
+            transparent_below_normalized=0.0,
+        ),
+        "landsat_ndwi_8day": MetricDefinition(
+            id="landsat_ndwi_8day",
+            label="Landsat NDWI 8-Day",
+            unit="index (-1 to 1)",
+            value_range=(-1.0, 1.0),
+            palette=["ffffff", "f0f9ff", "d6eaf8", "aed6f1", "85c1e9", "5dade2", "3498db", "2980b9", "1f618d", "154360"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "landsat_evi_8day": MetricDefinition(
+            id="landsat_evi_8day",
+            label="Landsat EVI 8-Day",
+            unit="index (-1 to 1)",
+            value_range=(-1.0, 1.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "forest_loss_year": MetricDefinition(
+            id="forest_loss_year",
+            label="Forest Loss Year",
+            unit="year",
+            value_range=(2001.0, 2024.0),
+            palette=["ffffe5", "f7fcb9", "d9f0a3", "addd8e", "78c679", "41ab5d", "238443", "006837", "004529", "002a1f"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "forest_loss_fraction": MetricDefinition(
+            id="forest_loss_fraction",
+            label="Forest Loss Fraction",
+            unit="ratio (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["ffffe5", "f7fcb9", "d9f0a3", "addd8e", "78c679", "41ab5d", "238443", "006837", "004529", "002a1f"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.001,
+        ),
+        "tree_cover_2000": MetricDefinition(
+            id="tree_cover_2000",
+            label="Tree Cover 2000",
+            unit="percent",
+            value_range=(0.0, 100.0),
+            palette=["ffffe5", "f7fcb9", "d9f0a3", "addd8e", "78c679", "41ab5d", "238443", "006837", "004529", "002a1f"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "forest_gain": MetricDefinition(
+            id="forest_gain",
+            label="Forest Gain",
+            unit="ratio (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["ffffe5", "f7fcb9", "d9f0a3", "addd8e", "78c679", "41ab5d", "238443", "006837", "004529", "002a1f"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.001,
+        ),
+        "population_count_ghsl": MetricDefinition(
+            id="population_count_ghsl",
+            label="Population Count GHSL",
+            unit="people per cell",
+            value_range=(0.0, 10000.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=100,
+            transparent_below_normalized=0.0,
+        ),
+        "population_count_worldpop": MetricDefinition(
+            id="population_count_worldpop",
+            label="Population Count WorldPop",
+            unit="people per cell",
+            value_range=(0.0, 1000.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=100,
+            transparent_below_normalized=0.0,
+        ),
+        "population_density_gpw": MetricDefinition(
+            id="population_density_gpw",
+            label="Population Density GPW",
+            unit="people/km²",
+            value_range=(0.0, 50000.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=1000,
+            transparent_below_normalized=0.0,
+        ),
+        "built_height": MetricDefinition(
+            id="built_height",
+            label="Built Height",
+            unit="m",
+            value_range=(0.0, 100.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=100,
+            transparent_below_normalized=0.0,
+        ),
+        "built_volume_total": MetricDefinition(
+            id="built_volume_total",
+            label="Built Volume Total",
+            unit="m³",
+            value_range=(0.0, 10000000.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=100,
+            transparent_below_normalized=0.0,
+        ),
+        "built_volume_nonres": MetricDefinition(
+            id="built_volume_nonres",
+            label="Built Volume Non-Residential",
+            unit="m³",
+            value_range=(0.0, 10000000.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=100,
+            transparent_below_normalized=0.0,
+        ),
+        "degree_of_urbanization": MetricDefinition(
+            id="degree_of_urbanization",
+            label="Degree Of Urbanization",
+            unit="class code",
+            value_range=(0.0, 30.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=1000,
+            transparent_below_normalized=0.0,
+        ),
+        "radar_backscatter_vv": MetricDefinition(
+            id="radar_backscatter_vv",
+            label="Radar Backscatter VV",
+            unit="dB",
+            value_range=(-25.0, 5.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "radar_backscatter_vh": MetricDefinition(
+            id="radar_backscatter_vh",
+            label="Radar Backscatter VH",
+            unit="dB",
+            value_range=(-30.0, 0.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "elevation_dem30": MetricDefinition(
+            id="elevation_dem30",
+            label="Elevation DEM30",
+            unit="m",
+            value_range=(-500.0, 9000.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "elevation_srtm": MetricDefinition(
+            id="elevation_srtm",
+            label="Elevation SRTM",
+            unit="m",
+            value_range=(-500.0, 9000.0),
+            palette=["ffffff", "f0f0f0", "d9d9d9", "bdbdbd", "969696", "737373", "525252", "363636", "1f1f1f", "000000"],
+            default_granularity="monthly",
+            supported_granularities={"monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.0,
+        ),
+        "dw_trees": MetricDefinition(
+            id="dw_trees",
+            label="Dynamic World Trees",
+            unit="probability (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.001,
+        ),
+        "dw_grass": MetricDefinition(
+            id="dw_grass",
+            label="Dynamic World Grass",
+            unit="probability (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.001,
+        ),
+        "dw_flooded_vegetation": MetricDefinition(
+            id="dw_flooded_vegetation",
+            label="Dynamic World Flooded Vegetation",
+            unit="probability (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.001,
+        ),
+        "dw_shrub_scrub": MetricDefinition(
+            id="dw_shrub_scrub",
+            label="Dynamic World Shrub Scrub",
+            unit="probability (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.001,
+        ),
+        "dw_bare": MetricDefinition(
+            id="dw_bare",
+            label="Dynamic World Bare",
+            unit="probability (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["8c510a", "bf812d", "dfc27d", "f6e8c3", "c7eae5", "80cdc1", "35978f", "1f6d6f", "01665e", "003c30"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.001,
+        ),
+        "dw_snow_ice": MetricDefinition(
+            id="dw_snow_ice",
+            label="Dynamic World Snow Ice",
+            unit="probability (0 to 1)",
+            value_range=(0.0, 1.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "6a51a3", "54278f", "3f007d"],
+            default_granularity="weekly",
+            supported_granularities={"weekly", "monthly"},
+            scale_m=30,
+            transparent_below_normalized=0.001,
+        ),
+        "wind_speed_10m": MetricDefinition(
+            id="wind_speed_10m",
+            label="Wind Speed 10m",
+            unit="m/s",
+            value_range=(0.0, 40.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "08519c", "08306b", "041a3d"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=11000,
+            transparent_below_normalized=0.0,
+        ),
+        "relative_humidity_2m": MetricDefinition(
+            id="relative_humidity_2m",
+            label="Relative Humidity 2m",
+            unit="percent",
+            value_range=(0.0, 100.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "08519c", "08306b", "041a3d"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=11000,
+            transparent_below_normalized=0.0,
+        ),
+        "surface_pressure": MetricDefinition(
+            id="surface_pressure",
+            label="Surface Pressure",
+            unit="hPa",
+            value_range=(800.0, 1100.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "08519c", "08306b", "041a3d"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=11000,
+            transparent_below_normalized=0.0,
+        ),
+        "solar_radiation_down": MetricDefinition(
+            id="solar_radiation_down",
+            label="Solar Radiation Down",
+            unit="MJ/m²",
+            value_range=(0.0, 40.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "08519c", "08306b", "041a3d"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=11000,
+            transparent_below_normalized=0.0,
+        ),
+        "snow_depth_era5": MetricDefinition(
+            id="snow_depth_era5",
+            label="Snow Depth ERA5",
+            unit="m",
+            value_range=(0.0, 5.0),
+            palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "6a51a3", "54278f", "3f007d"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=11000,
+            transparent_below_normalized=0.0,
+        ),
+        "runoff_era5": MetricDefinition(
+            id="runoff_era5",
+            label="Runoff ERA5",
+            unit="mm",
+            value_range=(0.0, 500.0),
+            palette=["ffffff", "f0f9ff", "d6eaf8", "aed6f1", "85c1e9", "5dade2", "3498db", "2980b9", "1f618d", "154360"],
+            default_granularity="daily",
+            supported_granularities={"daily", "monthly"},
+            scale_m=11000,
+            transparent_below_normalized=0.0,
+        ),
+    }
+)
+
 
 _ee_initialized = False
 
@@ -337,6 +1003,38 @@ def _mean_of_daily_means(collection, start, end, band_name: str):
     return daily.mean().rename([band_name])
 
 
+def _select_year_image_or_latest(collection, target_year):
+    """
+    Select an annual image for `target_year`, with fallback to latest available.
+    """
+    import ee
+
+    by_year = collection.filter(ee.Filter.calendarRange(target_year, target_year, "year"))
+    latest = ee.Image(collection.sort("system:time_start", False).first())
+    return ee.Image(ee.Algorithms.If(by_year.size().gt(0), by_year.first(), latest))
+
+
+def _select_epoch_image_by_index(collection, target_year, epochs: list[int]):
+    """
+    Pick the latest epoch <= target_year from a collection indexed by `system:index` year strings.
+    """
+    import ee
+
+    epoch_list = ee.List(epochs)
+    first_epoch = ee.Number(epoch_list.get(0))
+
+    def pick_epoch(e, acc):
+        e_num = ee.Number(e)
+        acc_num = ee.Number(acc)
+        return ee.Number(ee.Algorithms.If(e_num.lte(target_year), e_num, acc_num))
+
+    epoch = ee.Number(epoch_list.iterate(pick_epoch, first_epoch))
+    idx = epoch.format()
+    filtered = collection.filter(ee.Filter.eq("system:index", idx))
+    latest = ee.Image(collection.sort("system:time_start", False).first())
+    return ee.Image(ee.Algorithms.If(filtered.size().gt(0), filtered.first(), latest))
+
+
 def build_metric_image(metric: MetricId, start, end, geom):
     """
     Build an ee.Image with a single band named after the metric.
@@ -346,6 +1044,42 @@ def build_metric_image(metric: MetricId, start, end, geom):
     import ee
 
     band = metric
+
+    def _s5p_daily_metric(
+        collection_id: str,
+        source_band: str,
+        *,
+        qa_band: str | None = None,
+        qa_min: float | None = None,
+        qa_max: float | None = None,
+    ):
+        col = ee.ImageCollection(collection_id).filterBounds(geom)
+        if qa_band is not None:
+            def apply_qa(img):
+                qa = img.select([qa_band])
+                mask = ee.Image(1)
+                if qa_min is not None:
+                    mask = mask.And(qa.gte(qa_min))
+                if qa_max is not None:
+                    mask = mask.And(qa.lte(qa_max))
+                return img.updateMask(mask)
+
+            col = col.map(apply_qa)
+        col = col.select([source_band], [band])
+        has_images = col.filterDate(start, end).size().gt(0)
+        image = _mean_of_daily_means(col, start, end, band)
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    def _dynamic_world_probability(dw_band: str):
+        dw = (
+            ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select([dw_band], [band])
+        )
+        has_images = dw.size().gt(0)
+        image = dw.median().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
     if metric == "ndvi":
         # High-resolution NDVI from Sentinel-2 where available. At low zoom
@@ -749,6 +1483,490 @@ def build_metric_image(metric: MetricId, start, end, geom):
         image = ee.ImageCollection.fromImages([gedi, simard]).mosaic()
         return image.clip(geom)
 
+    if metric == "co_column_density":
+        return _s5p_daily_metric("COPERNICUS/S5P/OFFL/L3_CO", "CO_column_number_density")
+
+    if metric == "so2_column_density":
+        return _s5p_daily_metric("COPERNICUS/S5P/OFFL/L3_SO2", "SO2_column_number_density")
+
+    if metric == "o3_total_column":
+        return _s5p_daily_metric("COPERNICUS/S5P/OFFL/L3_O3", "O3_column_number_density")
+
+    if metric == "tropospheric_ozone_column":
+        return _s5p_daily_metric(
+            "COPERNICUS/S5P/OFFL/L3_O3_TCL",
+            "ozone_tropospheric_vertical_column",
+            qa_band="qa_value",
+            qa_min=70,
+        )
+
+    if metric == "methane_mixing_ratio":
+        return _s5p_daily_metric(
+            "COPERNICUS/S5P/OFFL/L3_CH4",
+            "CH4_column_volume_mixing_ratio_dry_air_bias_corrected",
+        )
+
+    if metric == "formaldehyde_column":
+        return _s5p_daily_metric("COPERNICUS/S5P/OFFL/L3_HCHO", "tropospheric_HCHO_column_number_density")
+
+    if metric == "aerosol_layer_height":
+        return _s5p_daily_metric(
+            "COPERNICUS/S5P/OFFL/L3_AER_LH",
+            "aerosol_height",
+            qa_band="aerosol_optical_depth",
+            qa_min=0.0,
+        )
+
+    if metric == "cloud_fraction":
+        return _s5p_daily_metric("COPERNICUS/S5P/OFFL/L3_CLOUD", "cloud_fraction")
+
+    if metric == "cloud_top_height":
+        return _s5p_daily_metric("COPERNICUS/S5P/OFFL/L3_CLOUD", "cloud_top_height")
+
+    if metric == "aod_550":
+        collection = (
+            ee.ImageCollection("MODIS/061/MCD19A2_GRANULES")
+            .filterBounds(geom)
+            .filterDate(start, end)
+        )
+        has_images = collection.size().gt(0)
+
+        def prep_aod(img):
+            aod = img.select(["Optical_Depth_055"]).multiply(0.001).rename([band])
+            qa = img.select(["AOD_QA"])
+            qa_mask = qa.bitwiseAnd(3).lte(1)
+            return aod.updateMask(qa_mask)
+
+        prepared = collection.map(prep_aod)
+        image = _mean_of_daily_means(prepared, start, end, band)
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "active_fire_hotspots":
+        collection = (
+            ee.ImageCollection("FIRMS")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["confidence"])
+        )
+        has_images = collection.size().gt(0)
+
+        def hotspot_mask(img):
+            return img.select(["confidence"]).gte(50).toFloat().rename([band])
+
+        hotspots = collection.map(hotspot_mask)
+        image = _mean_of_daily_means(hotspots, start, end, band)
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "burned_area_fraction":
+        collection = (
+            ee.ImageCollection("MODIS/061/MCD64A1")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["BurnDate"])
+        )
+        has_images = collection.size().gt(0)
+
+        def burned_mask(img):
+            burn = img.select(["BurnDate"])
+            return burn.gt(0).toFloat().rename([band])
+
+        image = collection.map(burned_mask).mean().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "burn_day_of_year":
+        collection = (
+            ee.ImageCollection("MODIS/061/MCD64A1")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["BurnDate"])
+        )
+        has_images = collection.size().gt(0)
+
+        def burn_day(img):
+            burn = img.select(["BurnDate"])
+            return burn.updateMask(burn.gt(0)).rename([band])
+
+        image = collection.map(burn_day).mean().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "river_flood_depth_rp100":
+        collection = ee.ImageCollection("JRC/CEMS_GLOFAS/FloodHazard/v2_1").filterBounds(geom)
+        has_images = collection.size().gt(0)
+        image = ee.Image(
+            ee.Algorithms.If(
+                has_images,
+                ee.Image(collection.first()).select(["RP100_depth"]).rename([band]),
+                _empty_masked_image(band),
+            )
+        )
+        return image.clip(geom)
+
+    if metric == "water_recurrence":
+        month = ee.Number.parse(start.format("M"))
+        collection = ee.ImageCollection("JRC/GSW1_4/MonthlyRecurrence").filterBounds(geom)
+        monthly = collection.filter(ee.Filter.eq("month", month))
+        has_images = monthly.size().gt(0)
+
+        empty_monthly = _empty_masked_image("monthly_recurrence").addBands(_empty_masked_image("has_observations"))
+        month_img = ee.Image(ee.Algorithms.If(has_images, monthly.first(), empty_monthly))
+        recurrence = month_img.select(["monthly_recurrence"]).rename([band])
+        has_obs = month_img.select(["has_observations"]).gt(0)
+        image = recurrence.updateMask(has_obs)
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "snow_cover":
+        collection = (
+            ee.ImageCollection("MODIS/061/MOD10A1")
+            .filterBounds(geom)
+            .filterDate(start, end)
+        )
+        has_images = collection.size().gt(0)
+
+        def snow_cover_img(img):
+            snow = img.select(["NDSI_Snow_Cover"])
+            qa = img.select(["NDSI_Snow_Cover_Basic_QA"])
+            return snow.updateMask(qa.lte(2)).rename([band])
+
+        prepared = collection.map(snow_cover_img)
+        image = _mean_of_daily_means(prepared, start, end, band)
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "snow_albedo":
+        collection = (
+            ee.ImageCollection("MODIS/061/MOD10A1")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["Snow_Albedo_Daily_Tile"])
+        )
+        has_images = collection.size().gt(0)
+
+        def snow_albedo_img(img):
+            albedo = img.select(["Snow_Albedo_Daily_Tile"]).clamp(0, 100)
+            return albedo.rename([band])
+
+        prepared = collection.map(snow_albedo_img)
+        image = _mean_of_daily_means(prepared, start, end, band)
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "terrestrial_water_storage":
+        collection = (
+            ee.ImageCollection("NASA/GRACE/MASS_GRIDS_V04/MASCON_CRI")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select(["lwe_thickness"], [band])
+        )
+        has_images = collection.size().gt(0)
+        image = collection.mean().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric in {
+        "drought_pdsi",
+        "climatic_water_deficit",
+        "runoff",
+        "snow_water_equivalent",
+        "vegetation_water_deficit",
+        "wind_speed_climate",
+    }:
+        terra_specs: dict[str, tuple[str, float]] = {
+            "drought_pdsi": ("pdsi", 0.01),
+            "climatic_water_deficit": ("def", 0.1),
+            "runoff": ("ro", 1.0),
+            "snow_water_equivalent": ("swe", 1.0),
+            "vegetation_water_deficit": ("vpd", 0.01),
+            "wind_speed_climate": ("vs", 0.01),
+        }
+        source_band, scale = terra_specs[metric]
+        collection = (
+            ee.ImageCollection("IDAHO_EPSCOR/TERRACLIMATE")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select([source_band])
+        )
+        has_images = collection.size().gt(0)
+        image = collection.mean().multiply(scale).rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "evi_modis":
+        buffer_days = 16
+        collection = (
+            ee.ImageCollection("MODIS/061/MOD13Q1")
+            .filterBounds(geom)
+            .filterDate(start.advance(-buffer_days, "day"), end.advance(buffer_days, "day"))
+        )
+        has_images = collection.size().gt(0)
+
+        def evi_img(img):
+            evi = img.select(["EVI"]).multiply(0.0001).rename([band])
+            qa = img.select(["SummaryQA"])
+            return evi.updateMask(qa.lt(3))
+
+        image = collection.map(evi_img).mean().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric in {"lai", "fpar"}:
+        modis_specs: dict[str, tuple[str, float]] = {
+            "lai": ("Lai", 0.1),
+            "fpar": ("Fpar", 0.01),
+        }
+        source_band, scale = modis_specs[metric]
+        collection = (
+            ee.ImageCollection("MODIS/061/MCD15A3H")
+            .filterBounds(geom)
+            .filterDate(start, end)
+        )
+        has_images = collection.size().gt(0)
+
+        def lai_fpar_img(img):
+            value = img.select([source_band]).multiply(scale).rename([band])
+            qc = img.select(["FparLai_QC"])
+            qc_mask = qc.bitwiseAnd(3).lte(1)
+            return value.updateMask(qc_mask)
+
+        image = collection.map(lai_fpar_img).mean().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "gpp_8day":
+        collection = (
+            ee.ImageCollection("MODIS/061/MOD17A2HGF")
+            .filterBounds(geom)
+            .filterDate(start, end)
+        )
+        has_images = collection.size().gt(0)
+
+        def gpp_img(img):
+            gpp = img.select(["Gpp"]).multiply(0.0001).rename([band])
+            qc = img.select(["Psn_QC"])
+            qc_mask = qc.bitwiseAnd(3).lte(1)
+            return gpp.updateMask(qc_mask)
+
+        image = collection.map(gpp_img).mean().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "npp_annual":
+        collection = ee.ImageCollection("MODIS/061/MOD17A3HGF").filterBounds(geom)
+        has_images = collection.size().gt(0)
+        latest = ee.Image(collection.sort("system:time_start", False).first())
+        latest_year = ee.Number.parse(latest.date().format("YYYY"))
+        year = ee.Number.parse(start.format("YYYY")).min(latest_year).max(2001)
+        image_for_year = _select_year_image_or_latest(collection, year)
+        npp = image_for_year.select(["Npp"]).multiply(0.0001).rename([band])
+        # Keep native projection to avoid SR-ORG:6974 -> EPSG:4326 edge transform
+        # failures in world tiles; reduceRegion callers already supply geometry.
+        return ee.Image(ee.Algorithms.If(has_images, npp, _empty_masked_image(band)))
+
+    if metric in {"phenology_greenup", "phenology_senescence"}:
+        phase_band = "Greenup_1" if metric == "phenology_greenup" else "Senescence_1"
+        collection = ee.ImageCollection("MODIS/061/MCD12Q2").filterBounds(geom)
+        has_images = collection.size().gt(0)
+
+        latest = ee.Image(collection.sort("system:time_start", False).first())
+        latest_year = ee.Number.parse(latest.date().format("YYYY"))
+        year = ee.Number.parse(start.format("YYYY")).min(latest_year).max(2001)
+        phase = _select_year_image_or_latest(collection, year)
+
+        qa = phase.select(["QA_Overall_1"])
+        phase_days_since_epoch = phase.select([phase_band])
+        year_start_days = ee.Date.fromYMD(year, 1, 1).difference(ee.Date("1970-01-01"), "day")
+        doy = phase_days_since_epoch.subtract(year_start_days).add(1).rename([band])
+        image = doy.updateMask(qa.lte(2)).updateMask(doy.gte(1).And(doy.lte(366)))
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric in {"landsat_ndwi_8day", "landsat_evi_8day"}:
+        collection_id = (
+            "LANDSAT/COMPOSITES/C02/T1_L2_8DAY_NDWI"
+            if metric == "landsat_ndwi_8day"
+            else "LANDSAT/COMPOSITES/C02/T1_L2_8DAY_EVI"
+        )
+        source_band = "NDWI" if metric == "landsat_ndwi_8day" else "EVI"
+
+        primary = (
+            ee.ImageCollection(collection_id)
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .select([source_band], [band])
+        )
+        has_primary = primary.size().gt(0)
+        primary_img = primary.mean().rename([band])
+
+        fallback = (
+            ee.ImageCollection(collection_id)
+            .filterBounds(geom)
+            .filterDate(start.advance(-8, "day"), end.advance(8, "day"))
+            .select([source_band], [band])
+        )
+        has_fallback = fallback.size().gt(0)
+        fallback_img = fallback.mean().rename([band])
+
+        image = ee.Image(
+            ee.Algorithms.If(
+                has_primary,
+                primary_img,
+                ee.Image(ee.Algorithms.If(has_fallback, fallback_img, _empty_masked_image(band))),
+            )
+        )
+        return image.clip(geom)
+
+    if metric in {"forest_loss_year", "forest_loss_fraction", "tree_cover_2000", "forest_gain"}:
+        hansen = ee.Image("UMD/hansen/global_forest_change_2024_v1_12")
+
+        if metric == "forest_loss_year":
+            lossyear = hansen.select(["lossyear"])
+            image = lossyear.add(2000).updateMask(lossyear.gt(0)).rename([band])
+            return image.clip(geom)
+
+        if metric == "forest_loss_fraction":
+            year = ee.Number.parse(start.format("YYYY")).min(2024).max(2001)
+            max_idx = year.subtract(2000)
+            lossyear = hansen.select(["lossyear"])
+            image = lossyear.gt(0).And(lossyear.lte(max_idx)).toFloat().rename([band])
+            return image.clip(geom)
+
+        if metric == "tree_cover_2000":
+            return hansen.select(["treecover2000"]).rename([band]).clip(geom)
+
+        if metric == "forest_gain":
+            return hansen.select(["gain"]).toFloat().rename([band]).clip(geom)
+
+    if metric == "population_count_ghsl":
+        year = ee.Number.parse(start.format("YYYY"))
+        collection = ee.ImageCollection("JRC/GHSL/P2023A/GHS_POP").filterBounds(geom)
+        has_images = collection.size().gt(0)
+        image = _select_epoch_image_by_index(collection, year, [1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2025, 2030])
+        pop = image.select(["population_count"]).rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, pop, _empty_masked_image(band))).clip(geom)
+
+    if metric == "population_count_worldpop":
+        collection = ee.ImageCollection("WorldPop/GP/100m/pop").filterBounds(geom)
+        has_images = collection.size().gt(0)
+        year = ee.Number.parse(start.format("YYYY")).min(2021).max(2000)
+        image_for_year = _select_year_image_or_latest(collection, year)
+        pop = image_for_year.select(["population"]).rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, pop, _empty_masked_image(band))).clip(geom)
+
+    if metric == "population_density_gpw":
+        year = ee.Number.parse(start.format("YYYY"))
+        collection = ee.ImageCollection("CIESIN/GPWv411/GPW_Population_Density").filterBounds(geom)
+        has_images = collection.size().gt(0)
+        epoch_list = ee.List([2000, 2005, 2010, 2015, 2020])
+        first_epoch = ee.Number(epoch_list.get(0))
+
+        def pick_epoch(e, acc):
+            e_num = ee.Number(e)
+            acc_num = ee.Number(acc)
+            return ee.Number(ee.Algorithms.If(e_num.lte(year), e_num, acc_num))
+
+        epoch = ee.Number(epoch_list.iterate(pick_epoch, first_epoch))
+        by_year = collection.filter(ee.Filter.calendarRange(epoch, epoch, "year"))
+        latest = ee.Image(collection.sort("system:time_start", False).first())
+        image = ee.Image(ee.Algorithms.If(by_year.size().gt(0), by_year.first(), latest))
+        density = image.select(["population_density"]).rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, density, _empty_masked_image(band))).clip(geom)
+
+    if metric == "built_height":
+        collection = ee.ImageCollection("JRC/GHSL/P2023A/GHS_BUILT_H").filterBounds(geom)
+        has_images = collection.size().gt(0)
+        image = ee.Image(ee.Algorithms.If(has_images, collection.first(), _empty_masked_image("built_height")))
+        out = image.select(["built_height"]).rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, out, _empty_masked_image(band))).clip(geom)
+
+    if metric in {"built_volume_total", "built_volume_nonres"}:
+        year = ee.Number.parse(start.format("YYYY"))
+        source_band = "built_volume_total" if metric == "built_volume_total" else "built_volume_nres"
+        collection = ee.ImageCollection("JRC/GHSL/P2023A/GHS_BUILT_V").filterBounds(geom)
+        has_images = collection.size().gt(0)
+        image = _select_epoch_image_by_index(collection, year, [1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2025, 2030])
+        out = image.select([source_band]).rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, out, _empty_masked_image(band))).clip(geom)
+
+    if metric == "degree_of_urbanization":
+        year = ee.Number.parse(start.format("YYYY"))
+        collection = ee.ImageCollection("JRC/GHSL/P2023A/GHS_SMOD_V2-0").filterBounds(geom)
+        has_images = collection.size().gt(0)
+        image = _select_epoch_image_by_index(collection, year, [1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2025, 2030])
+        smod = image.select(["smod_code"]).rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, smod, _empty_masked_image(band))).clip(geom)
+
+    if metric in {"radar_backscatter_vv", "radar_backscatter_vh"}:
+        pol = "VV" if metric == "radar_backscatter_vv" else "VH"
+        collection = (
+            ee.ImageCollection("COPERNICUS/S1_GRD")
+            .filterBounds(geom)
+            .filterDate(start, end)
+            .filter(ee.Filter.eq("instrumentMode", "IW"))
+            .filter(ee.Filter.listContains("transmitterReceiverPolarisation", pol))
+            .select([pol], [band])
+        )
+        has_images = collection.size().gt(0)
+        image = collection.median().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+    if metric == "elevation_dem30":
+        dem_collection = ee.ImageCollection("COPERNICUS/DEM/GLO30").select(["DEM"])
+        has_dem = dem_collection.size().gt(0)
+        dem = dem_collection.mosaic().rename([band])
+        srtm = ee.Image("USGS/SRTMGL1_003").select(["elevation"]).rename([band])
+        image = dem.unmask(srtm)
+        return ee.Image(ee.Algorithms.If(has_dem, image, srtm)).clip(geom)
+
+    if metric == "elevation_srtm":
+        return ee.Image("USGS/SRTMGL1_003").select(["elevation"]).rename([band]).clip(geom)
+
+    if metric in {"dw_trees", "dw_grass", "dw_flooded_vegetation", "dw_shrub_scrub", "dw_bare", "dw_snow_ice"}:
+        dw_band_map: dict[str, str] = {
+            "dw_trees": "trees",
+            "dw_grass": "grass",
+            "dw_flooded_vegetation": "flooded_vegetation",
+            "dw_shrub_scrub": "shrub_and_scrub",
+            "dw_bare": "bare",
+            "dw_snow_ice": "snow_and_ice",
+        }
+        return _dynamic_world_probability(dw_band_map[metric])
+
+    if metric in {"wind_speed_10m", "relative_humidity_2m", "surface_pressure", "solar_radiation_down", "snow_depth_era5", "runoff_era5"}:
+        collection = (
+            ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR")
+            .filterBounds(geom)
+            .filterDate(start, end)
+        )
+        has_images = collection.size().gt(0)
+
+        if metric == "wind_speed_10m":
+            def wind_speed_img(img):
+                u = img.select(["u_component_of_wind_10m"])
+                v = img.select(["v_component_of_wind_10m"])
+                return u.pow(2).add(v.pow(2)).sqrt().rename([band])
+
+            image = collection.map(wind_speed_img).mean().rename([band])
+            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+        if metric == "relative_humidity_2m":
+            def relative_humidity_img(img):
+                t_c = img.select(["temperature_2m"]).subtract(273.15)
+                td_c = img.select(["dewpoint_temperature_2m"]).subtract(273.15)
+                sat = t_c.multiply(17.625).divide(t_c.add(243.04)).exp()
+                vap = td_c.multiply(17.625).divide(td_c.add(243.04)).exp()
+                rh = vap.divide(sat).multiply(100).clamp(0, 100)
+                return rh.rename([band])
+
+            image = collection.map(relative_humidity_img).mean().rename([band])
+            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+        if metric == "surface_pressure":
+            image = collection.select(["surface_pressure"]).mean().divide(100).rename([band])
+            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+        if metric == "solar_radiation_down":
+            image = collection.select(["surface_solar_radiation_downwards_sum"]).mean().divide(1e6).rename([band])
+            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+        if metric == "snow_depth_era5":
+            image = collection.select(["snow_depth"]).mean().rename([band])
+            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
+        if metric == "runoff_era5":
+            image = collection.select(["runoff_sum"]).sum().multiply(1000).rename([band])
+            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
     raise ValueError(f"Unsupported metric: {metric}")
 
 
@@ -1010,7 +2228,7 @@ class _BoundedTTLCache(dict):
 
 _tile_template_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
-_tile_cache_version = 27
+_tile_cache_version = 28
 
 
 def _tile_visualization_range(metric_def: MetricDefinition) -> tuple[float, float]:

@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { METRIC_OPTIONS } from '../../src/config/metrics';
 
 const API_BASE = 'http://localhost:8000/api/v1';
 
@@ -68,7 +69,7 @@ test.describe('Global metrics & time periods', () => {
       // Ensure the map metric selector has all metric options.
       const metricSelect = page.locator('select.metric-select');
       await expect(metricSelect).toBeVisible();
-      await expect(metricSelect.locator('option')).toHaveCount(15);
+      await expect(metricSelect.locator('option')).toHaveCount(METRIC_OPTIONS.length);
     });
   }
 
