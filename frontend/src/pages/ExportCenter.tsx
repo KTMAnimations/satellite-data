@@ -30,7 +30,7 @@ export function ExportCenter() {
   const [animationMetric, setAnimationMetric] = useState<MetricType>('nightlights');
   const [animationFormat, setAnimationFormat] = useState<'gif'>('gif');
   const [animationIncludeBasemap, setAnimationIncludeBasemap] = useState(true);
-  const [animationOverlayOpacity, setAnimationOverlayOpacity] = useState(0.60);
+  const [animationOverlayOpacity, setAnimationOverlayOpacity] = useState(0.67);
   const exportQueue = useStore((state) => state.exportQueue);
   const addExportToQueue = useStore((state) => state.addExportToQueue);
   const setExportQueue = useStore((state) => state.setExportQueue);
@@ -183,6 +183,13 @@ export function ExportCenter() {
             <label>Export Format</label>
             <div className="format-options">
               <button
+                className={`format-btn ${exportFormat === 'animation' ? 'active' : ''}`}
+                onClick={() => setExportFormat('animation')}
+              >
+                <FilmStrip size={24} weight="duotone" className="format-icon" />
+                <span>Animation</span>
+              </button>
+              <button
                 className={`format-btn ${exportFormat === 'pdf' ? 'active' : ''}`}
                 onClick={() => setExportFormat('pdf')}
               >
@@ -195,13 +202,6 @@ export function ExportCenter() {
               >
                 <Table size={24} weight="duotone" className="format-icon" />
                 <span>CSV Data</span>
-              </button>
-              <button
-                className={`format-btn ${exportFormat === 'animation' ? 'active' : ''}`}
-                onClick={() => setExportFormat('animation')}
-              >
-                <FilmStrip size={24} weight="duotone" className="format-icon" />
-                <span>Animation</span>
               </button>
             </div>
           </div>

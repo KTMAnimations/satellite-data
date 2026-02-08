@@ -70,7 +70,7 @@ export function AnimationStudio() {
   const [frameDuration, setFrameDuration] = useState(500);
   const [resolution, setResolution] = useState({ width: 800, height: 600 });
   const [includeBasemap, setIncludeBasemap] = useState(true);
-  const [overlayOpacity, setOverlayOpacity] = useState(0.60);
+  const [overlayOpacity, setOverlayOpacity] = useState(0.67);
   const [exportId, setExportId] = useState<string | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
