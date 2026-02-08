@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
+import { useStore, type DaytimeBasemap } from '../store';
 import type {
   AdminInstanceDetailResponse,
   AdminInstanceEventsResponse,
@@ -103,7 +104,10 @@ function buildMapJumpUrl(event: AdminTelemetryEvent): string | null {
 
 function AdminHeader() {
   const { token, setToken } = useAdminAuth();
+  const daytimeBasemap = useStore((state) => state.daytimeBasemap);
+  const setDaytimeBasemap = useStore((state) => state.setDaytimeBasemap);
   const [draft, setDraft] = useState(token);
+  const maptilerAvailable = (import.meta.env.VITE_MAPTILER_KEY ?? '').trim().length > 0;
 
   useEffect(() => {
     setDraft(token);
@@ -137,6 +141,24 @@ function AdminHeader() {
           >
             Apply
           </button>
+        </div>
+
+        <div className="admin-map-settings">
+          <label className="admin-auth-label" htmlFor="admin-day-basemap">Day Basemap</label>
+          <select
+            id="admin-day-basemap"
+            className="admin-map-select"
+            value={daytimeBasemap}
+            onChange={(e) => {
+              const next = e.target.value as DaytimeBasemap;
+              if (next === 'maptiler_osm' && !maptilerAvailable) return;
+              setDaytimeBasemap(next);
+            }}
+          >
+            <option value="carto_light">CARTO Light</option>
+            <option value="maptiler_osm" disabled={!maptilerAvailable}>MapTiler OpenStreetMap</option>
+          </select>
+          {!maptilerAvailable && <span className="admin-muted">MapTiler requires `VITE_MAPTILER_KEY`.</span>}
         </div>
       </div>
       <div className="admin-header-links">

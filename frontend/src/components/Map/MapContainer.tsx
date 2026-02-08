@@ -24,8 +24,12 @@ import './MapContainer.css';
 
 const MAPTILER_KEY = (import.meta.env.VITE_MAPTILER_KEY ?? '').trim();
 const MAPTILER_OMT_RASTER_URL = `https://api.maptiler.com/maps/openstreetmap/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`;
+const MAPTILER_OMT_ATTRIBUTION =
+  '<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">&copy; MapTiler</a> ' +
+  '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">&copy; OpenStreetMap contributors</a>';
+const CARTO_LIGHT_RASTER_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const CARTO_DARK_RASTER_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-const CARTO_DARK_ATTRIBUTION =
+const CARTO_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors ' +
   '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>';
 
@@ -208,10 +212,11 @@ export function MapView({
   flowColor = '#3b82f6',
   onMapReady,
 }: MapContainerProps) {
-  const { mapState, storeSelectedRegion } = useStore(
+  const { mapState, storeSelectedRegion, daytimeBasemap } = useStore(
     (state) => ({
       mapState: state.mapState,
       storeSelectedRegion: state.selectedRegion,
+      daytimeBasemap: state.daytimeBasemap,
     }),
     shallow
   );
@@ -241,6 +246,8 @@ export function MapView({
         ? (selectedRegion?.id ?? null)
         : null;
   const useDarkBasemap = selectedMetric === 'nightlights';
+  const useMaptilerDayBasemap =
+    !useDarkBasemap && daytimeBasemap === 'maptiler_osm' && MAPTILER_KEY.length > 0;
   const metricLayerMounted = Boolean(selectedMetric && tileDate);
   const metricLayerVisible = Boolean(overlayEnabled && overlayAllowNetwork);
 
@@ -473,19 +480,28 @@ export function MapView({
         {useDarkBasemap ? (
           <TileLayer
             key="basemap:carto-dark"
-            attribution={CARTO_DARK_ATTRIBUTION}
+            attribution={CARTO_ATTRIBUTION}
             url={CARTO_DARK_RASTER_URL}
             subdomains={['a', 'b', 'c', 'd']}
             updateWhenIdle={false}
             crossOrigin
           />
-        ) : (
+        ) : useMaptilerDayBasemap ? (
           <TileLayer
             key="basemap:maptiler-osm"
-            attribution='<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">&copy; OpenStreetMap contributors</a>'
+            attribution={MAPTILER_OMT_ATTRIBUTION}
             url={MAPTILER_OMT_RASTER_URL}
             tileSize={512}
             zoomOffset={-1}
+            updateWhenIdle={false}
+            crossOrigin
+          />
+        ) : (
+          <TileLayer
+            key="basemap:carto-light"
+            attribution={CARTO_ATTRIBUTION}
+            url={CARTO_LIGHT_RASTER_URL}
+            subdomains={['a', 'b', 'c', 'd']}
             updateWhenIdle={false}
             crossOrigin
           />

@@ -4,6 +4,9 @@ import type { Region, MetricType, DateRange, MapState, ExportResponse } from '..
 import { ALL_METRIC_TYPES } from '../config/metrics';
 
 export type NavSection = 'fullmap' | 'dashboard' | 'regions' | 'exports';
+export type DaytimeBasemap = 'carto_light' | 'maptiler_osm';
+
+const DAYTIME_BASEMAPS = new Set<DaytimeBasemap>(['carto_light', 'maptiler_osm']);
 
 interface AppState {
   // Selected region
@@ -36,6 +39,8 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   navLastPath: Record<NavSection, string>;
   setNavLastPath: (section: NavSection, path: string) => void;
+  daytimeBasemap: DaytimeBasemap;
+  setDaytimeBasemap: (basemap: DaytimeBasemap) => void;
 
   // Export queue (in-memory; not persisted)
   exportQueue: ExportResponse[];
@@ -66,6 +71,13 @@ function sanitizeSelectedMetrics(
 
   if (filtered.length > 0) return filtered;
   return fallbackWhenEmpty ? [...DEFAULT_SELECTED_METRICS] : [];
+}
+
+function sanitizeDaytimeBasemap(value: unknown): DaytimeBasemap {
+  if (typeof value === 'string' && DAYTIME_BASEMAPS.has(value as DaytimeBasemap)) {
+    return value as DaytimeBasemap;
+  }
+  return 'carto_light';
 }
 
 export const useStore = create<AppState>()(
@@ -119,6 +131,8 @@ export const useStore = create<AppState>()(
       },
       setNavLastPath: (section, path) =>
         set((state) => ({ navLastPath: { ...state.navLastPath, [section]: path } })),
+      daytimeBasemap: 'carto_light',
+      setDaytimeBasemap: (basemap) => set({ daytimeBasemap: sanitizeDaytimeBasemap(basemap) }),
 
       // Export queue (in-memory; not persisted)
       exportQueue: [],
@@ -131,6 +145,7 @@ export const useStore = create<AppState>()(
       name: 'satellite-migration-storage',
       partialize: (state) => ({
         selectedMetrics: state.selectedMetrics,
+        daytimeBasemap: state.daytimeBasemap,
       }),
       merge: (persistedState, currentState) => {
         const persisted = (persistedState ?? {}) as Partial<AppState>;
@@ -138,6 +153,7 @@ export const useStore = create<AppState>()(
           ...currentState,
           ...persisted,
           selectedMetrics: sanitizeSelectedMetrics(persisted.selectedMetrics, { fallbackWhenEmpty: true }),
+          daytimeBasemap: sanitizeDaytimeBasemap(persisted.daytimeBasemap),
         };
       },
     }

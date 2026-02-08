@@ -44,6 +44,13 @@
   flex-wrap: wrap;
 }
 
+.admin-map-settings {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .admin-auth-label {
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -52,6 +59,10 @@
 
 .admin-auth-input {
   min-width: 320px;
+}
+
+.admin-map-select {
+  min-width: 220px;
 }
 
 .admin-header-links {
@@ -251,8 +262,12 @@
     width: 100%;
   }
 
+  .admin-map-select {
+    min-width: 220px;
+    width: 100%;
+  }
+
   .admin-log-row {
     grid-template-columns: 1fr;
   }
 }
-
