@@ -428,7 +428,7 @@ export function MapView({
   }, [onOverlayLoadingChange]);
 
   const legendGradientStyle =
-    tileTemplateWithCacheBust?.palette?.length
+    selectedMetric !== 'cropland' && tileTemplateWithCacheBust?.palette?.length
       ? { background: `linear-gradient(to right, ${tileTemplateWithCacheBust.palette.join(', ')})` }
       : undefined;
 
