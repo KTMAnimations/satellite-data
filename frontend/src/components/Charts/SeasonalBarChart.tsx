@@ -24,6 +24,9 @@ const METRIC_LABELS: Record<MetricType, string> = {
   soil_moisture: 'Soil Moisture',
   impervious: 'Impervious Surface',
   canopy_height: 'Canopy Height',
+  forest_loss_year: 'Forest Loss Year',
+  snow_cover: 'Snow Cover',
+  travel_time_to_cities: 'Travel Time to Cities',
 };
 
 export const SeasonalBarChart = memo(function SeasonalBarChart({ data, selectedMetrics, width = 400, height = 300 }: SeasonalBarChartProps) {

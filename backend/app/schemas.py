@@ -19,6 +19,9 @@ MetricId = Literal[
     "soil_moisture",
     "impervious",
     "canopy_height",
+    "forest_loss_year",
+    "snow_cover",
+    "travel_time_to_cities",
 ]
 
 
@@ -80,6 +83,9 @@ class SeasonalAverage(BaseModel):
     soil_moisture: float | None = None
     impervious: float | None = None
     canopy_height: float | None = None
+    forest_loss_year: float | None = None
+    snow_cover: float | None = None
+    travel_time_to_cities: float | None = None
 
 
 class SeasonalSummary(BaseModel):

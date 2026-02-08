@@ -14,6 +14,9 @@ export const METRIC_OPTIONS: { value: MetricType; label: string; color: string }
   { value: 'soil_moisture', label: 'Soil Moisture', color: '#7C3AED' },
   { value: 'impervious', label: 'Impervious Surface', color: '#6B7280' },
   { value: 'canopy_height', label: 'Canopy Height', color: '#15803D' },
+  { value: 'forest_loss_year', label: 'Forest Loss Year', color: '#92400E' },
+  { value: 'snow_cover', label: 'Snow Cover', color: '#60A5FA' },
+  { value: 'travel_time_to_cities', label: 'Travel Time to Cities', color: '#9333EA' },
 ];
 
 /** All MetricType values as an array, derived from METRIC_OPTIONS. */
@@ -42,6 +45,9 @@ export const METRIC_DEFAULT_GRANULARITY: Record<MetricType, Granularity> = {
   soil_moisture: 'weekly',
   impervious: 'monthly',
   canopy_height: 'monthly',
+  forest_loss_year: 'monthly',
+  snow_cover: 'daily',
+  travel_time_to_cities: 'monthly',
 };
 
 // Supported granularities per metric (backend/app/gee.py).
@@ -59,6 +65,9 @@ export const METRIC_SUPPORTED_GRANULARITIES: Record<MetricType, Granularity[]> =
   soil_moisture: ['weekly', 'monthly'],
   impervious: ['monthly'],
   canopy_height: ['monthly'],
+  forest_loss_year: ['monthly'],
+  snow_cover: ['daily', 'monthly'],
+  travel_time_to_cities: ['monthly'],
 };
 
 // Keep in sync with backend Settings.max_timeseries_points (backend/app/settings.py).

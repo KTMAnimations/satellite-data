@@ -42,7 +42,10 @@ export type MetricType =
   | 'soil_moisture'
   // Phase 4: Historical & specialized
   | 'impervious'
-  | 'canopy_height';
+  | 'canopy_height'
+  | 'forest_loss_year'
+  | 'snow_cover'
+  | 'travel_time_to_cities';
 
 export type Granularity = 'daily' | 'weekly' | 'monthly';
 
@@ -74,6 +77,9 @@ export interface SeasonalAverage {
   // Phase 4: Historical & specialized
   impervious: number | null;
   canopy_height: number | null;
+  forest_loss_year: number | null;
+  snow_cover: number | null;
+  travel_time_to_cities: number | null;
 }
 
 export interface SeasonalSummary {

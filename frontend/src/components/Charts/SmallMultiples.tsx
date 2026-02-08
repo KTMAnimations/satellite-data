@@ -32,6 +32,9 @@ const METRIC_COLORS: Record<MetricType, string> = {
   soil_moisture: '#7C3AED',  // Violet-600
   impervious: '#6B7280',     // Gray-500
   canopy_height: '#15803D',  // Green-700
+  forest_loss_year: '#92400E', // Brown-800
+  snow_cover: '#60A5FA',     // Blue-400
+  travel_time_to_cities: '#9333EA', // Purple-600
 };
 
 const METRIC_LABELS: Record<MetricType, string> = {
@@ -47,6 +50,9 @@ const METRIC_LABELS: Record<MetricType, string> = {
   soil_moisture: 'Soil Moisture',
   impervious: 'Impervious Surface',
   canopy_height: 'Canopy Height',
+  forest_loss_year: 'Forest Loss Year',
+  snow_cover: 'Snow Cover',
+  travel_time_to_cities: 'Travel Time to Cities',
 };
 
 export function SmallMultiples({

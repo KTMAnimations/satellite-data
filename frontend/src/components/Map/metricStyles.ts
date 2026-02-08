@@ -51,6 +51,18 @@ export const COLORMAPS: Record<MetricType, string[]> = {
     '#f7fcf5', '#e5f5e0', '#c7e9c0', '#a1d99b', '#74c476',
     '#41ab5d', '#238b45', '#006d2c', '#004d1c', '#00280f',
   ],
+  forest_loss_year: [
+    '#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59',
+    '#ef6548', '#d7301f', '#b30000', '#7f0000', '#4a0000',
+  ],
+  snow_cover: [
+    '#0b1f3a', '#174a7e', '#2b8cbe', '#41b6c4', '#7fcdbb',
+    '#c7e9b4', '#edf8b1', '#ffffd9', '#ffffff', '#f7f7f7',
+  ],
+  travel_time_to_cities: [
+    '#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59',
+    '#ef6548', '#d7301f', '#b30000', '#7f0000', '#4a0000',
+  ],
 };
 
 // Value ranges for each metric

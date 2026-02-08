@@ -14,4 +14,7 @@ export const METRIC_VALUE_RANGES: Record<MetricType, [number, number]> = {
   soil_moisture: [0.0, 0.5],
   impervious: [0.0, 1.0],
   canopy_height: [0.0, 60.0],
+  forest_loss_year: [2001.0, 2025.0],
+  snow_cover: [0.0, 100.0],
+  travel_time_to_cities: [0.0, 720.0],
 };

@@ -109,6 +109,27 @@ const METRIC_CONFIG: Record<
     lowLabel: 'Short',
     highLabel: 'Tall',
   },
+  forest_loss_year: {
+    label: 'Forest Loss Year',
+    unit: 'year',
+    gradient: 'linear-gradient(90deg, #FFF7EC 0%, #FDD49E 30%, #FC8D59 60%, #7F0000 100%)',
+    lowLabel: 'Earlier',
+    highLabel: 'Recent',
+  },
+  snow_cover: {
+    label: 'Snow Cover',
+    unit: '%',
+    gradient: 'linear-gradient(90deg, #0B1F3A 0%, #2B8CBE 30%, #C7E9B4 60%, #FFFFFF 100%)',
+    lowLabel: 'Low',
+    highLabel: 'High',
+  },
+  travel_time_to_cities: {
+    label: 'Travel Time to Cities',
+    unit: 'minutes',
+    gradient: 'linear-gradient(90deg, #FFF7EC 0%, #FDD49E 30%, #FC8D59 60%, #7F0000 100%)',
+    lowLabel: 'Fast',
+    highLabel: 'Slow',
+  },
 };
 
 export function HeatmapLegend({

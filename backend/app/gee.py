@@ -188,6 +188,40 @@ METRICS: dict[MetricId, MetricDefinition] = {
         scale_m=1000,
         transparent_below_normalized=0.001,
     ),
+    "forest_loss_year": MetricDefinition(
+        id="forest_loss_year",
+        label="Forest Loss Year",
+        unit="year",
+        value_range=(2001.0, 2025.0),
+        palette=["fff7ec", "fee8c8", "fdd49e", "fdbb84", "fc8d59", "ef6548", "d7301f", "b30000", "7f0000", "4a0000"],
+        default_granularity="monthly",
+        supported_granularities={"monthly"},
+        scale_m=30,
+        transparent_below_normalized=0.0,
+    ),
+    "snow_cover": MetricDefinition(
+        id="snow_cover",
+        label="Snow Cover",
+        unit="%",
+        value_range=(0.0, 100.0),
+        palette=["0b1f3a", "174a7e", "2b8cbe", "41b6c4", "7fcdbb", "c7e9b4", "edf8b1", "ffffd9", "ffffff", "f7f7f7"],
+        default_granularity="daily",
+        supported_granularities={"daily", "monthly"},
+        scale_m=500,
+        # Keep no-snow pixels (value ~= 0) transparent.
+        transparent_below_normalized=0.0001,
+    ),
+    "travel_time_to_cities": MetricDefinition(
+        id="travel_time_to_cities",
+        label="Travel Time to Cities",
+        unit="minutes",
+        value_range=(0.0, 720.0),
+        palette=["fff7ec", "fee8c8", "fdd49e", "fdbb84", "fc8d59", "ef6548", "d7301f", "b30000", "7f0000", "4a0000"],
+        default_granularity="monthly",
+        supported_granularities={"monthly"},
+        scale_m=1000,
+        transparent_below_normalized=0.0,
+    ),
 }
 
 
@@ -611,6 +645,19 @@ def build_metric_image(metric: MetricId, start, end, geom):
         urbanized = gaia.lte(year_index).And(gaia.gt(0)).unmask(0).rename([band])
         return urbanized.clip(geom)
 
+    if metric == "forest_loss_year":
+        # Hansen `lossyear`: 1..24 -> 2001..2024, with 0 meaning "no loss".
+        hansen = ee.Image("UMD/hansen/global_forest_change_2024_v1_12")
+        lossyear = hansen.select(["lossyear"])
+        image = lossyear.updateMask(lossyear.gt(0)).add(2000).rename([band])
+        return image.clip(geom)
+
+    if metric == "snow_cover":
+        collection = ee.ImageCollection("MODIS/061/MOD10A1").filterBounds(geom).filterDate(start, end)
+        has_images = collection.size().gt(0)
+        image = collection.select(["NDSI_Snow_Cover"]).mean().rename([band])
+        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+
     if metric == "canopy_height":
         # GEDI gridded vegetation structure: use RH98 (proxy for canopy height).
         # Note: GEDI is mounted on the ISS (inclination ~51.6°), so the gridded
@@ -659,6 +706,11 @@ def build_metric_image(metric: MetricId, start, end, geom):
         # Prefer GEDI where present, fall back to Simard elsewhere. Mosaic unions
         # footprints; unmask alone won't expand the GEDI swath footprint.
         image = ee.ImageCollection.fromImages([gedi, simard]).mosaic()
+        return image.clip(geom)
+
+    if metric == "travel_time_to_cities":
+        image = ee.Image("projects/malariaatlasproject/assets/accessibility/accessibility_to_cities/2015_v1_0")
+        image = image.select([0]).rename([band])
         return image.clip(geom)
 
     raise ValueError(f"Unsupported metric: {metric}")

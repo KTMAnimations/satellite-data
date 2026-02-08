@@ -80,3 +80,33 @@ def test_tile_template_rejects_invalid_date_bucket_format():
             assert res.status_code == 400
 
     asyncio.run(run())
+
+
+def test_tile_template_accepts_added_metrics():
+    app = _import_fresh_app()
+
+    async def run() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            metrics = [
+                ("forest_loss_year", "monthly"),
+                ("snow_cover", "daily"),
+                ("travel_time_to_cities", "monthly"),
+            ]
+
+            for metric, granularity in metrics:
+                date_bucket = "2024-02-01" if granularity == "daily" else "2024-02"
+                res = await client.get(
+                    "/api/v1/tiles/template",
+                    params={
+                        "metric": metric,
+                        "date_bucket": date_bucket,
+                        "granularity": granularity,
+                    },
+                )
+                assert res.status_code == 200, res.text
+                data = res.json()
+                assert data["metric"] == metric
+                assert data["granularity"] == granularity
+
+    asyncio.run(run())
