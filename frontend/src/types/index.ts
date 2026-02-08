@@ -240,6 +240,21 @@ export interface AdminIpSummary {
   event_count: number;
 }
 
+export interface AdminIpDetail extends AdminIpSummary {
+  continent: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezone: string | null;
+  isp: string | null;
+  organization: string | null;
+  asn: string | null;
+  domain: string | null;
+  network_type: string | null;
+}
+
 export interface AdminIpListResponse {
   ips: AdminIpSummary[];
   total: number;
@@ -257,7 +272,7 @@ export interface AdminInstanceSummary {
 }
 
 export interface AdminIpDetailResponse {
-  ip: AdminIpSummary;
+  ip: AdminIpDetail;
   instances: AdminInstanceSummary[];
 }
 

@@ -5,9 +5,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.ip_geolocation import resolve_ip_location, resolve_ip_locations
+from app.ip_geolocation import resolve_ip_details, resolve_ip_locations
 from app.models import TelemetryEvent, TelemetryInstance
 from app.schemas import (
+    AdminIpDetail,
     AdminInstanceDetailResponse,
     AdminInstanceEventsResponse,
     AdminInstanceSummary,
@@ -166,13 +167,27 @@ async def get_ip_detail(ip_address: str, db: AsyncSession = Depends(get_db)) -> 
         for row in rows
     ]
 
-    ip = AdminIpSummary(
+    details = await resolve_ip_details(ip_address)
+
+    ip = AdminIpDetail(
         ip_address=ip_address,
-        location=await resolve_ip_location(ip_address),
+        location=details.location,
         first_seen_at=first_seen_at,
         last_seen_at=last_seen_at,
         instance_count=instance_count,
         event_count=event_count,
+        continent=details.continent,
+        country=details.country,
+        region=details.region,
+        city=details.city,
+        latitude=details.latitude,
+        longitude=details.longitude,
+        timezone=details.timezone,
+        isp=details.isp,
+        organization=details.organization,
+        asn=details.asn,
+        domain=details.domain,
+        network_type=details.network_type,
     )
 
     return AdminIpDetailResponse(ip=ip, instances=instances)

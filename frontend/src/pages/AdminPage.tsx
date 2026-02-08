@@ -37,6 +37,21 @@ function formatDateTime(iso: string | null | undefined): string {
   return d.toLocaleString();
 }
 
+function formatIpValue(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return 'Unknown';
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : 'Unknown';
+  }
+  return String(value);
+}
+
+function formatCoordinates(latitude: number | null | undefined, longitude: number | null | undefined): string {
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') return 'Unknown';
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return 'Unknown';
+  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+}
+
 function formatEventTimestamp(event: AdminTelemetryEvent): string {
   if (event.client_ts_ms !== null && event.client_ts_ms !== undefined) {
     const d = new Date(event.client_ts_ms);
@@ -262,11 +277,26 @@ function IpDetailView() {
         <>
           <div className="admin-kv">
             <div><span className="admin-k">IP</span> <span className="mono">{data.ip.ip_address}</span></div>
-            <div><span className="admin-k">Location</span> {data.ip.location ?? 'Unknown'}</div>
+            <div><span className="admin-k">Location</span> {formatIpValue(data.ip.location)}</div>
             <div><span className="admin-k">First seen</span> {formatDateTime(data.ip.first_seen_at)}</div>
             <div><span className="admin-k">Last seen</span> {formatDateTime(data.ip.last_seen_at)}</div>
             <div><span className="admin-k">Instances</span> {data.ip.instance_count}</div>
             <div><span className="admin-k">Events</span> {data.ip.event_count}</div>
+          </div>
+
+          <h4 className="admin-subtitle">IP Intelligence</h4>
+          <div className="admin-kv">
+            <div><span className="admin-k">ISP</span> {formatIpValue(data.ip.isp)}</div>
+            <div><span className="admin-k">Organization</span> {formatIpValue(data.ip.organization)}</div>
+            <div><span className="admin-k">ASN</span> {formatIpValue(data.ip.asn)}</div>
+            <div><span className="admin-k">Domain</span> {formatIpValue(data.ip.domain)}</div>
+            <div><span className="admin-k">Network Type</span> {formatIpValue(data.ip.network_type)}</div>
+            <div><span className="admin-k">Continent</span> {formatIpValue(data.ip.continent)}</div>
+            <div><span className="admin-k">Country</span> {formatIpValue(data.ip.country)}</div>
+            <div><span className="admin-k">Region</span> {formatIpValue(data.ip.region)}</div>
+            <div><span className="admin-k">City</span> {formatIpValue(data.ip.city)}</div>
+            <div><span className="admin-k">Timezone</span> {formatIpValue(data.ip.timezone)}</div>
+            <div><span className="admin-k">Coordinates</span> {formatCoordinates(data.ip.latitude, data.ip.longitude)}</div>
           </div>
 
           <h4 className="admin-subtitle">Instances</h4>

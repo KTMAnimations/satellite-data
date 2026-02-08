@@ -66,6 +66,9 @@ def test_telemetry_register_events_and_admin_views(tmp_path, monkeypatch):
     assert ip_detail_payload["ip"]["ip_address"] == ip_address
     assert ip_detail_payload["ip"]["event_count"] == 2
     assert "location" in ip_detail_payload["ip"]
+    assert "isp" in ip_detail_payload["ip"]
+    assert "organization" in ip_detail_payload["ip"]
+    assert "asn" in ip_detail_payload["ip"]
     assert len(ip_detail_payload["instances"]) == 1
     assert ip_detail_payload["instances"][0]["instance_id"] == "inst-1"
 

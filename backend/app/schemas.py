@@ -270,6 +270,21 @@ class AdminIpSummary(BaseModel):
     event_count: int
 
 
+class AdminIpDetail(AdminIpSummary):
+    continent: str | None = None
+    country: str | None = None
+    region: str | None = None
+    city: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    timezone: str | None = None
+    isp: str | None = None
+    organization: str | None = None
+    asn: str | None = None
+    domain: str | None = None
+    network_type: str | None = None
+
+
 class AdminIpListResponse(BaseModel):
     ips: list[AdminIpSummary]
     total: int
@@ -287,7 +302,7 @@ class AdminInstanceSummary(BaseModel):
 
 
 class AdminIpDetailResponse(BaseModel):
-    ip: AdminIpSummary
+    ip: AdminIpDetail
     instances: list[AdminInstanceSummary]
 
 

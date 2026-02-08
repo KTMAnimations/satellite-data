@@ -20,9 +20,9 @@ async def test_resolve_ip_locations_skips_remote_for_invalid_and_private_ips(mon
 
     async def fake_fetch(ip_address: str, _client):
         calls.append(ip_address)
-        return "unused"
+        return ip_geolocation.IpGeolocationDetails(location="unused")
 
-    monkeypatch.setattr(ip_geolocation, "_fetch_public_ip_location", fake_fetch)
+    monkeypatch.setattr(ip_geolocation, "_fetch_public_ip_details", fake_fetch)
 
     result = await ip_geolocation.resolve_ip_locations(["testclient", "127.0.0.1", "10.0.0.2", "192.168.1.8"])
 
@@ -38,15 +38,22 @@ async def test_resolve_ip_location_caches_public_lookups(monkeypatch):
 
     async def fake_fetch(ip_address: str, _client):
         calls.append(ip_address)
-        return "Mountain View, California, United States"
+        return ip_geolocation.IpGeolocationDetails(
+            location="Mountain View, California, United States",
+            isp="Google LLC",
+            organization="Google",
+            asn="AS15169",
+        )
 
-    monkeypatch.setattr(ip_geolocation, "_fetch_public_ip_location", fake_fetch)
+    monkeypatch.setattr(ip_geolocation, "_fetch_public_ip_details", fake_fetch)
 
-    first = await ip_geolocation.resolve_ip_location("8.8.8.8")
-    second = await ip_geolocation.resolve_ip_location("8.8.8.8")
+    first = await ip_geolocation.resolve_ip_details("8.8.8.8")
+    second = await ip_geolocation.resolve_ip_details("8.8.8.8")
 
-    assert first == "Mountain View, California, United States"
-    assert second == "Mountain View, California, United States"
+    assert first.location == "Mountain View, California, United States"
+    assert second.location == "Mountain View, California, United States"
+    assert first.isp == "Google LLC"
+    assert second.asn == "AS15169"
     assert calls == ["8.8.8.8"]
 
 
@@ -55,9 +62,9 @@ async def test_resolve_ip_locations_deduplicates_batch_lookups(monkeypatch):
 
     async def fake_fetch(ip_address: str, _client):
         calls.append(ip_address)
-        return "Sydney, New South Wales, Australia"
+        return ip_geolocation.IpGeolocationDetails(location="Sydney, New South Wales, Australia")
 
-    monkeypatch.setattr(ip_geolocation, "_fetch_public_ip_location", fake_fetch)
+    monkeypatch.setattr(ip_geolocation, "_fetch_public_ip_details", fake_fetch)
 
     result = await ip_geolocation.resolve_ip_locations(["1.1.1.1", "1.1.1.1"])
 
