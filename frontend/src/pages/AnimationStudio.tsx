@@ -42,6 +42,9 @@ const METRIC_OPTIONS: { value: MetricType; label: string; description: string }[
   // Phase 4: Historical & specialized
   { value: 'impervious', label: 'Impervious Surface', description: 'GAIA urban expansion (1985–2018)' },
   { value: 'canopy_height', label: 'Canopy Height', description: 'GEDI composites (limited coverage) + static fallback' },
+  { value: 'forest_loss_year', label: 'Forest Loss Year', description: 'Hansen annual disturbance year (2001–2024)' },
+  { value: 'snow_cover', label: 'Snow Cover', description: 'MODIS daily NDSI snow cover fraction' },
+  { value: 'travel_time_to_cities', label: 'Travel Time to Cities', description: 'Estimated minutes to nearest city access (MAP 2015)' },
 ];
 
 const FORMAT_OPTIONS: Array<{ value: 'gif'; label: string; description: string }> = [
