@@ -19,9 +19,6 @@ import './MapPage.css';
 const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
   { value: 'nightlights', label: 'Nighttime Lights' },
   { value: 'ndvi', label: 'NDVI (Vegetation)' },
-  { value: 'urban_density', label: 'Urban Density' },
-  { value: 'parking', label: 'Parking Occupancy' },
-  { value: 'land_cover', label: 'Land Cover' },
   { value: 'surface_water', label: 'Surface Water' },
   { value: 'no2', label: 'NO₂ Pollution' },
   { value: 'temperature', label: 'Temperature' },

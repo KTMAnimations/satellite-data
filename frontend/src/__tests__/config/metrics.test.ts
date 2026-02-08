@@ -26,6 +26,6 @@ describe('metrics granularity helpers', () => {
     expect(getRecommendedGranularity('nightlights', longRange)).toBe('monthly');
 
     // Single-option metrics should always return that option.
-    expect(getRecommendedGranularity('urban_density', shortRange)).toBe('monthly');
+    expect(getRecommendedGranularity('surface_water', shortRange)).toBe('monthly');
   });
 });

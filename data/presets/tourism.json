@@ -4,7 +4,7 @@
   "description": "Tourism-driven economies show predictable seasonal activity fluctuations. Analyze peak vs off-peak patterns in major tourist destinations.",
   "category": "seasonal",
   "regions": ["Las Vegas, NV", "Orlando, FL"],
-  "metrics": ["nightlights", "parking"],
+  "metrics": ["nightlights"],
   "date_range": { "start_date": "2024-01-01", "end_date": "2024-12-31" },
   "compare": {
     "period_a": { "label": "Peak Season (Summer)", "start_date": "2024-06-01", "end_date": "2024-08-31" },

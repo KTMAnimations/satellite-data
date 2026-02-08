@@ -11,18 +11,6 @@ export const COLORMAPS: Record<MetricType, string[]> = {
     '#e8c36a', '#efd084', '#f3db9d', '#f7e5b6', '#faedcb',
     '#fdf3dc', '#fef8ea', '#fffbf2', '#fffdf8', '#ffffff',
   ],
-  urban_density: [
-    '#ffffe5', '#fff7bc', '#fee391', '#fec44f', '#fe9929',
-    '#ec7014', '#cc4c02', '#993404', '#662506', '#331203',
-  ],
-  parking: [
-    '#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6',
-    '#4292c6', '#2171b5', '#08519c', '#08306b', '#03132b',
-  ],
-  land_cover: [
-    '#f7f4f9', '#e7e1ef', '#d4b9da', '#c994c7', '#ba6eb4',
-    '#aa4da0', '#98318b', '#7a0177', '#5c015e', '#3f003c',
-  ],
   surface_water: [
     '#ffffff', '#f0f9ff', '#d6eaf8', '#aed6f1', '#85c1e9',
     '#5dade2', '#3498db', '#2980b9', '#1f618d', '#154360',

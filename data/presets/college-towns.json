@@ -4,7 +4,7 @@
   "description": "University towns show distinct seasonal patterns driven by academic calendars. Compare activity during the school year (Sep-May) versus summer break.",
   "category": "seasonal",
   "regions": ["Austin, TX", "Ann Arbor, MI", "Boulder, CO"],
-  "metrics": ["nightlights", "parking"],
+  "metrics": ["nightlights"],
   "date_range": { "start_date": "2024-09-01", "end_date": "2025-08-31" },
   "compare": {
     "period_a": { "label": "Academic Year", "start_date": "2024-09-01", "end_date": "2025-05-31" },

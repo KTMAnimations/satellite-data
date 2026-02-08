@@ -4,7 +4,7 @@
   "description": "Track long-term urban expansion using satellite-derived proxy metrics over the Sentinel-2 era.",
   "category": "growth",
   "regions": ["Phoenix, AZ"],
-  "metrics": ["urban_density", "ndvi", "impervious"],
+  "metrics": ["ndvi", "impervious"],
   "date_range": { "start_date": "2015-01-01", "end_date": "2025-12-31" },
   "visualization": {
     "primary_chart": "time_series",

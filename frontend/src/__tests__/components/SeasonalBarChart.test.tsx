@@ -30,9 +30,6 @@ describe('SeasonalBarChart', () => {
   const emptyAverage = {
     ndvi: null,
     nightlights: null,
-    urban_density: null,
-    parking: null,
-    land_cover: null,
     surface_water: null,
     no2: null,
     temperature: null,

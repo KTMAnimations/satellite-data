@@ -70,42 +70,6 @@ METRICS: dict[MetricId, MetricDefinition] = {
         scale_m=500,
         transparent_below_normalized=0.02,
     ),
-    "urban_density": MetricDefinition(
-        id="urban_density",
-        label="Urban Density",
-        unit="ratio (0 to 1)",
-        value_range=(0.0, 1.0),
-        palette=["ffffe5", "fff7bc", "fee391", "fec44f", "fe9929", "ec7014", "cc4c02", "993404", "662506", "331203"],
-        default_granularity="monthly",
-        supported_granularities={"monthly"},
-        scale_m=100,
-        transparent_below_normalized=0.001,
-    ),
-    "parking": MetricDefinition(
-        id="parking",
-        label="Parking (proxy)",
-        unit="index (0 to 1)",
-        value_range=(0.0, 1.0),
-        palette=["f7fbff", "deebf7", "c6dbef", "9ecae1", "6baed6", "4292c6", "2171b5", "08519c", "08306b", "03132b"],
-        default_granularity="weekly",
-        supported_granularities={"weekly", "monthly"},
-        scale_m=30,
-        transparent_below_normalized=0.001,
-        # NDBI-derived values typically cluster in a narrow mid-band; use a
-        # tighter render range so block-level differences are visible.
-        tile_viz_range=(0.2, 0.6),
-    ),
-    "land_cover": MetricDefinition(
-        id="land_cover",
-        label="Built-up (Dynamic World)",
-        unit="probability (0 to 1)",
-        value_range=(0.0, 1.0),
-        palette=["f7f4f9", "e7e1ef", "d4b9da", "c994c7", "ba6eb4", "aa4da0", "98318b", "7a0177", "5c015e", "3f003c"],
-        default_granularity="weekly",
-        supported_granularities={"weekly", "monthly"},
-        scale_m=30,
-        transparent_below_normalized=0.001,
-    ),
     "surface_water": MetricDefinition(
         id="surface_water",
         label="Surface Water",
@@ -435,58 +399,6 @@ def build_metric_image(metric: MetricId, start, end, geom):
 
         return ee.Image(ee.Algorithms.If(use_daily, daily_image(), monthly_image()))
 
-    if metric == "urban_density":
-        # Built surface fraction from GHSL, provided as ~5-year epoch snapshots.
-        # `system:index` for this collection is the epoch year (e.g. "2020").
-        # Pick the latest available epoch <= the requested year so time series
-        # don't "peek" into future projections.
-        year = ee.Number.parse(start.format("YYYY"))
-        epochs = ee.List([1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2025, 2030])
-
-        def pick_epoch(e, acc):
-            e_num = ee.Number(e)
-            acc_num = ee.Number(acc)
-            return ee.Number(ee.Algorithms.If(e_num.lte(year), e_num, acc_num))
-
-        epoch = ee.Number(epochs.iterate(pick_epoch, ee.Number(epochs.get(0))))
-        idx = epoch.format()
-
-        collection = ee.ImageCollection("JRC/GHSL/P2023A/GHS_BUILT_S")
-        filtered = collection.filter(ee.Filter.eq("system:index", idx))
-        image = ee.Image(ee.Algorithms.If(filtered.size().gt(0), filtered.first(), collection.mosaic()))
-        fraction = image.select(["built_surface"]).divide(10000).clamp(0, 1).rename([band])
-        return fraction.clip(geom)
-
-    if metric == "parking":
-        collection = (
-            ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
-            .filterBounds(geom)
-            .filterDate(start, end)
-            .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 40))
-        )
-        has_images = collection.size().gt(0)
-
-        def mask_clouds(image):
-            scl = image.select("SCL")
-            mask = scl.neq(3).And(scl.neq(8)).And(scl.neq(9)).And(scl.neq(10))
-            return image.updateMask(mask)
-
-        composite = collection.map(mask_clouds).median()
-        ndbi = composite.normalizedDifference(["B11", "B8"]).rename(["ndbi"])
-        parking_idx = ndbi.add(1).divide(2).clamp(0, 1).rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, parking_idx, _empty_masked_image(band))).clip(geom)
-
-    if metric == "land_cover":
-        collection = (
-            ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
-            .filterBounds(geom)
-            .filterDate(start, end)
-            .select(["built"])
-        )
-        has_images = collection.size().gt(0)
-        image = collection.median().rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
-
     if metric == "surface_water":
         # Primary: JRC MonthlyHistory (ends at 2021-12). system:index uses YYYY_MM.
         # Per-pixel fallback chain:
@@ -796,21 +708,6 @@ def build_metric_image_for_tiles(metric: MetricId, start, end, geom, *, z: int |
             modis_ndvi = ee.Image(ee.Algorithms.If(modis_has_images, modis_ndvi, _empty_masked_image(band)))
             return modis_ndvi.clip(geom)
 
-        # Low-zoom parking: reuse coarse built-surface fraction proxy.
-        if metric == "parking":
-            # GHSL built-surface fractions are often very small outside dense
-            # cores, which can render as effectively invisible at global zooms.
-            # Apply a gentle sqrt contrast boost so sparse urbanized areas stay
-            # visible while preserving the 0..1 range and ordering.
-            urban = build_metric_image("urban_density", start, end, geom)
-            return urban.sqrt().clamp(0, 1).rename([metric])
-
-        # Low-zoom built-up layer: use annual MODIS land-cover built-up class.
-        if metric == "land_cover":
-            lc_type1 = _modis_land_cover_for_year().select(["LC_Type1"])
-            built_up = lc_type1.eq(13).toFloat().rename([metric])
-            return built_up.clip(geom)
-
         # Low-zoom cropland: MODIS cropland classes (12=croplands, 14=mosaic).
         if metric == "cropland":
             lc_type1 = _modis_land_cover_for_year().select(["LC_Type1"])
@@ -1018,7 +915,7 @@ def _tile_visualization_range(metric_def: MetricDefinition) -> tuple[float, floa
 
 
 def _tile_render_variant(metric: MetricId, *, z: int | None) -> str:
-    if z is not None and z <= 6 and metric in {"ndvi", "parking", "land_cover", "cropland", "surface_water"}:
+    if z is not None and z <= 6 and metric in {"ndvi", "cropland", "surface_water"}:
         return f"{metric}_low_zoom_proxy"
     return "default"
 

@@ -14,9 +14,6 @@ interface SeasonalBarChartProps {
 const METRIC_LABELS: Record<MetricType, string> = {
   ndvi: 'NDVI',
   nightlights: 'Nighttime Lights',
-  urban_density: 'Urban Density',
-  parking: 'Parking',
-  land_cover: 'Land Cover',
   surface_water: 'Surface Water',
   no2: 'NO₂',
   temperature: 'Temperature',

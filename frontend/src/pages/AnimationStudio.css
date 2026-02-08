@@ -158,8 +158,6 @@
 
 .metric-indicator.metric-nightlights { background: var(--metric-secondary); }
 .metric-indicator.metric-ndvi { background: var(--metric-quaternary); }
-.metric-indicator.metric-urban_density { background: var(--metric-tertiary); }
-.metric-indicator.metric-parking { background: var(--metric-primary); }
 
 .metric-info {
   display: flex;

@@ -23,9 +23,6 @@ interface RegionalRankingChartProps {
 const METRIC_COLORS: Record<MetricType, string> = {
   ndvi: '#059669',           // Emerald-600
   nightlights: '#D97706',    // Amber-600
-  urban_density: '#7C3AED',  // Violet-600
-  parking: '#0D9488',        // Teal-600
-  land_cover: '#9333EA',     // Purple-600
   surface_water: '#2563EB',  // Blue-600
   no2: '#6366F1',            // Indigo-600
   temperature: '#EF4444',    // Red-500

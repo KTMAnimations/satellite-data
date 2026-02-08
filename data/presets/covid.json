@@ -4,7 +4,7 @@
   "description": "Examine how urban activity collapsed in 2020 and recovered through 2022. This preset compares major metropolitan areas across the pandemic timeline.",
   "category": "temporal",
   "regions": ["New York, NY", "San Francisco, CA", "Las Vegas, NV"],
-  "metrics": ["nightlights", "parking", "urban_density"],
+  "metrics": ["nightlights"],
   "date_range": { "start_date": "2019-01-01", "end_date": "2022-12-31" },
   "compare": {
     "period_a": { "label": "2019 Baseline", "start_date": "2019-01-01", "end_date": "2019-12-31" },

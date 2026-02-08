@@ -107,21 +107,9 @@
   color: var(--metric-secondary);
 }
 
-.metric-badge.urban_density {
-  background: #EDE9FE;
-  color: var(--metric-tertiary);
-}
-
-.metric-badge.parking {
-  background: var(--accent-primary-light);
-  color: var(--metric-primary);
-}
-
 /* Metric colors for lines/bars - Systematic Palette */
 .metric-ndvi { color: var(--metric-quaternary); }
 .metric-nightlights { color: var(--metric-secondary); }
-.metric-urban_density { color: var(--metric-tertiary); }
-.metric-parking { color: var(--metric-primary); }
 
 /* Change indicator */
 .change-indicator {

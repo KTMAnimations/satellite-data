@@ -9,9 +9,6 @@ from pydantic import BaseModel, Field
 MetricId = Literal[
     "ndvi",
     "nightlights",
-    "urban_density",
-    "parking",
-    "land_cover",
     "surface_water",
     "no2",
     "temperature",
@@ -73,9 +70,6 @@ class SeasonalAverage(BaseModel):
     # Keep keys stable for the frontend; values are null when unavailable.
     ndvi: float | None = None
     nightlights: float | None = None
-    urban_density: float | None = None
-    parking: float | None = None
-    land_cover: float | None = None
     surface_water: float | None = None
     no2: float | None = None
     temperature: float | None = None

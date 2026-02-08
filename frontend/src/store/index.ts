@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Region, MetricType, DateRange, MapState, ExportResponse } from '../types';
+import { ALL_METRIC_TYPES } from '../config/metrics';
 
 export type NavSection = 'fullmap' | 'dashboard' | 'regions' | 'exports';
 
@@ -51,6 +52,22 @@ const defaultDateRange: DateRange = (() => {
   return { start, end };
 })();
 
+const DEFAULT_SELECTED_METRICS: MetricType[] = ['nightlights', 'ndvi'];
+const METRIC_TYPE_SET = new Set<MetricType>(ALL_METRIC_TYPES);
+
+function sanitizeSelectedMetrics(
+  metrics: unknown,
+  { fallbackWhenEmpty = false }: { fallbackWhenEmpty?: boolean } = {}
+): MetricType[] {
+  const candidates = Array.isArray(metrics) ? metrics : [];
+  const filtered = candidates.filter(
+    (metric): metric is MetricType => typeof metric === 'string' && METRIC_TYPE_SET.has(metric as MetricType)
+  );
+
+  if (filtered.length > 0) return filtered;
+  return fallbackWhenEmpty ? [...DEFAULT_SELECTED_METRICS] : [];
+}
+
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
@@ -72,14 +89,15 @@ export const useStore = create<AppState>()(
       setDateRange: (range) => set({ dateRange: range }),
 
       // Selected metrics
-      selectedMetrics: ['nightlights', 'ndvi'],
+      selectedMetrics: [...DEFAULT_SELECTED_METRICS],
       toggleMetric: (metric) =>
         set((state) => ({
           selectedMetrics: state.selectedMetrics.includes(metric)
             ? state.selectedMetrics.filter((m) => m !== metric)
             : [...state.selectedMetrics, metric],
         })),
-      setSelectedMetrics: (metrics) => set({ selectedMetrics: metrics }),
+      setSelectedMetrics: (metrics) =>
+        set({ selectedMetrics: sanitizeSelectedMetrics(metrics, { fallbackWhenEmpty: false }) }),
 
       // Comparison mode
       comparisonMode: false,
@@ -114,6 +132,14 @@ export const useStore = create<AppState>()(
       partialize: (state) => ({
         selectedMetrics: state.selectedMetrics,
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<AppState>;
+        return {
+          ...currentState,
+          ...persisted,
+          selectedMetrics: sanitizeSelectedMetrics(persisted.selectedMetrics, { fallbackWhenEmpty: true }),
+        };
+      },
     }
   )
 );

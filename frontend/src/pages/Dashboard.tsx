@@ -48,14 +48,14 @@ export function Dashboard() {
   const stats = [
     { label: 'Predefined Regions', value: regionsData?.total || 0 },
     { label: 'Data Coverage', value: '2015-Present' },
-    { label: 'Metrics Available', value: 17 },
+    { label: 'Metrics Available', value: 12 },
     { label: 'Resolution', value: '10m (Sentinel-2)' },
   ];
 
   const quickStartSteps = [
     { number: 1, title: 'Select a Region', description: 'Choose from predefined cities or draw a custom polygon on the map.', icon: MapPin },
     { number: 2, title: 'Choose Time Period', description: 'Select date ranges or use presets like "Winter vs Summer" for seasonal comparisons.', icon: Calendar },
-    { number: 3, title: 'Analyze Metrics', description: 'View nighttime lights, vegetation indices, and urban density patterns over time.', icon: ChartLine },
+    { number: 3, title: 'Analyze Metrics', description: 'View nighttime lights, vegetation indices, and environmental patterns over time.', icon: ChartLine },
     { number: 4, title: 'Export Results', description: 'Generate PDF reports, download CSV data, or create time-lapse animations.', icon: Export },
   ];
 
@@ -172,7 +172,7 @@ export function Dashboard() {
             </div>
             <div className="source-content">
               <h4>Sentinel-2</h4>
-              <p>10m optical imagery for NDVI, urban density</p>
+              <p>10m optical imagery for NDVI and related optical metrics</p>
               <span className="source-badge">Primary</span>
             </div>
           </div>

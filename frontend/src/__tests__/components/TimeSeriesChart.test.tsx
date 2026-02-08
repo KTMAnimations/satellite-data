@@ -34,9 +34,6 @@ describe('TimeSeriesChart', () => {
   const baseData = {
     nightlights: { ...emptyMetric },
     ndvi: { ...emptyMetric },
-    urban_density: { ...emptyMetric },
-    parking: { ...emptyMetric },
-    land_cover: { ...emptyMetric },
     surface_water: { ...emptyMetric },
     no2: { ...emptyMetric },
     temperature: { ...emptyMetric },

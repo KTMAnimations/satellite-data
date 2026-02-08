@@ -26,9 +26,9 @@
   /* ─────────────────────────────────────────────────────────────────────────
      SYSTEMATIC METRIC COLORS
      ───────────────────────────────────────────────────────────────────────── */
-  --metric-primary: #0D9488;         /* Teal - parking/general */
+  --metric-primary: #0D9488;         /* Teal - general */
   --metric-secondary: #D97706;       /* Amber-600 - nightlights */
-  --metric-tertiary: #7C3AED;        /* Violet-600 - urban density */
+  --metric-tertiary: #7C3AED;        /* Violet-600 - secondary accent */
   --metric-quaternary: #059669;      /* Emerald-600 - NDVI */
   --metric-alert: #DC2626;           /* Red-600 - alerts/high values */
 
@@ -768,8 +768,6 @@ input[type="checkbox"] {
 
 .metric-nightlights { --metric-color: var(--metric-secondary); }
 .metric-ndvi { --metric-color: var(--metric-quaternary); }
-.metric-urban_density { --metric-color: var(--metric-tertiary); }
-.metric-parking { --metric-color: var(--metric-primary); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    RANGE SLIDER - LIGHT MODE

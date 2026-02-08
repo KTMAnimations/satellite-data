@@ -28,10 +28,7 @@ const METRIC_OPTIONS: { value: MetricType; label: string; description: string }[
   // Original metrics
   { value: 'nightlights', label: 'Nighttime Lights', description: 'Urban activity proxy (daily available)' },
   { value: 'ndvi', label: 'NDVI', description: 'Vegetation index showing greenness' },
-  { value: 'urban_density', label: 'Urban Density', description: 'Built-up area estimation' },
-  { value: 'parking', label: 'Parking Occupancy', description: 'Parking lot fill levels' },
   // Phase 1: Core datasets
-  { value: 'land_cover', label: 'Land Cover', description: 'Dynamic World built-up probability' },
   { value: 'surface_water', label: 'Surface Water', description: 'JRC monthly history (to 2021) + Dynamic World water (recent)' },
   // Phase 2: Air quality & weather
   { value: 'no2', label: 'NO₂', description: 'Tropospheric nitrogen dioxide' },

@@ -29,10 +29,7 @@ export type MetricType =
   // Original metrics
   | 'ndvi'
   | 'nightlights'
-  | 'urban_density'
-  | 'parking'
   // Phase 1: Core datasets
-  | 'land_cover'
   | 'surface_water'
   // Phase 2: Air quality & weather
   | 'no2'
@@ -63,10 +60,7 @@ export interface SeasonalAverage {
   // Original metrics
   ndvi: number | null;
   nightlights: number | null;
-  urban_density: number | null;
-  parking: number | null;
   // Phase 1: Core datasets
-  land_cover: number | null;
   surface_water: number | null;
   // Phase 2: Air quality & weather
   no2: number | null;

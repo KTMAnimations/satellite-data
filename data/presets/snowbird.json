@@ -4,7 +4,7 @@
   "description": "Track how winter populations swell in Sun Belt cities like Phoenix, Miami, and Tampa by comparing seasonal proxy metrics.",
   "category": "migration",
   "regions": ["Phoenix, AZ", "Miami, FL", "Tampa, FL", "Tucson, AZ"],
-  "metrics": ["nightlights", "parking"],
+  "metrics": ["nightlights"],
   "date_range": { "start_date": "2024-01-01", "end_date": "2025-12-31" },
   "compare": {
     "period_a": { "label": "Winter", "start_date": "2024-12-01", "end_date": "2025-02-28" },

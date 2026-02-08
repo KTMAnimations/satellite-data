@@ -66,19 +66,6 @@
   background: linear-gradient(to right, #e8c36a, #f3db9d, #faedcb, #fef8ea, #fffdf8, #ffffff);
 }
 
-.legend-gradient[data-metric="urban_density"] {
-  background: linear-gradient(to right, #ffffe5, #fee391, #fe9929, #cc4c02, #662506);
-}
-
-.legend-gradient[data-metric="parking"] {
-  background: linear-gradient(to right, #f7fbff, #c6dbef, #6baed6, #2171b5, #08306b);
-}
-
-/* Phase 1: Core datasets */
-.legend-gradient[data-metric="land_cover"] {
-  background: linear-gradient(to right, #f7f4f9, #d4b9da, #c994c7, #df65b0, #980043);
-}
-
 .legend-gradient[data-metric="surface_water"] {
   background: linear-gradient(to right, #ffffff, #d4e6f1, #5dade2, #2980b9, #154360);
 }

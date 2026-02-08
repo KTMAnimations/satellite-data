@@ -12,4 +12,3 @@ def test_tile_visualization_range_uses_metric_specific_overrides():
     assert _tile_visualization_range(METRICS["precipitation"]) == (0.0, 180.0)
     assert _tile_visualization_range(METRICS["no2"]) == (0.0, 0.00008)
     assert _tile_visualization_range(METRICS["aerosol"]) == (-0.5, 1.5)
-    assert _tile_visualization_range(METRICS["parking"]) == (0.2, 0.6)

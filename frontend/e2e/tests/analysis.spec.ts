@@ -56,19 +56,19 @@ test.describe('Analysis View', () => {
     await expect(page.locator('.leaflet-container')).toBeVisible();
   });
 
-  test('selecting a map metric adds it to charts/stats (Urban Density)', async ({ page }) => {
+  test('selecting a map metric adds it to charts/stats (Nighttime Lights)', async ({ page }) => {
     const metricSelector = page.locator('select.metric-select');
     await expect(metricSelector).toBeVisible();
 
     // Pick an always-available metric for this region and verify it appears in the analysis output.
-    await metricSelector.selectOption('urban_density');
-    await expect(metricSelector).toHaveValue('urban_density');
+    await metricSelector.selectOption('nightlights');
+    await expect(metricSelector).toHaveValue('nightlights');
 
     // Avoid asserting during a transient loading state.
     await expect(page.getByText('Loading metrics...')).toHaveCount(0, { timeout: 30000 });
 
-    const urbanStat = page.locator('.stats-grid .stat-card h5', { hasText: 'Urban Density' });
-    await expect(urbanStat).toBeVisible({ timeout: 30000 });
+    const lightsStat = page.locator('.stats-grid .stat-card h5', { hasText: 'Nighttime Lights' });
+    await expect(lightsStat).toBeVisible({ timeout: 30000 });
   });
 
   test('has export options', async ({ page }) => {

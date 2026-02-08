@@ -4,9 +4,6 @@ import type { Granularity, MetricType } from '../types';
 export const METRIC_OPTIONS: { value: MetricType; label: string; color: string }[] = [
   { value: 'nightlights', label: 'Nighttime Lights', color: '#D97706' },
   { value: 'ndvi', label: 'NDVI (Vegetation)', color: '#059669' },
-  { value: 'urban_density', label: 'Urban Density', color: '#7C3AED' },
-  { value: 'parking', label: 'Parking Occupancy', color: '#0D9488' },
-  { value: 'land_cover', label: 'Land Cover', color: '#9333EA' },
   { value: 'surface_water', label: 'Surface Water', color: '#2563EB' },
   { value: 'no2', label: 'NO\u2082 Pollution', color: '#6366F1' },
   { value: 'temperature', label: 'Temperature', color: '#EF4444' },
@@ -35,9 +32,6 @@ export function emptyMetricRecord<T>(defaultValue: T): Record<MetricType, T> {
 export const METRIC_DEFAULT_GRANULARITY: Record<MetricType, Granularity> = {
   ndvi: 'weekly',
   nightlights: 'monthly',
-  urban_density: 'monthly',
-  parking: 'weekly',
-  land_cover: 'weekly',
   surface_water: 'monthly',
   no2: 'daily',
   temperature: 'daily',
@@ -55,9 +49,6 @@ export const METRIC_DEFAULT_GRANULARITY: Record<MetricType, Granularity> = {
 export const METRIC_SUPPORTED_GRANULARITIES: Record<MetricType, Granularity[]> = {
   ndvi: ['weekly', 'monthly'],
   nightlights: ['daily', 'monthly'],
-  urban_density: ['monthly'],
-  parking: ['weekly', 'monthly'],
-  land_cover: ['weekly', 'monthly'],
   surface_water: ['monthly'],
   no2: ['daily', 'monthly'],
   temperature: ['daily', 'monthly'],

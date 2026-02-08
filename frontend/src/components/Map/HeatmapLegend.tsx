@@ -39,27 +39,6 @@ const METRIC_CONFIG: Record<
     lowLabel: 'Barren',
     highLabel: 'Lush',
   },
-  urban_density: {
-    label: 'Urban Density',
-    unit: 'ratio',
-    gradient: 'linear-gradient(90deg, #F5F5F4 0%, #C4B5FD 40%, #7C3AED 70%, #5B21B6 100%)',
-    lowLabel: 'Rural',
-    highLabel: 'Urban',
-  },
-  parking: {
-    label: 'Parking Occupancy',
-    unit: 'ratio',
-    gradient: 'linear-gradient(90deg, #CCFBF1 0%, #5EEAD4 30%, #0D9488 60%, #0F766E 100%)',
-    lowLabel: 'Empty',
-    highLabel: 'Full',
-  },
-  land_cover: {
-    label: 'Land Cover',
-    unit: 'probability',
-    gradient: 'linear-gradient(90deg, #F7F4F9 0%, #D4B9DA 30%, #C994C7 60%, #980043 100%)',
-    lowLabel: 'Natural',
-    highLabel: 'Built-up',
-  },
   surface_water: {
     label: 'Surface Water',
     unit: 'presence',
