@@ -171,6 +171,8 @@ export interface AnimationRequest {
   region_id: string;
   metric: MetricType;
   format: 'gif';
+  include_basemap?: boolean;
+  overlay_opacity?: number;
   start_date: string;
   end_date: string;
   frame_duration_ms?: number;

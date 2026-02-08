@@ -257,6 +257,26 @@
   margin: 0;
 }
 
+.setting-group label.setting-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+.setting-group label.setting-checkbox-label input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--accent-primary);
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
 .format-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
