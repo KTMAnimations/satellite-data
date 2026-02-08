@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     )
 
     # App
-    app_name: str = "Exeter Astro"
+    app_name: str = "Exeter Astronomy"
     api_v1_prefix: str = "/api/v1"
     environment: Literal["development", "production"] = "development"
     debug: bool = True

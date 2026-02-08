@@ -4,6 +4,8 @@ import asyncio
 import csv
 import io
 import json
+import logging
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -28,6 +30,7 @@ from app.settings import get_settings
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
@@ -53,9 +56,50 @@ async def _update_job(db: AsyncSession, job_id: str, **updates) -> None:
     result = await db.execute(select(ExportJob).where(ExportJob.id == job_id))
     job = result.scalar_one_or_none()
     if job is None:
+        logger.warning("Export job %s not found while attempting update: %s", job_id, sorted(updates.keys()))
         return
     for k, v in updates.items():
         setattr(job, k, v)
+
+
+def _truncate_error(error: str, max_chars: int = 4000) -> str:
+    if len(error) <= max_chars:
+        return error
+    return f"{error[: max_chars - 3]}..."
+
+
+async def _mark_job_failed(job_id: str, db_url: str, error_message: str) -> None:
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
+    engine = create_async_engine(db_url, echo=False)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    try:
+        async with session_factory() as db:
+            await _update_job(
+                db,
+                job_id,
+                status="failed",
+                message="Failed",
+                error=_truncate_error(error_message),
+                completed_at=_now(),
+            )
+            await db.commit()
+    finally:
+        await engine.dispose()
+
+
+async def _run_export_task(
+    job_id: str,
+    db_url: str,
+    task_fn: Callable[..., Awaitable[None]],
+    *task_args: object,
+) -> None:
+    try:
+        await task_fn(job_id, *task_args, db_url)  # type: ignore[misc]
+    except Exception as exc:
+        logger.exception("Export job %s failed", job_id)
+        await _mark_job_failed(job_id, db_url, str(exc))
 
 
 async def _generate_csv(job_id: str, request: CSVExportRequest, db_url: str) -> None:
@@ -65,70 +109,71 @@ async def _generate_csv(job_id: str, request: CSVExportRequest, db_url: str) -> 
     engine = create_async_engine(db_url, echo=False)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
-    async with session_factory() as db:
-        await _update_job(db, job_id, status="processing", progress=5.0, message="Generating CSV")
-        await db.commit()
+    try:
+        async with session_factory() as db:
+            await _update_job(db, job_id, status="processing", progress=5.0, message="Generating CSV")
+            await db.commit()
 
-        region_ids = request.region_ids or []
-        if not region_ids:
-            # Default: all regions.
-            regions = (await db.execute(select(Region.id))).scalars().all()
-            region_ids = list(regions)
+            region_ids = request.region_ids or []
+            if not region_ids:
+                # Default: all regions.
+                regions = (await db.execute(select(Region.id))).scalars().all()
+                region_ids = list(regions)
 
-        metrics = request.metrics or list(METRICS.keys())
-        start_date = request.start_date
-        end_date = request.end_date
-        if start_date is None or end_date is None:
-            raise ValueError("start_date and end_date are required")
+            metrics = request.metrics or list(METRICS.keys())
+            start_date = request.start_date
+            end_date = request.end_date
+            if start_date is None or end_date is None:
+                raise ValueError("start_date and end_date are required")
 
-        rows: list[list[str]] = []
-        header = ["date", "region", "metric", "value"]
-        if request.include_metadata:
-            header.append("unit")
-        rows.append(header)
+            rows: list[list[str]] = []
+            header = ["date", "region", "metric", "value"]
+            if request.include_metadata:
+                header.append("unit")
+            rows.append(header)
 
-        for region_id in region_ids:
-            region = (await db.execute(select(Region).where(Region.id == region_id))).scalar_one_or_none()
-            if region is None:
-                continue
-            geometry = json.loads(region.geometry)
-            for metric in metrics:
-                # Monthly CSV for exports (keeps file size manageable)
-                from app.gee import compute_time_series
+            for region_id in region_ids:
+                region = (await db.execute(select(Region).where(Region.id == region_id))).scalar_one_or_none()
+                if region is None:
+                    continue
+                geometry = json.loads(region.geometry)
+                for metric in metrics:
+                    # Monthly CSV for exports (keeps file size manageable)
+                    from app.gee import compute_time_series
 
-                series = await gee_to_thread(
-                    compute_time_series,
-                    geometry_geojson=geometry,
-                    metric=metric,
-                    start_date=start_date,
-                    end_date=end_date,
-                    granularity="monthly",
-                )
-                unit = METRICS[metric].unit
-                for d, v in series:
-                    row = [d, region.name, metric, f"{v:.6f}"]
-                    if request.include_metadata:
-                        row.append(unit)
-                    rows.append(row)
+                    series = await gee_to_thread(
+                        compute_time_series,
+                        geometry_geojson=geometry,
+                        metric=metric,
+                        start_date=start_date,
+                        end_date=end_date,
+                        granularity="monthly",
+                    )
+                    unit = METRICS[metric].unit
+                    for d, v in series:
+                        row = [d, region.name, metric, f"{v:.6f}"]
+                        if request.include_metadata:
+                            row.append(unit)
+                        rows.append(row)
 
-        output = Path(settings.exports_path) / f"{job_id}.csv"
-        with open(output, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerows(rows)
+            output = Path(settings.exports_path) / f"{job_id}.csv"
+            with open(output, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
 
-        await _update_job(
-            db,
-            job_id,
-            status="completed",
-            progress=100.0,
-            message="Completed",
-            output_path=str(output),
-            file_size=output.stat().st_size,
-            completed_at=_now(),
-        )
-        await db.commit()
-
-    await engine.dispose()
+            await _update_job(
+                db,
+                job_id,
+                status="completed",
+                progress=100.0,
+                message="Completed",
+                output_path=str(output),
+                file_size=output.stat().st_size,
+                completed_at=_now(),
+            )
+            await db.commit()
+    finally:
+        await engine.dispose()
 
 
 async def _generate_pdf(job_id: str, request: ExportRequest, db_url: str) -> None:
@@ -138,91 +183,92 @@ async def _generate_pdf(job_id: str, request: ExportRequest, db_url: str) -> Non
     engine = create_async_engine(db_url, echo=False)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
-    async with session_factory() as db:
-        await _update_job(db, job_id, status="processing", progress=5.0, message="Generating PDF")
-        await db.commit()
+    try:
+        async with session_factory() as db:
+            await _update_job(db, job_id, status="processing", progress=5.0, message="Generating PDF")
+            await db.commit()
 
-        region = (await db.execute(select(Region).where(Region.id == request.region_id))).scalar_one_or_none()
-        if region is None:
-            raise ValueError("Region not found")
+            region = (await db.execute(select(Region).where(Region.id == request.region_id))).scalar_one_or_none()
+            if region is None:
+                raise ValueError("Region not found")
 
-        start_date = request.start_date
-        end_date = request.end_date
-        if start_date is None or end_date is None:
-            raise ValueError("start_date and end_date are required")
+            start_date = request.start_date
+            end_date = request.end_date
+            if start_date is None or end_date is None:
+                raise ValueError("start_date and end_date are required")
 
-        metrics = request.metrics or list(METRICS.keys())
-        geometry = json.loads(region.geometry)
+            metrics = request.metrics or list(METRICS.keys())
+            geometry = json.loads(region.geometry)
 
-        # Compute monthly time series per metric and summarize with mean/min/max.
-        from app.gee import compute_time_series
+            # Compute monthly time series per metric and summarize with mean/min/max.
+            from app.gee import compute_time_series
 
-        summary_rows: list[list[str]] = [["Metric", "Unit", "Mean", "Min", "Max", "Points"]]
-        for metric in metrics:
-            series = await gee_to_thread(
-                compute_time_series,
-                geometry_geojson=geometry,
-                metric=metric,
-                start_date=start_date,
-                end_date=end_date,
-                granularity="monthly",
-            )
-            values = [v for _, v in series]
-            if not values:
-                continue
-            mean_v = sum(values) / len(values)
-            summary_rows.append(
-                [
-                    metric,
-                    METRICS[metric].unit,
-                    f"{mean_v:.4f}",
-                    f"{min(values):.4f}",
-                    f"{max(values):.4f}",
-                    str(len(values)),
-                ]
-            )
+            summary_rows: list[list[str]] = [["Metric", "Unit", "Mean", "Min", "Max", "Points"]]
+            for metric in metrics:
+                series = await gee_to_thread(
+                    compute_time_series,
+                    geometry_geojson=geometry,
+                    metric=metric,
+                    start_date=start_date,
+                    end_date=end_date,
+                    granularity="monthly",
+                )
+                values = [v for _, v in series]
+                if not values:
+                    continue
+                mean_v = sum(values) / len(values)
+                summary_rows.append(
+                    [
+                        metric,
+                        METRICS[metric].unit,
+                        f"{mean_v:.4f}",
+                        f"{min(values):.4f}",
+                        f"{max(values):.4f}",
+                        str(len(values)),
+                    ]
+                )
 
-        output = Path(settings.exports_path) / f"{job_id}.pdf"
-        doc = SimpleDocTemplate(str(output), pagesize=letter)
-        styles = getSampleStyleSheet()
+            output = Path(settings.exports_path) / f"{job_id}.pdf"
+            doc = SimpleDocTemplate(str(output), pagesize=letter)
+            styles = getSampleStyleSheet()
 
-        story = []
-        story.append(Paragraph(request.title or f"Report: {region.name}", styles["Title"]))
-        story.append(Spacer(1, 12))
-        story.append(Paragraph(f"Period: {start_date} to {end_date}", styles["Normal"]))
-        story.append(Spacer(1, 12))
-        if request.description:
-            story.append(Paragraph(request.description, styles["BodyText"]))
+            story = []
+            story.append(Paragraph(request.title or f"Report: {region.name}", styles["Title"]))
             story.append(Spacer(1, 12))
+            story.append(Paragraph(f"Period: {start_date} to {end_date}", styles["Normal"]))
+            story.append(Spacer(1, 12))
+            if request.description:
+                story.append(Paragraph(request.description, styles["BodyText"]))
+                story.append(Spacer(1, 12))
 
-        table = Table(summary_rows, hAlign="LEFT")
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                ]
+            table = Table(summary_rows, hAlign="LEFT")
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                        ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ]
+                )
             )
-        )
-        story.append(table)
-        doc.build(story)
+            story.append(table)
+            doc.build(story)
 
-        await _update_job(
-            db,
-            job_id,
-            status="completed",
-            progress=100.0,
-            message="Completed",
-            output_path=str(output),
-            file_size=output.stat().st_size,
-            completed_at=_now(),
-        )
-        await db.commit()
-
-    await engine.dispose()
+            await _update_job(
+                db,
+                job_id,
+                status="completed",
+                progress=100.0,
+                message="Completed",
+                output_path=str(output),
+                file_size=output.stat().st_size,
+                completed_at=_now(),
+            )
+            await db.commit()
+    finally:
+        await engine.dispose()
 
 
 async def _generate_animation(job_id: str, request: AnimationRequest, db_url: str) -> None:
@@ -232,75 +278,76 @@ async def _generate_animation(job_id: str, request: AnimationRequest, db_url: st
     engine = create_async_engine(db_url, echo=False)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
-    async with session_factory() as db:
-        await _update_job(db, job_id, status="processing", progress=0.0, message="Rendering frames")
-        await db.commit()
+    try:
+        async with session_factory() as db:
+            await _update_job(db, job_id, status="processing", progress=0.0, message="Rendering frames")
+            await db.commit()
 
-        region = (await db.execute(select(Region).where(Region.id == request.region_id))).scalar_one_or_none()
-        if region is None:
-            raise ValueError("Region not found")
+            region = (await db.execute(select(Region).where(Region.id == request.region_id))).scalar_one_or_none()
+            if region is None:
+                raise ValueError("Region not found")
 
-        geometry = json.loads(region.geometry)
-        metric_def = METRICS[request.metric]
+            geometry = json.loads(region.geometry)
+            metric_def = METRICS[request.metric]
 
-        initialize_ee()
-        import ee
+            initialize_ee()
+            import ee
 
-        geom = geojson_to_ee_geometry(geometry)
+            geom = geojson_to_ee_geometry(geometry)
 
-        # Choose monthly frames by default; daily if <= 90 days and supported.
-        days = (request.end_date - request.start_date).days
-        frame_granularity: str = "monthly"
-        if days <= 90 and "daily" in metric_def.supported_granularities:
-            frame_granularity = "daily"
+            # Choose monthly frames by default; daily if <= 90 days and supported.
+            days = (request.end_date - request.start_date).days
+            frame_granularity: str = "monthly"
+            if days <= 90 and "daily" in metric_def.supported_granularities:
+                frame_granularity = "daily"
 
-        starts = bucket_starts(request.start_date, request.end_date, frame_granularity)  # type: ignore[arg-type]
-        total = max(1, len(starts))
+            starts = bucket_starts(request.start_date, request.end_date, frame_granularity)  # type: ignore[arg-type]
+            total = max(1, len(starts))
 
-        frames = []
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            for i, d0 in enumerate(starts):
-                d1 = bucket_end(d0, frame_granularity)  # type: ignore[arg-type]
-                ee_start = ee.Date(d0.isoformat())
-                ee_end = ee.Date(d1.isoformat())
+            frames = []
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                for i, d0 in enumerate(starts):
+                    d1 = bucket_end(d0, frame_granularity)  # type: ignore[arg-type]
+                    ee_start = ee.Date(d0.isoformat())
+                    ee_end = ee.Date(d1.isoformat())
 
-                img = build_metric_image(request.metric, ee_start, ee_end, geom)
-                vmin, vmax = metric_def.value_range
-                thumb = await gee_to_thread(
-                    img.getThumbURL,
-                    {
-                        "region": geom,
-                        "dimensions": [request.width, request.height],
-                        "format": "png",
-                        "min": vmin,
-                        "max": vmax,
-                        "palette": metric_def.palette,
-                    },
-                )
-                resp = await client.get(thumb)
-                resp.raise_for_status()
-                frames.append(imageio.imread(resp.content))
+                    img = build_metric_image(request.metric, ee_start, ee_end, geom)
+                    vmin, vmax = metric_def.value_range
+                    thumb = await gee_to_thread(
+                        img.getThumbURL,
+                        {
+                            "region": geom,
+                            "dimensions": [request.width, request.height],
+                            "format": "png",
+                            "min": vmin,
+                            "max": vmax,
+                            "palette": metric_def.palette,
+                        },
+                    )
+                    resp = await client.get(thumb)
+                    resp.raise_for_status()
+                    frames.append(imageio.imread(resp.content))
 
-                progress = ((i + 1) / total) * 95.0
-                await _update_job(db, job_id, progress=progress, message=f"Rendered {i + 1}/{total} frames")
-                await db.commit()
+                    progress = ((i + 1) / total) * 95.0
+                    await _update_job(db, job_id, progress=progress, message=f"Rendered {i + 1}/{total} frames")
+                    await db.commit()
 
-        output = Path(settings.exports_path) / f"{job_id}.gif"
-        imageio.mimsave(output, frames, duration=request.frame_duration_ms / 1000.0)
+            output = Path(settings.exports_path) / f"{job_id}.gif"
+            imageio.mimsave(output, frames, duration=request.frame_duration_ms / 1000.0)
 
-        await _update_job(
-            db,
-            job_id,
-            status="completed",
-            progress=100.0,
-            message="Completed",
-            output_path=str(output),
-            file_size=output.stat().st_size,
-            completed_at=_now(),
-        )
-        await db.commit()
-
-    await engine.dispose()
+            await _update_job(
+                db,
+                job_id,
+                status="completed",
+                progress=100.0,
+                message="Completed",
+                output_path=str(output),
+                file_size=output.stat().st_size,
+                completed_at=_now(),
+            )
+            await db.commit()
+    finally:
+        await engine.dispose()
 
 
 @router.post("/pdf", response_model=ExportResponse, status_code=status.HTTP_202_ACCEPTED)
@@ -320,11 +367,12 @@ async def export_pdf(
     )
     db.add(job)
     await db.flush()
+    await db.commit()
 
     from app.settings import get_settings
 
     settings = get_settings()
-    background_tasks.add_task(_generate_pdf, job.id, request, settings.database_url)
+    background_tasks.add_task(_run_export_task, job.id, settings.database_url, _generate_pdf, request)
     return _job_to_response(job)
 
 
@@ -345,9 +393,10 @@ async def export_csv(
     )
     db.add(job)
     await db.flush()
+    await db.commit()
 
     settings = get_settings()
-    background_tasks.add_task(_generate_csv, job.id, request, settings.database_url)
+    background_tasks.add_task(_run_export_task, job.id, settings.database_url, _generate_csv, request)
     return _job_to_response(job)
 
 
@@ -368,9 +417,10 @@ async def export_animation(
     )
     db.add(job)
     await db.flush()
+    await db.commit()
 
     settings = get_settings()
-    background_tasks.add_task(_generate_animation, job.id, request, settings.database_url)
+    background_tasks.add_task(_run_export_task, job.id, settings.database_url, _generate_animation, request)
     return _job_to_response(job)
 
 

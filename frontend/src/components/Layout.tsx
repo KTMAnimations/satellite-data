@@ -9,7 +9,7 @@ import {
 import { shallow } from 'zustand/shallow';
 import { useStore, type NavSection } from '../store';
 import { ErrorBoundary } from './ErrorBoundary';
-import exeterSeal from '../assets/exeter-seal.png';
+import exeterLion from '../assets/exeter-lion.png';
 import './Layout.css';
 
 function navSectionForPath(pathname: string): NavSection {
@@ -63,13 +63,16 @@ export function Layout() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label="Toggle sidebar"
           >
-            <List size={20} weight="bold" />
+            <List size={15} weight="bold" />
           </button>
           <Link to="/" className="logo">
             <div className="logo-icon">
-              <img src={exeterSeal} alt="" className="logo-seal" aria-hidden="true" />
+              <img src={exeterLion} alt="" className="logo-seal" aria-hidden="true" />
             </div>
-            <span className="logo-text">Exeter Astro</span>
+            <div className="logo-title">
+              <span className="logo-text">Exeter Astronomy</span>
+              <span className="logo-credit">Created by Roy Vaid and Samuel Scheffler</span>
+            </div>
           </Link>
         </div>
 
