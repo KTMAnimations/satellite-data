@@ -760,14 +760,6 @@ def build_metric_image_for_tiles(metric: MetricId, start, end, geom, *, z: int |
             modis_ndvi = ee.Image(ee.Algorithms.If(modis_has_images, modis_ndvi, _empty_masked_image(band)))
             return modis_ndvi.clip(geom)
 
-        # Low-zoom cropland: keep the high-resolution ESA WorldCover source,
-        # but skip Dynamic World temporal compositing for world-scale
-        # responsiveness at z<=6.
-        if metric == "cropland":
-            worldcover = ee.ImageCollection("ESA/WorldCover/v200").first().select(["Map"])
-            cropland = worldcover.eq(40).unmask(0).toFloat().rename([metric])
-            return cropland.clip(geom)
-
         # Low-zoom surface water: avoid Dynamic World for responsiveness.
         # Fill monthly no-data pixels using the static fallback chain.
         if metric == "surface_water":
@@ -959,7 +951,7 @@ class _BoundedTTLCache(dict):
 
 _tile_template_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
-_tile_cache_version = 29
+_tile_cache_version = 30
 
 
 def _tile_visualization_range(metric_def: MetricDefinition) -> tuple[float, float]:
@@ -967,7 +959,7 @@ def _tile_visualization_range(metric_def: MetricDefinition) -> tuple[float, floa
 
 
 def _tile_render_variant(metric: MetricId, *, z: int | None) -> str:
-    if z is not None and z <= 6 and metric in {"ndvi", "cropland", "surface_water"}:
+    if z is not None and z <= 6 and metric in {"ndvi", "surface_water"}:
         return f"{metric}_low_zoom_proxy"
     return "default"
 

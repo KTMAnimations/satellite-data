@@ -45,16 +45,16 @@
 
 .logo {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.logo-home {
+  display: flex;
+  align-items: baseline;
   gap: 0.625rem;
   text-decoration: none;
   color: var(--text-primary);
-}
-
-.logo-title {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
 }
 
 .logo-icon {
@@ -80,7 +80,7 @@
 }
 
 .logo-credit {
-  color: var(--border-panel);
+  color: #aea8a2;
   font-family: var(--font-body);
   font-size: 0.5625rem;
   font-weight: 400;
