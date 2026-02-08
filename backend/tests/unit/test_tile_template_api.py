@@ -43,6 +43,24 @@ def test_tile_template_returns_without_earth_engine(monkeypatch):
     asyncio.run(run())
 
 
+def test_tile_template_uses_metric_tile_visualization_range():
+    app = _import_fresh_app()
+
+    async def run() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.get(
+                "/api/v1/tiles/template",
+                params={"metric": "precipitation", "date_bucket": "2024-02", "granularity": "monthly"},
+            )
+            assert res.status_code == 200
+            data = res.json()
+            assert data["min"] == 0.0
+            assert data["max"] == 180.0
+
+    asyncio.run(run())
+
+
 def test_tile_template_rejects_invalid_date_bucket_format():
     app = _import_fresh_app()
 
@@ -62,4 +80,3 @@ def test_tile_template_rejects_invalid_date_bucket_format():
             assert res.status_code == 400
 
     asyncio.run(run())
-

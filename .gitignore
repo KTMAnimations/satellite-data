@@ -63,6 +63,7 @@ htmlcov/
 playwright-mcp-screenshots/
 frontend/e2e/playwright-report/
 frontend/test-results/
+tmp/playwright/
 output/
 
 # Build

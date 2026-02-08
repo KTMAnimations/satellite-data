@@ -40,6 +40,9 @@ class MetricDefinition:
     scale_m: int | None
     # Transparent cutoff expressed in normalized 0..1 (applied using value_range)
     transparent_below_normalized: float
+    # Optional tile-only visualization range. This affects overlay contrast
+    # without changing underlying metric values used for analytics.
+    tile_viz_range: tuple[float, float] | None = None
 
 
 METRICS: dict[MetricId, MetricDefinition] = {
@@ -88,6 +91,9 @@ METRICS: dict[MetricId, MetricDefinition] = {
         supported_granularities={"weekly", "monthly"},
         scale_m=30,
         transparent_below_normalized=0.001,
+        # NDBI-derived values typically cluster in a narrow mid-band; use a
+        # tighter render range so block-level differences are visible.
+        tile_viz_range=(0.2, 0.6),
     ),
     "land_cover": MetricDefinition(
         id="land_cover",
@@ -121,6 +127,8 @@ METRICS: dict[MetricId, MetricDefinition] = {
         supported_granularities={"daily", "monthly"},
         scale_m=10000,
         transparent_below_normalized=0.001,
+        # Typical S5P tropospheric NO2 sits well below the full hard cap.
+        tile_viz_range=(0.0, 0.00008),
     ),
     "temperature": MetricDefinition(
         id="temperature",
@@ -143,6 +151,8 @@ METRICS: dict[MetricId, MetricDefinition] = {
         supported_granularities={"daily", "monthly"},
         scale_m=5500,
         transparent_below_normalized=0.0,
+        # Monthly totals are usually concentrated in low-to-mid values.
+        tile_viz_range=(0.0, 180.0),
     ),
     "aerosol": MetricDefinition(
         id="aerosol",
@@ -154,6 +164,8 @@ METRICS: dict[MetricId, MetricDefinition] = {
         supported_granularities={"daily", "monthly"},
         scale_m=10000,
         transparent_below_normalized=0.0,
+        # Keep common near-surface aerosol variation from collapsing to a flat tint.
+        tile_viz_range=(-0.5, 1.5),
     ),
     "cropland": MetricDefinition(
         id="cropland",
@@ -998,7 +1010,11 @@ class _BoundedTTLCache(dict):
 
 _tile_template_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
-_tile_cache_version = 26
+_tile_cache_version = 27
+
+
+def _tile_visualization_range(metric_def: MetricDefinition) -> tuple[float, float]:
+    return metric_def.tile_viz_range or metric_def.value_range
 
 
 def _tile_render_variant(metric: MetricId, *, z: int | None) -> str:
@@ -1045,8 +1061,10 @@ def get_tile_fetcher(metric: MetricId, date_bucket: str, granularity: Granularit
     threshold = vmin + metric_def.transparent_below_normalized * (vmax - vmin)
     img = img.updateMask(img.gte(threshold))
 
+    viz_min, viz_max = _tile_visualization_range(metric_def)
+
     # Keep EE tiles fully opaque; Leaflet controls opacity client-side.
-    mapid = img.getMapId({"min": vmin, "max": vmax, "palette": metric_def.palette, "opacity": 1.0})
+    mapid = img.getMapId({"min": viz_min, "max": viz_max, "palette": metric_def.palette, "opacity": 1.0})
     tile_fetcher = mapid.get("tile_fetcher")
     if not tile_fetcher:
         raise RuntimeError("Earth Engine TileFetcher unavailable for this environment.")
@@ -1072,7 +1090,7 @@ def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granulari
     if cached and now - cached[0] < settings.tile_token_ttl_seconds:
         return cached[1]
 
-    vmin, vmax = metric_def.value_range
+    vmin, vmax = _tile_visualization_range(metric_def)
     # Add a small cache-buster query param so browser caches don't pin previously
     # bad tiles (e.g. from earlier antimeridian rendering issues).
     tile_url = (
