@@ -58,12 +58,14 @@ def test_telemetry_register_events_and_admin_views(tmp_path, monkeypatch):
     ip_address = ips_payload["ips"][0]["ip_address"]
     assert ips_payload["ips"][0]["event_count"] == 2
     assert ips_payload["ips"][0]["instance_count"] == 1
+    assert "location" in ips_payload["ips"][0]
 
     ip_detail = client.get(f"/api/v1/admin/ips/{ip_address}")
     assert ip_detail.status_code == 200, ip_detail.text
     ip_detail_payload = ip_detail.json()
     assert ip_detail_payload["ip"]["ip_address"] == ip_address
     assert ip_detail_payload["ip"]["event_count"] == 2
+    assert "location" in ip_detail_payload["ip"]
     assert len(ip_detail_payload["instances"]) == 1
     assert ip_detail_payload["instances"][0]["instance_id"] == "inst-1"
 
@@ -84,4 +86,3 @@ def test_telemetry_register_events_and_admin_views(tmp_path, monkeypatch):
     assert len(inst_events_payload["events"]) == 2
     assert inst_events_payload["events"][0]["event_type"] == "page_load"
     assert inst_events_payload["events"][1]["event_type"] == "map_zoom"
-

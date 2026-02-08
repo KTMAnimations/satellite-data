@@ -233,6 +233,7 @@ export interface PresetListResponse {
 // Admin / telemetry
 export interface AdminIpSummary {
   ip_address: string;
+  location: string | null;
   first_seen_at: string;
   last_seen_at: string;
   instance_count: number;

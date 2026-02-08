@@ -199,6 +199,7 @@ function IpListView() {
             <thead>
               <tr>
                 <th>IP</th>
+                <th>Location</th>
                 <th>First seen</th>
                 <th>Last seen</th>
                 <th>Instances</th>
@@ -213,6 +214,7 @@ function IpListView() {
                   onClick={() => navigate(`/admin/ip/${encodeURIComponent(ip.ip_address)}`)}
                 >
                   <td className="mono">{ip.ip_address}</td>
+                  <td className="admin-ellipsis">{ip.location ?? 'Unknown'}</td>
                   <td>{formatDateTime(ip.first_seen_at)}</td>
                   <td>{formatDateTime(ip.last_seen_at)}</td>
                   <td>{ip.instance_count}</td>
@@ -260,6 +262,7 @@ function IpDetailView() {
         <>
           <div className="admin-kv">
             <div><span className="admin-k">IP</span> <span className="mono">{data.ip.ip_address}</span></div>
+            <div><span className="admin-k">Location</span> {data.ip.location ?? 'Unknown'}</div>
             <div><span className="admin-k">First seen</span> {formatDateTime(data.ip.first_seen_at)}</div>
             <div><span className="admin-k">Last seen</span> {formatDateTime(data.ip.last_seen_at)}</div>
             <div><span className="admin-k">Instances</span> {data.ip.instance_count}</div>
