@@ -15,7 +15,7 @@ import type { Granularity, MapState, Region, GeoJSONPolygon, MetricType, TileTem
 import api from '../../services/api';
 import { telemetry } from '../../services/telemetry';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
-import { DEFAULT_METRIC_OVERLAY_MIN_ZOOM, MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
+import { MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
 import { formatApiError } from '../../utils/errors';
 import type { CompositeTileEvent } from './CompositeTileLayer';
 import type { FlowPoint } from './FlowLayer';
@@ -128,7 +128,7 @@ function MapController({
         // Fit bounds to show the region.
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: MAX_MAP_ZOOM, animate: false });
 
-        // Sync store state immediately so zoom-gated overlays render on first load.
+        // Sync store state immediately after fitBounds.
         const center = map.getCenter();
         updateMapState({
           center: [center.lat, center.lng],
@@ -241,11 +241,8 @@ export function MapView({
         ? (selectedRegion?.id ?? null)
         : null;
   const useDarkBasemap = selectedMetric === 'nightlights';
-  const effectiveOverlayMinZoom = DEFAULT_METRIC_OVERLAY_MIN_ZOOM;
   const metricLayerMounted = Boolean(selectedMetric && tileDate);
-  const metricLayerVisible = Boolean(
-    overlayEnabled && overlayAllowNetwork && mapState.zoom >= effectiveOverlayMinZoom
-  );
+  const metricLayerVisible = Boolean(overlayEnabled && overlayAllowNetwork);
 
   useEffect(() => {
     if (!mapContainerEl) return;
@@ -332,7 +329,7 @@ export function MapView({
       return;
     }
 
-    // If the overlay isn't currently visible (zoom-gated), just track the latest template.
+    // If the overlay isn't currently visible, just track the latest template.
     // Double-buffering is only needed while the overlay is on-screen to prevent flicker.
     if (!metricLayerVisible) {
       if (!activeTileTemplate || activeTileTemplate.tile_url !== tileTemplateWithCacheBust.tile_url) {
@@ -587,11 +584,6 @@ export function MapView({
 
       {/* Map controls overlay */}
       <div className="map-controls">
-        {overlayEnabled && selectedMetric && mapState.zoom < effectiveOverlayMinZoom && (
-          <div className="map-overlay-hint">
-            Zoom in to see overlay (z≥{effectiveOverlayMinZoom})
-          </div>
-        )}
         {overlayEnabled &&
           selectedMetric &&
           metricLayerMounted &&
