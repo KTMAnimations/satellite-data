@@ -1790,10 +1790,9 @@ def build_metric_image(metric: MetricId, start, end, geom):
         return image.clip(geom)
 
     if metric == "gedi_agbd":
-        collection = ee.ImageCollection("LARSE/GEDI/GEDI04_B_002").filterBounds(geom).filterDate(start, end).select(["MU"])
-        has_images = collection.size().gt(0)
-        image = collection.mean().rename([band])
-        return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
+        # GEDI L4B in EE is exposed as a single gridded image asset.
+        image = ee.Image("LARSE/GEDI/GEDI04_B_002").select(["MU"]).rename([band])
+        return image.clip(geom)
 
     if metric in {"active_fire_temp", "active_fire_confidence"}:
         collection = ee.ImageCollection("FIRMS").filterBounds(geom).filterDate(start, end)
@@ -1976,12 +1975,17 @@ def build_metric_image(metric: MetricId, start, end, geom):
             return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
         if metric == "building_footprints_density":
-            features = ee.FeatureCollection("GOOGLE/Research/open-buildings/v3/polygons").filterBounds(geom)
-            has_features = features.size().gt(0)
-            with_area = features.map(lambda f: f.set({"footprint_area_m2": f.geometry().area(1)}))
-            area_sum = with_area.reduceToImage(["footprint_area_m2"], ee.Reducer.sum())
-            image = area_sum.divide(ee.Image.pixelArea()).clamp(0, 1).rename([band])
-            return ee.Image(ee.Algorithms.If(has_features, image, _empty_masked_image(band))).clip(geom)
+            # Vector polygon reduction is very expensive at global tile scale.
+            # Use temporal raster building-presence as a footprint-density proxy.
+            collection = (
+                ee.ImageCollection("GOOGLE/Research/open-buildings-temporal/v1")
+                .filterBounds(geom)
+                .filterDate(start, end)
+                .select(["building_presence"])
+            )
+            has_images = collection.size().gt(0)
+            image = collection.mean().rename([band])
+            return ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band))).clip(geom)
 
         if metric == "travel_time_to_cities":
             image = ee.Image(
@@ -1989,7 +1993,15 @@ def build_metric_image(metric: MetricId, start, end, geom):
             ).select([0]).rename([band])
             return image.clip(geom)
 
-        image = ee.Image("CSP/HM/GlobalHumanModification").select(["gHM"]).rename([band])
+        hm = ee.ImageCollection("CSP/HM/GlobalHumanModification")
+        has_images = hm.size().gt(0)
+        image = ee.Image(
+            ee.Algorithms.If(
+                has_images,
+                hm.sort("system:time_start", False).first(),
+                _empty_masked_image("gHM"),
+            )
+        ).select(["gHM"]).rename([band])
         return image.clip(geom)
 
     if metric in {"co", "so2", "o3", "hcho", "ch4"}:
@@ -2157,6 +2169,19 @@ def build_metric_image_for_tiles(metric: MetricId, start, end, geom, *, z: int |
 
             static_fallback = _surface_water_static_fallback(metric)
             return monthly_water.unmask(static_fallback).clip(geom)
+
+        # Low-zoom dNBR: use burned-area fraction proxy to avoid expensive global
+        # dual-window Sentinel-2 composites while preserving higher=more impact.
+        if metric == "dnbr":
+            burned = (
+                ee.ImageCollection("MODIS/061/MCD64A1")
+                .filterBounds(geom)
+                .filterDate(start, end)
+                .select(["BurnDate"])
+            )
+            has_images = burned.size().gt(0)
+            frac = burned.map(lambda img: img.gt(0).toFloat()).max().multiply(2).rename([metric])
+            return ee.Image(ee.Algorithms.If(has_images, frac, _empty_masked_image(metric))).clip(geom)
 
     return build_metric_image(metric, start, end, geom)
 
@@ -2335,7 +2360,7 @@ def _tile_visualization_range(metric_def: MetricDefinition) -> tuple[float, floa
 
 
 def _tile_render_variant(metric: MetricId, *, z: int | None) -> str:
-    if z is not None and z <= 6 and metric in {"ndvi", "parking", "land_cover", "cropland", "surface_water"}:
+    if z is not None and z <= 6 and metric in {"ndvi", "parking", "land_cover", "cropland", "surface_water", "dnbr"}:
         return f"{metric}_low_zoom_proxy"
     return "default"
 

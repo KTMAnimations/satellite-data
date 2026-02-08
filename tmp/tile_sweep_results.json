@@ -1,0 +1,807 @@
+{
+  "total": 89,
+  "failures": [],
+  "all": [
+    {
+      "metric": "ndvi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "nightlights",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "urban_density",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "parking",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "land_cover",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "surface_water",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "no2",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "temperature",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "precipitation",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "aerosol",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "cropland",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "evapotranspiration",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "soil_moisture",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "impervious",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "canopy_height",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "evi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "ndre",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "ndmi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "ndwi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "mndwi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "savi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "bsi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "nbr",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "dnbr",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "gci",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "ndsi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "s1_vv",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "s1_vh",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "s1_vh_vv_ratio",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "s1_rvi",
+      "granularity": "weekly",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "lst_day",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "lst_night",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "lst_diurnal_range",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "albedo_black_sky",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "albedo_white_sky",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "par",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "lai",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "fpar",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "gpp",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "npp",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "biomass_agb_carbon",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "biomass_bgb_carbon",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "gedi_agbd",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "active_fire_temp",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "active_fire_confidence",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "burned_area_date",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "burned_area_fraction",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "treecover_2000",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "forest_loss_year",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "forest_gain",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "forest_loss_fraction",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "snow_cover",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "fractional_snow_cover",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "snow_albedo",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "snow_cover_8day",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "tws_anomaly",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "flood_max_extent",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "flood_duration_days",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "flood_observation_quality",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "drought_pdsi",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "vpd",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "runoff",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "clim_water_deficit",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "elevation",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "slope",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "aspect",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "terrain_ruggedness",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "soil_organic_carbon",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "soil_ph",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "soil_sand_fraction",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "soil_field_capacity",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "population_count",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "population_density",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "building_presence",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "building_height",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "building_count_proxy",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "building_footprints_density",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "travel_time_to_cities",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "human_modification",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "co",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "so2",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "o3",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "hcho",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "ch4",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "pm25",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "sst",
+      "granularity": "daily",
+      "bucket": "2024-02-01",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "ocean_chlorophyll",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "ocean_poc",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    },
+    {
+      "metric": "bathymetry",
+      "granularity": "monthly",
+      "bucket": "2024-02",
+      "template_status": 200,
+      "template_detail": "",
+      "tile_status": 200,
+      "tile_detail": ""
+    }
+  ]
+}
