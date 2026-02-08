@@ -77,7 +77,7 @@ const METRIC_CONFIG: Record<
   cropland: {
     label: 'Cropland',
     unit: 'ratio',
-    gradient: 'linear-gradient(90deg, #FFFFB2 0%, #FED976 25%, #FD8D3C 50%, #BD0026 75%, #228B22 100%)',
+    gradient: 'linear-gradient(90deg, #BD0026 0%, #F03B20 24%, #FEE391 50%, #86EFAC 76%, #228B22 100%)',
     lowLabel: 'Fallow',
     highLabel: 'Crops',
   },
@@ -146,7 +146,9 @@ export function HeatmapLegend({
   const { data: tileTemplate } = useTileTemplate(metric, dateBucket, tileGranularity);
 
   const gradient =
-    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : config.gradient;
+    metric !== 'cropland' && tileTemplate?.palette?.length
+      ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})`
+      : config.gradient;
 
   return (
     <div className="heatmap-legend">
@@ -189,7 +191,9 @@ export function HeatmapLegendCompact({
   const { data: tileTemplate } = useTileTemplate(metric, dateBucket, tileGranularity);
 
   const gradient =
-    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : config.gradient;
+    metric !== 'cropland' && tileTemplate?.palette?.length
+      ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})`
+      : config.gradient;
 
   return (
     <div className="heatmap-legend-compact">
