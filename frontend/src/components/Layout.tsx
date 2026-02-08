@@ -71,7 +71,7 @@ export function Layout() {
             </div>
             <div className="logo-title">
               <span className="logo-text">Exeter Astronomy</span>
-              <span className="logo-credit">Created by Roy Vaid and Samuel Scheffler</span>
+              <span className="logo-credit">Created by Samuel Scheffler and Roy Vaid</span>
             </div>
           </Link>
         </div>
