@@ -22,6 +22,80 @@ MetricId = Literal[
     "soil_moisture",
     "impervious",
     "canopy_height",
+    "evi",
+    "ndre",
+    "ndmi",
+    "ndwi",
+    "mndwi",
+    "savi",
+    "bsi",
+    "nbr",
+    "dnbr",
+    "gci",
+    "ndsi",
+    "s1_vv",
+    "s1_vh",
+    "s1_vh_vv_ratio",
+    "s1_rvi",
+    "lst_day",
+    "lst_night",
+    "lst_diurnal_range",
+    "albedo_black_sky",
+    "albedo_white_sky",
+    "par",
+    "lai",
+    "fpar",
+    "gpp",
+    "npp",
+    "biomass_agb_carbon",
+    "biomass_bgb_carbon",
+    "gedi_agbd",
+    "active_fire_temp",
+    "active_fire_confidence",
+    "burned_area_date",
+    "burned_area_fraction",
+    "treecover_2000",
+    "forest_loss_year",
+    "forest_gain",
+    "forest_loss_fraction",
+    "snow_cover",
+    "fractional_snow_cover",
+    "snow_albedo",
+    "snow_cover_8day",
+    "tws_anomaly",
+    "flood_max_extent",
+    "flood_duration_days",
+    "flood_observation_quality",
+    "drought_pdsi",
+    "vpd",
+    "runoff",
+    "clim_water_deficit",
+    "elevation",
+    "slope",
+    "aspect",
+    "terrain_ruggedness",
+    "soil_organic_carbon",
+    "soil_ph",
+    "soil_sand_fraction",
+    "soil_field_capacity",
+    "population_count",
+    "population_density",
+    "building_presence",
+    "building_height",
+    "building_count_proxy",
+    "building_footprints_density",
+    "travel_time_to_cities",
+    "human_modification",
+    "co",
+    "so2",
+    "o3",
+    "hcho",
+    "ch4",
+    "pm25",
+    "sst",
+    "ocean_chlorophyll",
+    "ocean_poc",
+    "bathymetry",
 ]
 
 
@@ -69,23 +143,7 @@ class MetricData(BaseModel):
     data: list[MetricDataPoint]
 
 
-class SeasonalAverage(BaseModel):
-    # Keep keys stable for the frontend; values are null when unavailable.
-    ndvi: float | None = None
-    nightlights: float | None = None
-    urban_density: float | None = None
-    parking: float | None = None
-    land_cover: float | None = None
-    surface_water: float | None = None
-    no2: float | None = None
-    temperature: float | None = None
-    precipitation: float | None = None
-    aerosol: float | None = None
-    cropland: float | None = None
-    evapotranspiration: float | None = None
-    soil_moisture: float | None = None
-    impervious: float | None = None
-    canopy_height: float | None = None
+SeasonalAverage = dict[str, float | None]
 
 
 class SeasonalSummary(BaseModel):

@@ -31,21 +31,104 @@ export type MetricType =
   | 'nightlights'
   | 'urban_density'
   | 'parking'
-  // Phase 1: Core datasets
   | 'land_cover'
   | 'surface_water'
-  // Phase 2: Air quality & weather
   | 'no2'
   | 'temperature'
   | 'precipitation'
   | 'aerosol'
-  // Phase 3: Agriculture
   | 'cropland'
   | 'evapotranspiration'
   | 'soil_moisture'
-  // Phase 4: Historical & specialized
   | 'impervious'
-  | 'canopy_height';
+  | 'canopy_height'
+  // Vegetation / optical indices
+  | 'evi'
+  | 'ndre'
+  | 'ndmi'
+  | 'ndwi'
+  | 'mndwi'
+  | 'savi'
+  | 'bsi'
+  | 'nbr'
+  | 'dnbr'
+  | 'gci'
+  | 'ndsi'
+  // Radar
+  | 's1_vv'
+  | 's1_vh'
+  | 's1_vh_vv_ratio'
+  | 's1_rvi'
+  // Surface energy / temperature
+  | 'lst_day'
+  | 'lst_night'
+  | 'lst_diurnal_range'
+  | 'albedo_black_sky'
+  | 'albedo_white_sky'
+  | 'par'
+  // Productivity / biomass
+  | 'lai'
+  | 'fpar'
+  | 'gpp'
+  | 'npp'
+  | 'biomass_agb_carbon'
+  | 'biomass_bgb_carbon'
+  | 'gedi_agbd'
+  // Fire
+  | 'active_fire_temp'
+  | 'active_fire_confidence'
+  | 'burned_area_date'
+  | 'burned_area_fraction'
+  // Forest change
+  | 'treecover_2000'
+  | 'forest_loss_year'
+  | 'forest_gain'
+  | 'forest_loss_fraction'
+  // Snow / cryosphere
+  | 'snow_cover'
+  | 'fractional_snow_cover'
+  | 'snow_albedo'
+  | 'snow_cover_8day'
+  // Water / flood / drought
+  | 'tws_anomaly'
+  | 'flood_max_extent'
+  | 'flood_duration_days'
+  | 'flood_observation_quality'
+  | 'drought_pdsi'
+  | 'vpd'
+  | 'runoff'
+  | 'clim_water_deficit'
+  // Terrain
+  | 'elevation'
+  | 'slope'
+  | 'aspect'
+  | 'terrain_ruggedness'
+  // Soils
+  | 'soil_organic_carbon'
+  | 'soil_ph'
+  | 'soil_sand_fraction'
+  | 'soil_field_capacity'
+  // Human systems
+  | 'population_count'
+  | 'population_density'
+  | 'building_presence'
+  | 'building_height'
+  | 'building_count_proxy'
+  | 'building_footprints_density'
+  | 'travel_time_to_cities'
+  | 'human_modification'
+  // Air quality
+  | 'co'
+  | 'so2'
+  | 'o3'
+  | 'hcho'
+  | 'ch4'
+  | 'pm25'
+  // Oceans
+  | 'sst'
+  | 'ocean_chlorophyll'
+  | 'ocean_poc'
+  | 'bathymetry';
 
 export type Granularity = 'daily' | 'weekly' | 'monthly';
 
@@ -59,28 +142,7 @@ export interface MetricData {
   data: MetricDataPoint[];
 }
 
-export interface SeasonalAverage {
-  // Original metrics
-  ndvi: number | null;
-  nightlights: number | null;
-  urban_density: number | null;
-  parking: number | null;
-  // Phase 1: Core datasets
-  land_cover: number | null;
-  surface_water: number | null;
-  // Phase 2: Air quality & weather
-  no2: number | null;
-  temperature: number | null;
-  precipitation: number | null;
-  aerosol: number | null;
-  // Phase 3: Agriculture
-  cropland: number | null;
-  evapotranspiration: number | null;
-  soil_moisture: number | null;
-  // Phase 4: Historical & specialized
-  impervious: number | null;
-  canopy_height: number | null;
-}
+export type SeasonalAverage = Partial<Record<MetricType, number | null>>;
 
 export interface SeasonalSummary {
   winter_avg: SeasonalAverage;

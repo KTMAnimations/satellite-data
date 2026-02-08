@@ -20,7 +20,7 @@ router = APIRouter()
 # Used to invalidate cached metric observations in SQLite when computation logic changes.
 # Bump this when making non-backwards-compatible changes to `compute_time_series` inputs
 # or any metric implementation in `app/gee.py`.
-METRICS_CACHE_SOURCE = "earth_engine:v5"
+METRICS_CACHE_SOURCE = "earth_engine:v6"
 
 
 def _parse_month_from_bucket(bucket: str) -> int | None:
@@ -73,9 +73,9 @@ def _seasonal_summary(metrics: dict[str, MetricData]) -> SeasonalSummary | None:
             change_pct[m] = max(-1000.0, min(1000.0, raw))
 
     return SeasonalSummary(
-        winter_avg=SeasonalAverage(**{k: winter_avg.get(k) for k in SeasonalAverage.model_fields.keys()}),
-        summer_avg=SeasonalAverage(**{k: summer_avg.get(k) for k in SeasonalAverage.model_fields.keys()}),
-        change_pct=SeasonalAverage(**{k: change_pct.get(k) for k in SeasonalAverage.model_fields.keys()}),
+        winter_avg=SeasonalAverage(winter_avg),
+        summer_avg=SeasonalAverage(summer_avg),
+        change_pct=SeasonalAverage(change_pct),
     )
 
 

@@ -1,5 +1,6 @@
 import type { Granularity, MetricType } from '../../types';
 import { useTileTemplate } from '../../hooks/useTileTemplate';
+import { getMetricLabel } from '../../config/metrics';
 import './HeatmapLegend.css';
 
 interface HeatmapLegendProps {
@@ -15,7 +16,7 @@ function toDateBucket(dateStr: string, granularity: Granularity): string {
   return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
 }
 
-const METRIC_CONFIG: Record<
+const METRIC_CONFIG: Partial<Record<
   MetricType,
   {
     label: string;
@@ -24,7 +25,7 @@ const METRIC_CONFIG: Record<
     lowLabel: string;
     highLabel: string;
   }
-> = {
+>> = {
   nightlights: {
     label: 'Nighttime Lights',
     unit: 'nW/cm²/sr',
@@ -141,20 +142,28 @@ export function HeatmapLegend({
   tileGranularity,
 }: HeatmapLegendProps) {
   const config = METRIC_CONFIG[metric];
+  const fallbackConfig = {
+    label: getMetricLabel(metric),
+    unit: '',
+    gradient: 'linear-gradient(90deg, #e2e8f0 0%, #94a3b8 50%, #334155 100%)',
+    lowLabel: 'Low',
+    highLabel: 'High',
+  };
+  const resolvedConfig = config ?? fallbackConfig;
   const dateBucket = tileDate && tileGranularity ? toDateBucket(tileDate, tileGranularity) : undefined;
 
   const { data: tileTemplate } = useTileTemplate(metric, dateBucket, tileGranularity);
 
   const gradient =
-    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : config.gradient;
+    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : resolvedConfig.gradient;
 
   return (
     <div className="heatmap-legend">
       <div className="legend-header">
-        <span className="legend-title">{config.label}</span>
+        <span className="legend-title">{resolvedConfig.label}</span>
         {showValues && min !== undefined && max !== undefined && (
           <span className="legend-range mono">
-            {min.toFixed(2)} – {max.toFixed(2)} {config.unit}
+            {min.toFixed(2)} – {max.toFixed(2)} {resolvedConfig.unit}
           </span>
         )}
       </div>
@@ -165,8 +174,8 @@ export function HeatmapLegend({
           style={{ background: gradient }}
         />
         <div className="legend-ticks">
-          <span>{config.lowLabel}</span>
-          <span>{config.highLabel}</span>
+          <span>{resolvedConfig.lowLabel}</span>
+          <span>{resolvedConfig.highLabel}</span>
         </div>
       </div>
     </div>
@@ -184,23 +193,30 @@ export function HeatmapLegendCompact({
   tileGranularity?: Granularity;
 }) {
   const config = METRIC_CONFIG[metric];
+  const fallbackConfig = {
+    label: getMetricLabel(metric),
+    gradient: 'linear-gradient(90deg, #e2e8f0 0%, #94a3b8 50%, #334155 100%)',
+    lowLabel: 'Low',
+    highLabel: 'High',
+  };
+  const resolvedConfig = config ?? fallbackConfig;
   const dateBucket = tileDate && tileGranularity ? toDateBucket(tileDate, tileGranularity) : undefined;
 
   const { data: tileTemplate } = useTileTemplate(metric, dateBucket, tileGranularity);
 
   const gradient =
-    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : config.gradient;
+    tileTemplate?.palette?.length ? `linear-gradient(90deg, ${tileTemplate.palette.join(', ')})` : resolvedConfig.gradient;
 
   return (
     <div className="heatmap-legend-compact">
-      <span className="legend-label">{config.label}</span>
+      <span className="legend-label">{resolvedConfig.label}</span>
       <div
         className="legend-bar-mini"
         style={{ background: gradient }}
       />
       <div className="legend-labels-mini">
-        <span>{config.lowLabel}</span>
-        <span>{config.highLabel}</span>
+        <span>{resolvedConfig.lowLabel}</span>
+        <span>{resolvedConfig.highLabel}</span>
       </div>
     </div>
   );

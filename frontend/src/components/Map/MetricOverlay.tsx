@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { GeoJSON } from 'react-leaflet';
 import type { GeoJSONPolygon, MetricType } from '../../types';
-import { COLORMAPS, VALUE_RANGES, interpolateColor } from './metricStyles';
+import { VALUE_RANGES, getMetricColormap, interpolateColor } from './metricStyles';
 
 interface MetricOverlayProps {
   geometry: GeoJSONPolygon;
@@ -29,7 +29,7 @@ export function MetricOverlay({
 
     const [vmin, vmax] = VALUE_RANGES[metric];
     const normalized = (value - vmin) / (vmax - vmin);
-    const colors = COLORMAPS[metric];
+    const colors = getMetricColormap(metric);
     const fillColor = interpolateColor(colors, normalized);
 
     return {

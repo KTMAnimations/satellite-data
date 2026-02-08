@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricType } from '../../types';
+import { getMetricColor, getMetricLabel } from '../../config/metrics';
 import './Charts.css';
 import { ensureGlobalChartTooltip, hideGlobalChartTooltip, showGlobalChartTooltip } from './chartTooltip';
 
@@ -19,42 +20,6 @@ interface CorrelationScatterProps {
   height?: number;
   showTrendline?: boolean;
 }
-
-const METRIC_LABELS: Record<MetricType, string> = {
-  ndvi: 'NDVI',
-  nightlights: 'Nighttime Lights',
-  urban_density: 'Urban Density',
-  parking: 'Parking Occupancy',
-  land_cover: 'Land Cover',
-  surface_water: 'Surface Water',
-  no2: 'NO₂',
-  temperature: 'Temperature',
-  precipitation: 'Precipitation',
-  aerosol: 'Aerosol',
-  cropland: 'Cropland',
-  evapotranspiration: 'Evapotranspiration',
-  soil_moisture: 'Soil Moisture',
-  impervious: 'Impervious Surface',
-  canopy_height: 'Canopy Height',
-};
-
-const METRIC_COLORS: Record<MetricType, string> = {
-  ndvi: '#059669',           // Emerald-600
-  nightlights: '#D97706',    // Amber-600
-  urban_density: '#7C3AED',  // Violet-600
-  parking: '#0D9488',        // Teal-600
-  land_cover: '#9333EA',     // Purple-600
-  surface_water: '#2563EB',  // Blue-600
-  no2: '#6366F1',            // Indigo-600
-  temperature: '#EF4444',    // Red-500
-  precipitation: '#3B82F6',  // Blue-500
-  aerosol: '#92400E',        // Brown-600
-  cropland: '#16A34A',       // Green-600
-  evapotranspiration: '#0D9488', // Teal-600
-  soil_moisture: '#7C3AED',  // Violet-600
-  impervious: '#6B7280',     // Gray-500
-  canopy_height: '#15803D',  // Green-700
-};
 
 // Calculate linear regression
 function linearRegression(data: DataPoint[]): { slope: number; intercept: number; r2: number } {
@@ -165,7 +130,7 @@ export const CorrelationScatter = memo(function CorrelationScatter({
       .attr('fill', 'var(--text-secondary)')
       .attr('font-family', 'var(--font-body)')
       .attr('font-size', '12px')
-      .text(METRIC_LABELS[xMetric]);
+      .text(getMetricLabel(xMetric));
 
     g.append('text')
       .attr('transform', 'rotate(-90)')
@@ -175,7 +140,7 @@ export const CorrelationScatter = memo(function CorrelationScatter({
       .attr('fill', 'var(--text-secondary)')
       .attr('font-family', 'var(--font-body)')
       .attr('font-size', '12px')
-      .text(METRIC_LABELS[yMetric]);
+      .text(getMetricLabel(yMetric));
 
     // Trendline
     if (showTrendline && data.length >= 2) {
@@ -220,7 +185,7 @@ export const CorrelationScatter = memo(function CorrelationScatter({
       .attr('class', 'point')
       .attr('cx', (d) => xScale(d.x))
       .attr('cy', (d) => yScale(d.y))
-      .attr('fill', METRIC_COLORS[yMetric])
+      .attr('fill', getMetricColor(yMetric))
       .attr('fill-opacity', 0.7)
       .attr('stroke', 'var(--surface-panel)')
       .attr('stroke-width', 2)
@@ -233,8 +198,8 @@ export const CorrelationScatter = memo(function CorrelationScatter({
           `
             ${d.label ? `<strong>${d.label}</strong><br/>` : ''}
             ${d.date ? `${d.date}<br/>` : ''}
-            ${METRIC_LABELS[xMetric]}: ${d.x.toFixed(3)}<br/>
-            ${METRIC_LABELS[yMetric]}: ${d.y.toFixed(3)}
+            ${getMetricLabel(xMetric)}: ${d.x.toFixed(3)}<br/>
+            ${getMetricLabel(yMetric)}: ${d.y.toFixed(3)}
           `,
           { offsetX: 15, offsetY: -15 }
         );
@@ -264,7 +229,7 @@ export const CorrelationScatter = memo(function CorrelationScatter({
       .attr('fill', 'var(--text-primary)')
       .attr('font-family', 'var(--font-display)')
       .attr('font-size', '16px')
-      .text(`${METRIC_LABELS[xMetric]} vs ${METRIC_LABELS[yMetric]}`);
+      .text(`${getMetricLabel(xMetric)} vs ${getMetricLabel(yMetric)}`);
 
     // Cleanup function to prevent memory leaks
     return () => {

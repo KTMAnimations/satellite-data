@@ -13,7 +13,7 @@ import { shallow } from 'zustand/shallow';
 import { useStore } from '../../store';
 import type { Granularity, MapState, Region, GeoJSONPolygon, MetricType, TileTemplateResponse } from '../../types';
 import api from '../../services/api';
-import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
+import { getMetricLabel, METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
 import { DEFAULT_METRIC_OVERLAY_MIN_ZOOM, MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
 import { formatApiError } from '../../utils/errors';
 import type { CompositeTileEvent } from './CompositeTileLayer';
@@ -608,7 +608,7 @@ export function MapView({
           )}
         {overlayEnabled && selectedMetric && (
           <div className="map-legend">
-            <span className="legend-title">{selectedMetric}</span>
+            <span className="legend-title">{getMetricLabel(selectedMetric)}</span>
             <div
               className="legend-gradient"
               data-metric={selectedMetric}

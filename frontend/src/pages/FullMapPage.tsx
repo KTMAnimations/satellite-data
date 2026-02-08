@@ -10,29 +10,12 @@ import type { Granularity, MetricType } from '../types';
 import {
   estimateBucketCount,
   getRecommendedGranularity,
+  METRIC_OPTIONS,
   METRICS_MAX_TIMESERIES_POINTS_DEFAULT,
   METRIC_SUPPORTED_GRANULARITIES,
 } from '../config/metrics';
 import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
 import './MapPage.css';
-
-const METRIC_OPTIONS: { value: MetricType; label: string }[] = [
-  { value: 'nightlights', label: 'Nighttime Lights' },
-  { value: 'ndvi', label: 'NDVI (Vegetation)' },
-  { value: 'urban_density', label: 'Urban Density' },
-  { value: 'parking', label: 'Parking Occupancy' },
-  { value: 'land_cover', label: 'Land Cover' },
-  { value: 'surface_water', label: 'Surface Water' },
-  { value: 'no2', label: 'NO₂ Pollution' },
-  { value: 'temperature', label: 'Temperature' },
-  { value: 'precipitation', label: 'Precipitation' },
-  { value: 'aerosol', label: 'Aerosol Index' },
-  { value: 'cropland', label: 'Cropland' },
-  { value: 'evapotranspiration', label: 'Evapotranspiration' },
-  { value: 'soil_moisture', label: 'Soil Moisture' },
-  { value: 'impervious', label: 'Impervious Surface' },
-  { value: 'canopy_height', label: 'Canopy Height' },
-];
 
 function toDateOnly(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());

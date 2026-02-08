@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import type { MetricType } from '../../types';
+import { getMetricColor } from '../../config/metrics';
 import './Charts.css';
 
 interface RegionRank {
@@ -19,24 +20,6 @@ interface RegionalRankingChartProps {
   maxItems?: number;
   onRegionClick?: (regionId: string) => void;
 }
-
-const METRIC_COLORS: Record<MetricType, string> = {
-  ndvi: '#059669',           // Emerald-600
-  nightlights: '#D97706',    // Amber-600
-  urban_density: '#7C3AED',  // Violet-600
-  parking: '#0D9488',        // Teal-600
-  land_cover: '#9333EA',     // Purple-600
-  surface_water: '#2563EB',  // Blue-600
-  no2: '#6366F1',            // Indigo-600
-  temperature: '#EF4444',    // Red-500
-  precipitation: '#3B82F6',  // Blue-500
-  aerosol: '#92400E',        // Brown-600
-  cropland: '#16A34A',       // Green-600
-  evapotranspiration: '#0D9488', // Teal-600
-  soil_moisture: '#7C3AED',  // Violet-600
-  impervious: '#6B7280',     // Gray-500
-  canopy_height: '#15803D',  // Green-700
-};
 
 export function RegionalRankingChart({
   data,
@@ -86,7 +69,7 @@ export function RegionalRankingChart({
     const colorScale = d3
       .scaleLinear<string>()
       .domain([0, sortedData.length - 1])
-      .range([METRIC_COLORS[metric], d3.color(METRIC_COLORS[metric])!.darker(1.5).toString()]);
+      .range([getMetricColor(metric), d3.color(getMetricColor(metric))!.darker(1.5).toString()]);
 
     // Bars
     const barGroups = g

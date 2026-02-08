@@ -1,8 +1,9 @@
 import type { MetricType } from '../../types';
 import { METRIC_VALUE_RANGES } from '../../config/metricRanges';
+import { getMetricColor } from '../../config/metrics';
 
 // Colormaps matching backend - converted to RGB hex
-export const COLORMAPS: Record<MetricType, string[]> = {
+export const COLORMAPS: Partial<Record<MetricType, string[]>> = {
   ndvi: [
     '#a50026', '#d73027', '#f46d43', '#fdae61', '#fee08b',
     '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850', '#006837',
@@ -67,6 +68,13 @@ export const COLORMAPS: Record<MetricType, string[]> = {
 
 // Value ranges for each metric
 export const VALUE_RANGES: Record<MetricType, [number, number]> = METRIC_VALUE_RANGES;
+
+export function getMetricColormap(metric: MetricType): string[] {
+  const existing = COLORMAPS[metric];
+  if (existing && existing.length > 0) return existing;
+  const color = getMetricColor(metric);
+  return ['#f8fafc', color];
+}
 
 export function interpolateColor(colors: string[], t: number): string {
   // Clamp t to [0, 1]
