@@ -52,6 +52,12 @@ function formatCoordinates(latitude: number | null | undefined, longitude: numbe
   return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 }
 
+function formatResidential(value: boolean | null | undefined): string {
+  if (value === true) return 'Yes';
+  if (value === false) return 'No';
+  return 'Unknown';
+}
+
 function formatEventTimestamp(event: AdminTelemetryEvent): string {
   if (event.client_ts_ms !== null && event.client_ts_ms !== undefined) {
     const d = new Date(event.client_ts_ms);
@@ -215,6 +221,7 @@ function IpListView() {
               <tr>
                 <th>IP</th>
                 <th>Location</th>
+                <th>Residential</th>
                 <th>First seen</th>
                 <th>Last seen</th>
                 <th>Instances</th>
@@ -230,6 +237,7 @@ function IpListView() {
                 >
                   <td className="mono">{ip.ip_address}</td>
                   <td className="admin-ellipsis">{ip.location ?? 'Unknown'}</td>
+                  <td>{formatResidential(ip.is_residential)}</td>
                   <td>{formatDateTime(ip.first_seen_at)}</td>
                   <td>{formatDateTime(ip.last_seen_at)}</td>
                   <td>{ip.instance_count}</td>
@@ -278,6 +286,7 @@ function IpDetailView() {
           <div className="admin-kv">
             <div><span className="admin-k">IP</span> <span className="mono">{data.ip.ip_address}</span></div>
             <div><span className="admin-k">Location</span> {formatIpValue(data.ip.location)}</div>
+            <div><span className="admin-k">Residential</span> {formatResidential(data.ip.is_residential)}</div>
             <div><span className="admin-k">First seen</span> {formatDateTime(data.ip.first_seen_at)}</div>
             <div><span className="admin-k">Last seen</span> {formatDateTime(data.ip.last_seen_at)}</div>
             <div><span className="admin-k">Instances</span> {data.ip.instance_count}</div>

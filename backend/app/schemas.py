@@ -264,6 +264,7 @@ class TelemetryEventsResponse(BaseModel):
 class AdminIpSummary(BaseModel):
     ip_address: str
     location: str | None = None
+    is_residential: bool | None = None
     first_seen_at: datetime
     last_seen_at: datetime
     instance_count: int

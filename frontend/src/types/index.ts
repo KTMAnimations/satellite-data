@@ -234,6 +234,7 @@ export interface PresetListResponse {
 export interface AdminIpSummary {
   ip_address: string;
   location: string | null;
+  is_residential: boolean | null;
   first_seen_at: string;
   last_seen_at: string;
   instance_count: number;

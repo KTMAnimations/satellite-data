@@ -59,6 +59,7 @@ def test_telemetry_register_events_and_admin_views(tmp_path, monkeypatch):
     assert ips_payload["ips"][0]["event_count"] == 2
     assert ips_payload["ips"][0]["instance_count"] == 1
     assert "location" in ips_payload["ips"][0]
+    assert "is_residential" in ips_payload["ips"][0]
 
     ip_detail = client.get(f"/api/v1/admin/ips/{ip_address}")
     assert ip_detail.status_code == 200, ip_detail.text
@@ -66,6 +67,7 @@ def test_telemetry_register_events_and_admin_views(tmp_path, monkeypatch):
     assert ip_detail_payload["ip"]["ip_address"] == ip_address
     assert ip_detail_payload["ip"]["event_count"] == 2
     assert "location" in ip_detail_payload["ip"]
+    assert "is_residential" in ip_detail_payload["ip"]
     assert "isp" in ip_detail_payload["ip"]
     assert "organization" in ip_detail_payload["ip"]
     assert "asn" in ip_detail_payload["ip"]

@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.ip_geolocation import resolve_ip_details, resolve_ip_locations
+from app.ip_geolocation import resolve_ip_details, resolve_ip_details_map
 from app.models import TelemetryEvent, TelemetryInstance
 from app.schemas import (
     AdminIpDetail,
@@ -89,19 +89,22 @@ async def list_ips(
     )
 
     rows = (await db.execute(query)).all()
-    locations_by_ip = await resolve_ip_locations([row.ip_address for row in rows])
+    details_by_ip = await resolve_ip_details_map([row.ip_address for row in rows])
 
-    ips = [
-        AdminIpSummary(
-            ip_address=row.ip_address,
-            location=locations_by_ip.get(row.ip_address),
-            first_seen_at=row.first_seen_at,
-            last_seen_at=row.last_seen_at,
-            instance_count=int(row.instance_count or 0),
-            event_count=int(row.event_count or 0),
+    ips = []
+    for row in rows:
+        details = details_by_ip.get(row.ip_address)
+        ips.append(
+            AdminIpSummary(
+                ip_address=row.ip_address,
+                location=details.location if details else None,
+                is_residential=details.is_residential if details else None,
+                first_seen_at=row.first_seen_at,
+                last_seen_at=row.last_seen_at,
+                instance_count=int(row.instance_count or 0),
+                event_count=int(row.event_count or 0),
+            )
         )
-        for row in rows
-    ]
 
     return AdminIpListResponse(ips=ips, total=total)
 
@@ -172,6 +175,7 @@ async def get_ip_detail(ip_address: str, db: AsyncSession = Depends(get_db)) -> 
     ip = AdminIpDetail(
         ip_address=ip_address,
         location=details.location,
+        is_residential=details.is_residential,
         first_seen_at=first_seen_at,
         last_seen_at=last_seen_at,
         instance_count=instance_count,
