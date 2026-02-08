@@ -21,6 +21,9 @@ const CompareView = lazy(async () => ({
 const ExportCenter = lazy(async () => ({
   default: (await import('./pages/ExportCenter')).ExportCenter,
 }));
+const ApiDocsPage = lazy(async () => ({
+  default: (await import('./pages/ApiDocsPage')).ApiDocsPage,
+}));
 
 function App() {
   return (
@@ -35,6 +38,7 @@ function App() {
         <Route path="map/:regionId" element={<MapPage />} />
         <Route path="compare/:regionId" element={<CompareView />} />
         <Route path="exports" element={<ExportCenter />} />
+        <Route path="docs" element={<ApiDocsPage />} />
       </Route>
     </Routes>
   );

@@ -45,13 +45,7 @@
 
 .logo {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.logo-home {
-  display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.625rem;
   text-decoration: none;
   color: var(--text-primary);
@@ -63,12 +57,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .logo-seal {
   height: 32px;
   width: auto;
   display: block;
+}
+
+.logo-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
 }
 
 .logo-text {
@@ -80,11 +81,12 @@
 }
 
 .logo-credit {
-  color: #aea8a2;
+  color: var(--text-tertiary);
   font-family: var(--font-body);
   font-size: 0.5625rem;
   font-weight: 400;
   line-height: 1;
+  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
@@ -225,11 +227,7 @@
     width: 100%;
   }
 
-  .logo-text {
-    display: none;
-  }
-
-  .logo-credit {
+  .logo-body {
     display: none;
   }
 }

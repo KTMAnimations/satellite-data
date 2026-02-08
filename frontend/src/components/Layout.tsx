@@ -65,15 +65,15 @@ export function Layout() {
           >
             <List size={15} weight="bold" />
           </button>
-          <div className="logo">
-            <Link to="/" className="logo-home">
-              <div className="logo-icon">
-                <img src={exeterLion} alt="" className="logo-seal" aria-hidden="true" />
-              </div>
+          <Link to="/" className="logo">
+            <div className="logo-icon">
+              <img src={exeterLion} alt="" className="logo-seal" aria-hidden="true" />
+            </div>
+            <div className="logo-body">
               <span className="logo-text">Exeter Astronomy</span>
-            </Link>
-            <span className="logo-credit">Created by Samuel Scheffler and Roy Vaid</span>
-          </div>
+              <span className="logo-credit">Samuel Scheffler & Roy Vaid</span>
+            </div>
+          </Link>
         </div>
 
         <nav className={`header-nav ${sidebarOpen ? 'open' : ''}`}>
@@ -97,14 +97,9 @@ export function Layout() {
         </nav>
 
         <div className="header-right">
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-link"
-          >
+          <Link to="/docs" className="header-link">
             Docs
-          </a>
+          </Link>
         </div>
       </header>
 
