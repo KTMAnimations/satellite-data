@@ -5,11 +5,11 @@ import {
   MapTrifold,
   DownloadSimple,
   List,
-  Planet,
 } from '@phosphor-icons/react';
 import { shallow } from 'zustand/shallow';
 import { useStore, type NavSection } from '../store';
 import { ErrorBoundary } from './ErrorBoundary';
+import exeterSeal from '../assets/exeter-seal.png';
 import './Layout.css';
 
 function navSectionForPath(pathname: string): NavSection {
@@ -67,7 +67,7 @@ export function Layout() {
           </button>
           <Link to="/" className="logo">
             <div className="logo-icon">
-              <Planet size={22} weight="duotone" />
+              <img src={exeterSeal} alt="" className="logo-seal" aria-hidden="true" />
             </div>
             <span className="logo-text">Exeter Astro</span>
           </Link>

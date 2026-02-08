@@ -49,12 +49,23 @@
 }
 
 .logo-icon {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-primary);
+  border-radius: 50%;
+  background: var(--accent-primary-light);
+  border: 1px solid var(--accent-primary-muted);
+  box-shadow: var(--shadow-panel);
+}
+
+.logo-seal {
+  width: 23px;
+  height: auto;
+  display: block;
+  filter: brightness(0) saturate(100%) invert(35%) sepia(85%) saturate(742%) hue-rotate(132deg)
+    brightness(90%) contrast(97%);
 }
 
 .logo-text {
