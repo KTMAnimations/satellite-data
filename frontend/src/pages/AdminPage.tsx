@@ -30,11 +30,36 @@ function useAdminAuth(): AdminAuth {
 
 const ADMIN_TOKEN_STORAGE_KEY = 'satellite_admin_token';
 
+const CLIENT_TIME_ZONE = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+})();
+
+function formatWithClientTimeZone(date: Date): string {
+  if (CLIENT_TIME_ZONE) return date.toLocaleString(undefined, { timeZone: CLIENT_TIME_ZONE });
+  return date.toLocaleString();
+}
+
+function parseIsoAsUtcWhenNaive(iso: string): Date | null {
+  const trimmed = iso.trim();
+  if (!trimmed) return null;
+
+  const withIsoSeparator = trimmed.replace(' ', 'T');
+  const hasExplicitZone = /(?:[zZ]|[+-]\d{2}:\d{2})$/.test(withIsoSeparator);
+  const candidate = hasExplicitZone ? withIsoSeparator : `${withIsoSeparator}Z`;
+  const parsed = new Date(candidate);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
+  const d = parseIsoAsUtcWhenNaive(iso);
+  if (!d) return iso;
+  return formatWithClientTimeZone(d);
 }
 
 function formatIpValue(value: string | number | null | undefined): string {
@@ -61,7 +86,7 @@ function formatResidential(value: boolean | null | undefined): string {
 function formatEventTimestamp(event: AdminTelemetryEvent): string {
   if (event.client_ts_ms !== null && event.client_ts_ms !== undefined) {
     const d = new Date(event.client_ts_ms);
-    if (!Number.isNaN(d.getTime())) return d.toLocaleString();
+    if (!Number.isNaN(d.getTime())) return formatWithClientTimeZone(d);
   }
   return formatDateTime(event.received_at);
 }
