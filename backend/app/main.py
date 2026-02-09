@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import close_db, ensure_db_initialized
+from app.db import close_db, ensure_db_initialized, recover_interrupted_export_jobs
 from app.gee import initialize_ee
 from app.routes import api_router
 from app.settings import get_settings
@@ -21,6 +21,9 @@ settings = get_settings()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Storage
     await ensure_db_initialized()
+    recovered_jobs = await recover_interrupted_export_jobs()
+    if recovered_jobs:
+        logger.warning("Marked %s interrupted export job(s) as failed during startup recovery", recovered_jobs)
 
     # Earth Engine (optional at startup; errors surface on first request)
     try:

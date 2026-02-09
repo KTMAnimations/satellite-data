@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
 
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.settings import get_settings
@@ -96,6 +98,32 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+async def recover_interrupted_export_jobs() -> int:
+    """
+    Mark in-flight export jobs as failed after process restart.
+
+    Export tasks run in-process via FastAPI background tasks, so a restart can
+    leave jobs stuck in pending/processing forever unless recovered.
+    """
+
+    from app.models import ExportJob
+
+    recovery_error = "Interrupted while queued/running (server restart or worker interruption)."
+    async with async_session_factory() as session:
+        result = await session.execute(
+            update(ExportJob)
+            .where(ExportJob.status.in_(("pending", "processing")))
+            .values(
+                status="failed",
+                message="Failed",
+                error=recovery_error,
+                completed_at=datetime.now(timezone.utc),
+            )
+        )
+        await session.commit()
+        return int(result.rowcount or 0)
 
 
 async def close_db() -> None:
