@@ -168,6 +168,22 @@ def _extract_bounds(geometry: dict) -> tuple[float, float, float, float]:
     min_lon, max_lon = min(lons), max(lons)
     min_lat, max_lat = min(lats), max(lats)
 
+    return _normalize_bounds((min_lon, min_lat, max_lon, max_lat))
+
+
+def _normalize_bounds(bounds: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    min_lon, min_lat, max_lon, max_lat = bounds
+
+    min_lon = max(-179.999, min(179.999, float(min_lon)))
+    max_lon = max(-179.999, min(179.999, float(max_lon)))
+    min_lat = _clamp_lat(float(min_lat))
+    max_lat = _clamp_lat(float(max_lat))
+
+    if min_lon > max_lon:
+        min_lon, max_lon = max_lon, min_lon
+    if min_lat > max_lat:
+        min_lat, max_lat = max_lat, min_lat
+
     # Avoid zero-sized bounds.
     if abs(max_lon - min_lon) < 1e-6:
         min_lon = max(-179.999, min_lon - 0.01)
@@ -177,6 +193,42 @@ def _extract_bounds(geometry: dict) -> tuple[float, float, float, float]:
         max_lat = _clamp_lat(max_lat + 0.01)
 
     return (min_lon, min_lat, max_lon, max_lat)
+
+
+def _bounds_to_polygon(bounds: tuple[float, float, float, float]) -> dict:
+    min_lon, min_lat, max_lon, max_lat = bounds
+    return {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [min_lon, min_lat],
+                [max_lon, min_lat],
+                [max_lon, max_lat],
+                [min_lon, max_lat],
+                [min_lon, min_lat],
+            ]
+        ],
+    }
+
+
+def _resolve_animation_bounds(
+    viewport_bounds: tuple[float, float, float, float] | None,
+    fallback_bounds: tuple[float, float, float, float],
+) -> tuple[float, float, float, float]:
+    if viewport_bounds is None:
+        return fallback_bounds
+    try:
+        return _normalize_bounds(
+            (
+                float(viewport_bounds[0]),
+                float(viewport_bounds[1]),
+                float(viewport_bounds[2]),
+                float(viewport_bounds[3]),
+            )
+        )
+    except Exception:
+        logger.warning("Invalid animation viewport bounds. Falling back to region bounds: %s", viewport_bounds)
+        return fallback_bounds
 
 
 def _lon_to_tile_x(lon: float, zoom: int) -> float:
@@ -793,11 +845,14 @@ async def _generate_animation(job_id: str, request: AnimationRequest, db_url: st
 
             geometry = json.loads(region.geometry)
             metric_def = METRICS[request.metric]
+            region_bounds = _extract_bounds(geometry)
+            bounds = _resolve_animation_bounds(request.viewport_bounds, region_bounds)
+            render_geometry = _bounds_to_polygon(bounds) if request.viewport_bounds is not None else geometry
 
             initialize_ee()
             import ee
 
-            geom = geojson_to_ee_geometry(geometry)
+            geom = geojson_to_ee_geometry(render_geometry)
 
             # Choose monthly frames by default; daily if <= 90 days and supported.
             days = (request.end_date - request.start_date).days
@@ -808,7 +863,6 @@ async def _generate_animation(job_id: str, request: AnimationRequest, db_url: st
             starts = bucket_starts(request.start_date, request.end_date, frame_granularity)  # type: ignore[arg-type]
             total = max(1, len(starts))
 
-            bounds = _extract_bounds(geometry)
             overlay_opacity = float(request.overlay_opacity)
 
             frames = []

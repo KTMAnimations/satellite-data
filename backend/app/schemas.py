@@ -178,6 +178,7 @@ class AnimationRequest(BaseModel):
     frame_duration_ms: int = Field(default=500, ge=50, le=5000)
     width: int = Field(default=800, ge=128, le=2048)
     height: int = Field(default=600, ge=128, le=2048)
+    viewport_bounds: tuple[float, float, float, float] | None = None
 
 
 class ExportResponse(BaseModel):

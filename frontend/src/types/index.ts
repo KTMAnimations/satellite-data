@@ -178,6 +178,7 @@ export interface AnimationRequest {
   frame_duration_ms?: number;
   width?: number;
   height?: number;
+  viewport_bounds?: [number, number, number, number];
 }
 
 // App state types

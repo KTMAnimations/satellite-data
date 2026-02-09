@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import type { Map as LeafletMap } from 'leaflet';
 import {
   FilePdf,
   Table,
@@ -11,13 +12,31 @@ import {
   Spinner,
   WarningCircle,
 } from '@phosphor-icons/react';
+import { MapView } from '../components/Map/MapContainer';
+import { TimeSlider } from '../components/Charts/TimeSlider';
 import api from '../services/api';
 import { useStore } from '../store';
 import { formatApiError } from '../utils/errors';
 import { formatDateTimeInClientTimeZone } from '../utils/dateTime';
-import type { MetricType } from '../types';
-import { METRIC_OPTIONS } from '../config/metrics';
+import { formatDateYYYYMMDD, parseMetricDate } from '../utils/dates';
+import type { Granularity, MetricType, Region } from '../types';
+import { METRIC_OPTIONS, METRIC_SUPPORTED_GRANULARITIES } from '../config/metrics';
 import './ExportCenter.css';
+
+function getAnimationGranularity(metric: MetricType, startDate: string, endDate: string): Granularity {
+  const supportsDaily = METRIC_SUPPORTED_GRANULARITIES[metric]?.includes('daily');
+  if (!supportsDaily) return 'monthly';
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+    return 'monthly';
+  }
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const days = Math.floor((end.getTime() - start.getTime()) / msPerDay);
+  return days <= 90 ? 'daily' : 'monthly';
+}
 
 export function ExportCenter() {
   const [searchParams] = useSearchParams();
@@ -32,14 +51,106 @@ export function ExportCenter() {
   const [animationFormat, setAnimationFormat] = useState<'gif'>('gif');
   const [animationIncludeBasemap, setAnimationIncludeBasemap] = useState(true);
   const [animationOverlayOpacity, setAnimationOverlayOpacity] = useState(0.67);
+  const [previewDate, setPreviewDate] = useState<Date | null>(null);
+  const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
+  const [previewPlaybackSpeed, setPreviewPlaybackSpeed] = useState(1);
+  const [previewOverlayIsLoading, setPreviewOverlayIsLoading] = useState(false);
+  const [animationViewportBounds, setAnimationViewportBounds] = useState<
+    [number, number, number, number] | null
+  >(null);
+  const [previewTimelineWidth, setPreviewTimelineWidth] = useState(560);
   const exportQueue = useStore((state) => state.exportQueue);
   const addExportToQueue = useStore((state) => state.addExportToQueue);
   const setExportQueue = useStore((state) => state.setExportQueue);
+  const previewMapCleanupRef = useRef<(() => void) | null>(null);
 
   const { data: regionsData, isLoading: regionsLoading, isError: regionsIsError, error: regionsError } = useQuery({
     queryKey: ['regions', { page_size: 100 }],
     queryFn: ({ signal }) => api.listRegions({ page_size: 100 }, { signal }),
   });
+
+  const selectedRegion = useMemo<Region | null>(
+    () => regionsData?.regions.find((region) => region.id === selectedRegionId) ?? null,
+    [regionsData?.regions, selectedRegionId]
+  );
+
+  const animationGranularity = useMemo(
+    () => getAnimationGranularity(animationMetric, startDate, endDate),
+    [animationMetric, startDate, endDate]
+  );
+
+  const { data: animationMetricsData } = useQuery({
+    queryKey: [
+      'animation-preview-metrics',
+      selectedRegionId,
+      animationMetric,
+      animationGranularity,
+      startDate,
+      endDate,
+    ],
+    queryFn: ({ signal }) =>
+      api.getMetrics(
+        selectedRegionId,
+        {
+          start_date: startDate,
+          end_date: endDate,
+          metrics: [animationMetric],
+          granularity: animationGranularity,
+        },
+        { signal }
+      ),
+    enabled:
+      exportFormat === 'animation' &&
+      animationFormat === 'gif' &&
+      Boolean(selectedRegionId) &&
+      Boolean(startDate) &&
+      Boolean(endDate),
+  });
+
+  const animationDates = useMemo(() => {
+    const points = animationMetricsData?.metrics?.[animationMetric]?.data;
+    if (!points) return [];
+    return points
+      .map((point) => parseMetricDate(point.date))
+      .flatMap((date) => (date && !Number.isNaN(date.getTime()) ? [date] : []))
+      .sort((a, b) => a.getTime() - b.getTime());
+  }, [animationMetricsData, animationMetric]);
+
+  const previewAspectRatio = '4 / 3';
+
+  const updateViewportBounds = useCallback((map: LeafletMap | null) => {
+    if (!map) return;
+    const bounds = map.getBounds();
+    const next: [number, number, number, number] = [
+      bounds.getWest(),
+      bounds.getSouth(),
+      bounds.getEast(),
+      bounds.getNorth(),
+    ];
+    setAnimationViewportBounds(next);
+  }, []);
+
+  const handlePreviewMapReady = useCallback(
+    (map: LeafletMap | null) => {
+      previewMapCleanupRef.current?.();
+      previewMapCleanupRef.current = null;
+
+      if (!map) {
+        setAnimationViewportBounds(null);
+        return;
+      }
+
+      const syncBounds = () => updateViewportBounds(map);
+      syncBounds();
+      map.on('moveend', syncBounds);
+      map.on('zoomend', syncBounds);
+      previewMapCleanupRef.current = () => {
+        map.off('moveend', syncBounds);
+        map.off('zoomend', syncBounds);
+      };
+    },
+    [updateViewportBounds]
+  );
 
   const pdfMutation = useMutation({
     mutationFn: () =>
@@ -77,6 +188,7 @@ export function ExportCenter() {
         start_date: startDate,
         end_date: endDate,
         frame_duration_ms: 500,
+        viewport_bounds: animationViewportBounds ?? undefined,
       }),
     onSuccess: (data) => addExportToQueue(data),
   });
@@ -118,6 +230,42 @@ export function ExportCenter() {
     };
   }, [exportQueue, setExportQueue]);
 
+  useEffect(() => {
+    const updateTimelineWidth = () => {
+      const next = Math.max(260, Math.min(560, window.innerWidth - 420));
+      setPreviewTimelineWidth(next);
+    };
+    updateTimelineWidth();
+    window.addEventListener('resize', updateTimelineWidth);
+    return () => window.removeEventListener('resize', updateTimelineWidth);
+  }, []);
+
+  useEffect(() => {
+    setPreviewDate((current) => {
+      if (animationDates.length === 0) return null;
+      if (!current) return animationDates[0];
+      const existing = animationDates.find((date) => date.getTime() === current.getTime());
+      return existing ?? animationDates[0];
+    });
+    if (animationDates.length === 0) {
+      setPreviewIsPlaying(false);
+    }
+  }, [animationDates]);
+
+  useEffect(() => {
+    if (exportFormat !== 'animation' || animationFormat !== 'gif') {
+      setPreviewIsPlaying(false);
+    }
+  }, [animationFormat, exportFormat]);
+
+  useEffect(
+    () => () => {
+      previewMapCleanupRef.current?.();
+      previewMapCleanupRef.current = null;
+    },
+    []
+  );
+
   const handleExport = () => {
     if (!selectedRegionId) {
       alert('Please select a region to continue.');
@@ -142,6 +290,23 @@ export function ExportCenter() {
       prev.includes(metric) ? prev.filter((m) => m !== metric) : [...prev, metric]
     );
   };
+
+  const handlePreviewDateChange = (date: Date) => {
+    setPreviewDate(date);
+  };
+
+  const handlePreviewPlayPause = () => {
+    if (animationDates.length === 0) return;
+    setPreviewIsPlaying((current) => !current);
+  };
+
+  const previewTileDate = previewDate && !Number.isNaN(previewDate.getTime())
+    ? (formatDateYYYYMMDD(previewDate) ?? previewDate.toISOString().split('T')[0])
+    : undefined;
+  const previewDateLabelOptions: Intl.DateTimeFormatOptions =
+    animationGranularity === 'monthly'
+      ? { year: 'numeric', month: 'short' }
+      : { year: 'numeric', month: 'short', day: '2-digit' };
 
   return (
     <div className="export-center">
@@ -296,6 +461,65 @@ export function ExportCenter() {
                   onChange={(e) => setAnimationOverlayOpacity(Number(e.target.value))}
                 />
               </div>
+
+              {animationFormat === 'gif' && (
+                <section className="gif-preview-panel" aria-label="GIF preview">
+                  <div className="gif-preview-header">
+                    <h3>GIF Preview</h3>
+                    <p>Pan and zoom this map to choose exactly what the exported GIF shows.</p>
+                  </div>
+
+                  {!selectedRegion ? (
+                    <p className="gif-preview-empty">Select a region to preview the export viewport.</p>
+                  ) : (
+                    <>
+                      <div className="gif-preview-meta">
+                        <span>
+                          {previewDate && !Number.isNaN(previewDate.getTime())
+                            ? `Frame: ${previewDate.toLocaleDateString('en-US', previewDateLabelOptions)}`
+                            : 'Frame: loading...'}
+                        </span>
+                        <span>{animationGranularity === 'daily' ? 'Daily timeline' : 'Monthly timeline'}</span>
+                        <span>{animationViewportBounds ? 'Viewport synced to export' : 'Move map to set viewport'}</span>
+                      </div>
+
+                      <div className="gif-preview-map" style={{ aspectRatio: previewAspectRatio }}>
+                        <MapView
+                          regions={[selectedRegion]}
+                          selectedRegion={selectedRegion}
+                          selectedMetric={animationMetric}
+                          tileDate={previewTileDate}
+                          tileGranularity={animationGranularity}
+                          overlayEnabled={Boolean(previewTileDate)}
+                          onOverlayLoadingChange={setPreviewOverlayIsLoading}
+                          onMapReady={handlePreviewMapReady}
+                        />
+                      </div>
+
+                      {animationDates.length > 0 ? (
+                        <div className="gif-preview-timeline">
+                          <TimeSlider
+                            dates={animationDates}
+                            selectedDate={previewDate ?? animationDates[0]}
+                            onDateChange={handlePreviewDateChange}
+                            isPlaying={previewIsPlaying}
+                            onPlayPause={handlePreviewPlayPause}
+                            playbackBlocked={previewOverlayIsLoading}
+                            playbackSpeed={previewPlaybackSpeed}
+                            onSpeedChange={setPreviewPlaybackSpeed}
+                            width={previewTimelineWidth}
+                            density="compact"
+                          />
+                        </div>
+                      ) : (
+                        <p className="gif-preview-empty">
+                          No timeline data available for this metric/date range.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </section>
+              )}
             </>
           )}
 
@@ -303,6 +527,7 @@ export function ExportCenter() {
             className="btn btn-primary export-btn"
             onClick={handleExport}
             disabled={
+              !selectedRegionId ||
               pdfMutation.isPending ||
               csvMutation.isPending ||
               animationMutation.isPending
