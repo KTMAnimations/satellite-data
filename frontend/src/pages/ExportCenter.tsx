@@ -120,7 +120,7 @@ export function ExportCenter() {
 
   const handleExport = () => {
     if (!selectedRegionId) {
-      alert('Please select a region');
+      alert('Please select a region to continue.');
       return;
     }
 
@@ -303,7 +303,6 @@ export function ExportCenter() {
             className="btn btn-primary export-btn"
             onClick={handleExport}
             disabled={
-              !selectedRegionId ||
               pdfMutation.isPending ||
               csvMutation.isPending ||
               animationMutation.isPending
