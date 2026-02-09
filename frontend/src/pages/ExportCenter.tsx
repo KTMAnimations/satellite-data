@@ -62,6 +62,7 @@ export function ExportCenter() {
   const exportQueue = useStore((state) => state.exportQueue);
   const addExportToQueue = useStore((state) => state.addExportToQueue);
   const setExportQueue = useStore((state) => state.setExportQueue);
+  const previewMapRef = useRef<LeafletMap | null>(null);
   const previewMapCleanupRef = useRef<(() => void) | null>(null);
 
   const { data: regionsData, isLoading: regionsLoading, isError: regionsIsError, error: regionsError } = useQuery({
@@ -118,20 +119,35 @@ export function ExportCenter() {
 
   const previewAspectRatio = '4 / 3';
 
-  const updateViewportBounds = useCallback((map: LeafletMap | null) => {
-    if (!map) return;
-    const bounds = map.getBounds();
+  const readViewportBoundsFromMap = useCallback((map: LeafletMap | null): [number, number, number, number] | null => {
+    if (!map) return null;
+    // Ensure Leaflet's internal container size is up-to-date before reading
+    // bounds. The preview container uses CSS aspect-ratio which may not be
+    // reflected in Leaflet's cached _size yet (especially on first render),
+    // causing getBounds() to return a smaller viewport (top-left portion only).
+    map.invalidateSize({ animate: false });
+    // Normalize to wrapped world bounds so panning across repeated-world copies
+    // still exports the same visible viewport.
+    const bounds = map.wrapLatLngBounds(map.getBounds());
     const next: [number, number, number, number] = [
       bounds.getWest(),
       bounds.getSouth(),
       bounds.getEast(),
       bounds.getNorth(),
     ];
-    setAnimationViewportBounds(next);
+    if (!next.every(Number.isFinite)) return null;
+    return next;
   }, []);
+
+  const updateViewportBounds = useCallback((map: LeafletMap | null) => {
+    const next = readViewportBoundsFromMap(map);
+    if (!next) return;
+    setAnimationViewportBounds(next);
+  }, [readViewportBoundsFromMap]);
 
   const handlePreviewMapReady = useCallback(
     (map: LeafletMap | null) => {
+      previewMapRef.current = map;
       previewMapCleanupRef.current?.();
       previewMapCleanupRef.current = null;
 
@@ -188,7 +204,8 @@ export function ExportCenter() {
         start_date: startDate,
         end_date: endDate,
         frame_duration_ms: 500,
-        viewport_bounds: animationViewportBounds ?? undefined,
+        viewport_bounds:
+          readViewportBoundsFromMap(previewMapRef.current) ?? animationViewportBounds ?? undefined,
       }),
     onSuccess: (data) => addExportToQueue(data),
   });
@@ -262,6 +279,7 @@ export function ExportCenter() {
     () => () => {
       previewMapCleanupRef.current?.();
       previewMapCleanupRef.current = null;
+      previewMapRef.current = null;
     },
     []
   );

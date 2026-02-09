@@ -7,7 +7,7 @@ import json
 import logging
 import math
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -29,7 +29,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.gee_concurrency import gee_to_thread
-from app.gee import METRICS, build_metric_image, bucket_end, bucket_starts, geojson_to_ee_geometry, initialize_ee
+from app.gee import (
+    METRICS,
+    bucket_starts,
+    get_tile_fetcher,
+    initialize_ee,
+)
 from app.models import ExportJob, Region
 from app.schemas import AnimationRequest, CSVExportRequest, ExportRequest, ExportResponse
 from app.settings import get_settings
@@ -134,6 +139,15 @@ def _clamp_lat(lat: float) -> float:
     return max(-WEB_MERCATOR_MAX_LAT, min(WEB_MERCATOR_MAX_LAT, lat))
 
 
+def _wrap_lon(lon: float) -> float:
+    wrapped = ((lon + 180.0) % 360.0) - 180.0
+    if wrapped > 179.999:
+        return 179.999
+    if wrapped < -179.999:
+        return -179.999
+    return wrapped
+
+
 def _iter_lon_lat_pairs(geometry: dict) -> list[tuple[float, float]]:
     geom_type = geometry.get("type")
     coords = geometry.get("coordinates")
@@ -174,8 +188,8 @@ def _extract_bounds(geometry: dict) -> tuple[float, float, float, float]:
 def _normalize_bounds(bounds: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
     min_lon, min_lat, max_lon, max_lat = bounds
 
-    min_lon = max(-179.999, min(179.999, float(min_lon)))
-    max_lon = max(-179.999, min(179.999, float(max_lon)))
+    min_lon = _wrap_lon(float(min_lon))
+    max_lon = _wrap_lon(float(max_lon))
     min_lat = _clamp_lat(float(min_lat))
     max_lat = _clamp_lat(float(max_lat))
 
@@ -280,9 +294,12 @@ async def _render_basemap_rgb(
     bounds: tuple[float, float, float, float],
     width: int,
     height: int,
+    *,
+    zoom: int | None = None,
 ) -> np.ndarray:
     min_lon, min_lat, max_lon, max_lat = bounds
-    zoom = _choose_basemap_zoom(bounds, width, height)
+    if zoom is None:
+        zoom = _choose_basemap_zoom(bounds, width, height)
 
     x0 = _lon_to_tile_x(min_lon, zoom)
     x1 = _lon_to_tile_x(max_lon, zoom)
@@ -333,12 +350,97 @@ async def _render_basemap_rgb(
     return np.asarray(cropped, dtype=np.uint8)
 
 
+def _format_date_bucket(start_date: date, granularity: str) -> str:
+    if granularity == "monthly":
+        return start_date.strftime("%Y-%m")
+    return start_date.isoformat()
+
+
+async def _render_overlay_rgba(
+    *,
+    bounds: tuple[float, float, float, float],
+    width: int,
+    height: int,
+    metric: str,
+    date_bucket: str,
+    granularity: str,
+    zoom: int,
+) -> Image.Image:
+    min_lon, min_lat, max_lon, max_lat = bounds
+
+    x0 = _lon_to_tile_x(min_lon, zoom)
+    x1 = _lon_to_tile_x(max_lon, zoom)
+    y0 = _lat_to_tile_y(max_lat, zoom)
+    y1 = _lat_to_tile_y(min_lat, zoom)
+
+    x_min = int(math.floor(x0))
+    x_max = int(math.floor(x1))
+    y_min = int(math.floor(y0))
+    y_max = int(math.floor(y1))
+
+    canvas_w = max(1, (x_max - x_min + 1) * TILE_SIZE)
+    canvas_h = max(1, (y_max - y_min + 1) * TILE_SIZE)
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+
+    tile_fetcher = await gee_to_thread(
+        get_tile_fetcher,
+        metric,  # type: ignore[arg-type]
+        date_bucket,
+        granularity,  # type: ignore[arg-type]
+        z=zoom,
+    )
+    semaphore = asyncio.Semaphore(12)
+
+    async def fetch_tile(x: int, y: int) -> tuple[int, int, bytes | None]:
+        async with semaphore:
+            try:
+                content = await gee_to_thread(tile_fetcher.fetch_tile, x, y, zoom)
+                return x, y, content
+            except Exception:
+                logger.warning(
+                    "Overlay tile download failed for metric=%s date_bucket=%s z=%s x=%s y=%s",
+                    metric,
+                    date_bucket,
+                    zoom,
+                    x,
+                    y,
+                )
+                return x, y, None
+
+    tasks = [fetch_tile(x, y) for y in range(y_min, y_max + 1) for x in range(x_min, x_max + 1)]
+    for x, y, content in await asyncio.gather(*tasks):
+        if not content:
+            continue
+        try:
+            tile = Image.open(io.BytesIO(content)).convert("RGBA")
+            canvas.paste(tile, ((x - x_min) * TILE_SIZE, (y - y_min) * TILE_SIZE), tile)
+        except Exception:
+            logger.warning(
+                "Overlay tile decode failed for metric=%s date_bucket=%s z=%s x=%s y=%s",
+                metric,
+                date_bucket,
+                zoom,
+                x,
+                y,
+            )
+
+    left = int(max(0, min(canvas_w - 1, math.floor((x0 - x_min) * TILE_SIZE))))
+    upper = int(max(0, min(canvas_h - 1, math.floor((y0 - y_min) * TILE_SIZE))))
+    right = int(max(left + 1, min(canvas_w, math.ceil((x1 - x_min) * TILE_SIZE))))
+    lower = int(max(upper + 1, min(canvas_h, math.ceil((y1 - y_min) * TILE_SIZE))))
+
+    cropped = canvas.crop((left, upper, right, lower))
+    if cropped.size != (width, height):
+        cropped = cropped.resize((width, height), Image.Resampling.BILINEAR)
+    return cropped
+
+
 def _composite_overlay_on_basemap(
     basemap_rgba: Image.Image,
-    overlay_png_bytes: bytes,
+    overlay_rgba: Image.Image,
     overlay_opacity: float,
 ) -> np.ndarray:
-    overlay = Image.open(io.BytesIO(overlay_png_bytes)).convert("RGBA")
+    overlay = overlay_rgba
     if overlay.size != basemap_rgba.size:
         overlay = overlay.resize(basemap_rgba.size, Image.Resampling.BILINEAR)
 
@@ -847,12 +949,8 @@ async def _generate_animation(job_id: str, request: AnimationRequest, db_url: st
             metric_def = METRICS[request.metric]
             region_bounds = _extract_bounds(geometry)
             bounds = _resolve_animation_bounds(request.viewport_bounds, region_bounds)
-            render_geometry = _bounds_to_polygon(bounds) if request.viewport_bounds is not None else geometry
 
             initialize_ee()
-            import ee
-
-            geom = geojson_to_ee_geometry(render_geometry)
 
             # Choose monthly frames by default; daily if <= 90 days and supported.
             days = (request.end_date - request.start_date).days
@@ -864,42 +962,42 @@ async def _generate_animation(job_id: str, request: AnimationRequest, db_url: st
             total = max(1, len(starts))
 
             overlay_opacity = float(request.overlay_opacity)
+            zoom = _choose_basemap_zoom(bounds, request.width, request.height)
 
             frames = []
             async with httpx.AsyncClient(
                 timeout=60.0,
                 headers={"User-Agent": "satellite-data-exporter/1.0"},
             ) as client:
-                await _update_job(db, job_id, progress=2.0, message="Loading basemap")
-                await db.commit()
-                basemap_rgb = await _render_basemap_rgb(client, bounds, request.width, request.height)
-                basemap_rgba = Image.fromarray(basemap_rgb, mode="RGB").convert("RGBA")
+                basemap_rgba: Image.Image | None = None
+                if request.include_basemap:
+                    await _update_job(db, job_id, progress=2.0, message="Loading basemap")
+                    await db.commit()
+                    basemap_rgb = await _render_basemap_rgb(
+                        client,
+                        bounds,
+                        request.width,
+                        request.height,
+                        zoom=zoom,
+                    )
+                    basemap_rgba = Image.fromarray(basemap_rgb, mode="RGB").convert("RGBA")
 
                 for i, d0 in enumerate(starts):
-                    d1 = bucket_end(d0, frame_granularity)  # type: ignore[arg-type]
-                    ee_start = ee.Date(d0.isoformat())
-                    ee_end = ee.Date(d1.isoformat())
-
-                    img = build_metric_image(request.metric, ee_start, ee_end, geom)
-                    vmin, vmax = metric_def.value_range
-                    overlay_img = img.visualize(min=vmin, max=vmax, palette=metric_def.palette).updateMask(img.mask())
-                    thumb = await gee_to_thread(
-                        overlay_img.getThumbURL,
-                        {
-                            "region": geom,
-                            "dimensions": [request.width, request.height],
-                            "format": "png",
-                        },
+                    date_bucket = _format_date_bucket(d0, frame_granularity)
+                    overlay_rgba = await _render_overlay_rgba(
+                        bounds=bounds,
+                        width=request.width,
+                        height=request.height,
+                        metric=str(request.metric),
+                        date_bucket=date_bucket,
+                        granularity=frame_granularity,
+                        zoom=zoom,
                     )
-                    resp = await client.get(thumb)
-                    resp.raise_for_status()
-                    if request.include_basemap:
-                        frames.append(_composite_overlay_on_basemap(basemap_rgba, resp.content, overlay_opacity))
+
+                    if basemap_rgba is not None:
+                        frames.append(_composite_overlay_on_basemap(basemap_rgba, overlay_rgba, overlay_opacity))
                     else:
-                        overlay_frame = imageio.imread(resp.content)
-                        if overlay_frame.ndim == 3 and overlay_frame.shape[-1] == 4:
-                            overlay_frame = overlay_frame[:, :, :3]
-                        frames.append(overlay_frame)
+                        frames.append(np.asarray(overlay_rgba.convert("RGB"), dtype=np.uint8))
 
                     progress = ((i + 1) / total) * 95.0
                     await _update_job(db, job_id, progress=progress, message=f"Rendered {i + 1}/{total} frames")

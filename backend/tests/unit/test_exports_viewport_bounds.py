@@ -5,7 +5,7 @@ from app.routes.exports import _bounds_to_polygon, _normalize_bounds, _resolve_a
 
 def test_normalize_bounds_clamps_and_orders() -> None:
     bounds = _normalize_bounds((200.0, 95.0, -200.0, -95.0))
-    assert bounds == (-179.999, -85.05112878, 179.999, 85.05112878)
+    assert bounds == (-160.0, -85.05112878, 160.0, 85.05112878)
 
 
 def test_normalize_bounds_prevents_zero_sized_extent() -> None:
@@ -27,3 +27,9 @@ def test_bounds_to_polygon_returns_closed_ring() -> None:
     assert polygon["type"] == "Polygon"
     assert ring[0] == [-2.0, -1.0]
     assert ring[-1] == ring[0]
+
+
+def test_normalize_bounds_wraps_world_copy_longitudes() -> None:
+    min_lon, _, max_lon, _ = _normalize_bounds((250.0, -5.0, 260.0, 5.0))
+    assert min_lon == -110.0
+    assert max_lon == -100.0
