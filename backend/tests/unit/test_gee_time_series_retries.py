@@ -11,12 +11,17 @@ def test_compute_time_series_retries_transient_internal_error(monkeypatch):
     monkeypatch.setattr(gee, "initialize_ee", lambda: None)
     monkeypatch.setattr(gee, "geojson_to_ee_geometry", lambda geojson: geojson)
     monkeypatch.setattr(gee, "get_settings", lambda: SimpleNamespace(max_timeseries_points=100))
+    build_kwargs: list[dict] = []
 
     class _FakeImage:
         def reduceRegion(self, **kwargs):  # type: ignore[no-untyped-def]
             return {"nightlights": 42.0}
 
-    monkeypatch.setattr(gee, "build_metric_image", lambda *args, **kwargs: _FakeImage())
+    def fake_build_metric_image(*args, **kwargs):  # type: ignore[no-untyped-def]
+        build_kwargs.append(dict(kwargs))
+        return _FakeImage()
+
+    monkeypatch.setattr(gee, "build_metric_image", fake_build_metric_image)
 
     call_state = {"get_info_calls": 0}
     deadline_calls: list[float] = []
@@ -87,3 +92,5 @@ def test_compute_time_series_retries_transient_internal_error(monkeypatch):
     assert call_state["get_info_calls"] == 2
     assert sleep_calls == [gee._GEE_TRANSIENT_RETRY_BASE_DELAY_SECONDS]
     assert deadline_calls == [gee._GEE_GETINFO_TIMEOUT * 1000]
+    assert build_kwargs
+    assert all(kwargs.get("use_visual_gap_filling") is False for kwargs in build_kwargs)

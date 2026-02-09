@@ -150,8 +150,9 @@ METRICS: dict[MetricId, MetricDefinition] = {
         supported_granularities={"daily", "monthly"},
         scale_m=10000,
         transparent_below_normalized=0.0,
-        # Keep common near-surface aerosol variation from collapsing to a flat tint.
-        tile_viz_range=(-0.5, 1.5),
+        # Increase contrast for typical urban aerosol values so overlays don't
+        # appear almost white in low/negative-index conditions.
+        tile_viz_range=(-1.0, 1.0),
     ),
     "cropland": MetricDefinition(
         id="cropland",
@@ -357,11 +358,21 @@ def _mean_of_daily_means(collection, start, end, band_name: str):
     return daily.mean().rename([band_name])
 
 
-def build_metric_image(metric: MetricId, start, end, geom):
+def build_metric_image(
+    metric: MetricId,
+    start,
+    end,
+    geom,
+    *,
+    use_visual_gap_filling: bool = True,
+):
     """
     Build an ee.Image with a single band named after the metric.
 
     `start` and `end` are ee.Date. `geom` is ee.Geometry.
+    `use_visual_gap_filling` applies tile-focused seam filling for metrics where
+    visual continuity matters. Disable for analytics paths to keep EE graphs
+    lighter and more reliable.
     """
     import ee
 
@@ -575,6 +586,10 @@ def build_metric_image(metric: MetricId, start, end, geom):
         has_images = s5p.filterDate(start, end).size().gt(0)
         image = _mean_of_daily_means(s5p, start, end, band)
 
+        base = ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band)))
+        if not use_visual_gap_filling:
+            return base.clip(geom)
+
         # S5P daily coverage can have masked gaps (orbit seams / QA), which show
         # up as streaks at tile-scale. Fill masked pixels with a short rolling
         # composite to keep the overlay visually continuous.
@@ -584,7 +599,6 @@ def build_metric_image(metric: MetricId, start, end, geom):
         has_fill = s5p.filterDate(fill_start, fill_end).size().gt(0)
         fill = _mean_of_daily_means(s5p, fill_start, fill_end, band)
 
-        base = ee.Image(ee.Algorithms.If(has_images, image, _empty_masked_image(band)))
         fill = ee.Image(ee.Algorithms.If(has_fill, fill, _empty_masked_image(band)))
         filled = base.unmask(fill)
 
@@ -927,7 +941,9 @@ def compute_time_series(
         d1 = ee.Date(ds).advance(1, "day") if granularity == "daily" else (
             ee.Date(ds).advance(7, "day") if granularity == "weekly" else ee.Date(ds).advance(1, "month")
         )
-        img = build_metric_image(metric, d0, d1, geom)
+        # Disable tile-only visual gap filling for analytics to keep compute graphs
+        # smaller and reduce EE internal failures/timeouts on heavier metrics.
+        img = build_metric_image(metric, d0, d1, geom, use_visual_gap_filling=False)
         reduced = img.reduceRegion(
             reducer=reducer,
             geometry=geom,
@@ -1035,7 +1051,7 @@ class _BoundedTTLCache(dict):
 
 _tile_template_cache: _BoundedTTLCache = _BoundedTTLCache()
 _tile_fetcher_cache: _BoundedTTLCache = _BoundedTTLCache()
-_tile_cache_version = 30
+_tile_cache_version = 31
 
 
 def _tile_visualization_range(metric_def: MetricDefinition) -> tuple[float, float]:

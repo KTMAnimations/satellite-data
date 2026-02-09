@@ -336,30 +336,56 @@ def _build_pdf_time_series_chart(
 
     rows: list[list[float | None]] = []
     row_metrics: list[str] = []
-    all_values: list[float] = []
 
     for metric in metric_order:
         points = series_by_metric.get(metric) or []
         if not points:
             continue
         by_bucket = {bucket: value for bucket, value in points}
-        row = [by_bucket.get(bucket) for bucket in all_buckets]
-        non_null = [v for v in row if v is not None]
+        row_raw = [by_bucket.get(bucket) for bucket in all_buckets]
+        non_null = [v for v in row_raw if v is not None]
         if not non_null:
             continue
-        rows.append(row)
-        row_metrics.append(metric)
-        all_values.extend(float(v) for v in non_null)
 
-    if not rows or not all_values:
+        row_min = min(non_null)
+        row_max = max(non_null)
+        if abs(row_max - row_min) < 1e-9:
+            # Keep constant series visible as a flat midline.
+            row_normalized = [50.0 if v is not None else None for v in row_raw]
+        else:
+            row_normalized = [
+                _normalize_percent(float(v), row_min, row_max) if v is not None else None for v in row_raw
+            ]
+
+        rows.append(row_normalized)
+        row_metrics.append(metric)
+
+    if not rows:
         return None
 
     chart_width = max(340.0, min(available_width, 500.0))
-    drawing = Drawing(chart_width, 250)
+    legend_col_width = (chart_width - 88) / 2
+    legend_row_h = 12
+    legend_items = min(len(row_metrics), 10)
+    legend_rows = max(1, math.ceil(legend_items / 2))
+
+    line = HorizontalLineChart()
+    line.x = 38
+    line.y = 64
+    line.width = chart_width - 72
+    line.height = 140
+
+    chart_top = line.y + line.height
+    legend_bottom_y = chart_top + 8
+    legend_start_y = legend_bottom_y + (legend_rows - 1) * legend_row_h
+    subtitle_y = legend_start_y + 18
+    title_y = subtitle_y + 13
+    drawing_height = title_y + 14
+    drawing = Drawing(chart_width, drawing_height)
     drawing.add(
         String(
             chart_width / 2,
-            235,
+            title_y,
             "Time Series by Metric",
             fontName="Helvetica-Bold",
             fontSize=11,
@@ -367,12 +393,18 @@ def _build_pdf_time_series_chart(
             fillColor=colors.HexColor("#1f2937"),
         )
     )
+    drawing.add(
+        String(
+            chart_width / 2,
+            subtitle_y,
+            "Each metric scaled to its own observed range (0-100%)",
+            fontName="Helvetica",
+            fontSize=7,
+            textAnchor="middle",
+            fillColor=colors.HexColor("#6b7280"),
+        )
+    )
 
-    line = HorizontalLineChart()
-    line.x = 38
-    line.y = 62
-    line.width = chart_width - 72
-    line.height = 140
     line.data = rows
     line.categoryAxis.categoryNames = all_buckets
     line.categoryAxis.labels.angle = 35
@@ -385,15 +417,9 @@ def _build_pdf_time_series_chart(
     line.valueAxis.labels.fontSize = 7
     line.valueAxis.gridStrokeColor = colors.HexColor("#e5e7eb")
     line.valueAxis.gridStrokeWidth = 0.3
-
-    y_min = min(all_values)
-    y_max = max(all_values)
-    if abs(y_max - y_min) < 1e-9:
-        pad = max(abs(y_min) * 0.1, 1.0)
-    else:
-        pad = (y_max - y_min) * 0.1
-    line.valueAxis.valueMin = y_min - pad
-    line.valueAxis.valueMax = y_max + pad
+    line.valueAxis.valueMin = 0
+    line.valueAxis.valueMax = 100
+    line.valueAxis.valueStep = 20
 
     for idx, metric in enumerate(row_metrics):
         metric_color = colors.HexColor(PDF_METRIC_COLORS.get(metric, "#2563eb"))
@@ -404,9 +430,6 @@ def _build_pdf_time_series_chart(
     drawing.add(line)
 
     legend_start_x = 44
-    legend_start_y = 212
-    legend_col_width = (chart_width - 88) / 2
-    legend_row_h = 12
     for idx, metric in enumerate(row_metrics[:10]):
         col = idx % 2
         row = idx // 2
@@ -429,7 +452,7 @@ def _build_pdf_time_series_chart(
         drawing.add(
             String(
                 chart_width - 42,
-                212 - 5 * legend_row_h,
+                legend_start_y + 8,
                 f"+{len(row_metrics) - 10} more",
                 fontName="Helvetica",
                 fontSize=7,
