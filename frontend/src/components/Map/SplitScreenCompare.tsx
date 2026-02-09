@@ -78,6 +78,11 @@ export function SplitScreenCompare({
   const didInitialFitRef = useRef<string | null>(null);
   const fullscreenEnabled = typeof document !== 'undefined' && document.fullscreenEnabled;
 
+  useEffect(() => {
+    mapA?.attributionControl?.setPrefix(false);
+    mapB?.attributionControl?.setPrefix(false);
+  }, [mapA, mapB]);
+
   const { center, bounds } = useMemo(() => {
     const coords = region.geometry.coordinates[0];
     const lats = coords.map((c) => c[1]);

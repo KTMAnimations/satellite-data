@@ -89,7 +89,7 @@ export const useStore = create<AppState>()(
 
       // Map state
       mapState: {
-        center: [39.8283, -98.5795], // Center of US
+        center: [27.5, -98.5795], // Slightly higher so the US-Mexico border stays visible
         zoom: 4,
         contextRegionId: null,
       },
@@ -151,7 +151,6 @@ export const useStore = create<AppState>()(
         const persisted = (persistedState ?? {}) as Partial<AppState>;
         return {
           ...currentState,
-          ...persisted,
           selectedMetrics: sanitizeSelectedMetrics(persisted.selectedMetrics, { fallbackWhenEmpty: true }),
           daytimeBasemap: sanitizeDaytimeBasemap(persisted.daytimeBasemap),
         };

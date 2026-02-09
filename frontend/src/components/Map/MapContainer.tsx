@@ -227,6 +227,7 @@ export function MapView({
     (map: LeafletMap | null) => {
       mapRef.current = map;
       setMapContainerEl(map ? map.getContainer() : null);
+      map?.attributionControl?.setPrefix(false);
       if (import.meta.env.DEV && map) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__satelliteLeafletMap = map;
@@ -438,11 +439,6 @@ export function MapView({
     return () => onOverlayLoadingChange?.(false);
   }, [onOverlayLoadingChange]);
 
-  const legendGradientStyle =
-    selectedMetric !== 'cropland' && tileTemplateWithCacheBust?.palette?.length
-      ? { background: `linear-gradient(to right, ${tileTemplateWithCacheBust.palette.join(', ')})` }
-      : undefined;
-
   const handleCreated = (e: unknown) => {
     if (onRegionCreate) {
       const event = e as { layer: { toGeoJSON: () => { geometry: GeoJSONPolygon } } };
@@ -513,6 +509,7 @@ export function MapView({
             key={activeTileTemplate.tile_url}
             url={activeTileTemplate.tile_url}
             opacity={activeTileTemplate.opacity}
+            instantOpacity
             attribution={activeTileTemplate.attribution ?? undefined}
             updateWhenIdle={false}
             updateWhenZooming={false}
@@ -525,6 +522,7 @@ export function MapView({
             key={pendingTileTemplate.tile_url}
             url={pendingTileTemplate.tile_url}
             opacity={0}
+            instantOpacity
             // Avoid duplicate attributions while the pending layer is hidden.
             attribution={undefined}
             updateWhenIdle={false}
@@ -621,20 +619,6 @@ export function MapView({
           !tileTemplateWithCacheBust?.tile_url && (
             <div className="map-overlay-hint">No overlay available for this metric/date.</div>
           )}
-        {overlayEnabled && selectedMetric && (
-          <div className="map-legend">
-            <span className="legend-title">{selectedMetric}</span>
-            <div
-              className="legend-gradient"
-              data-metric={selectedMetric}
-              style={legendGradientStyle}
-            />
-            <div className="legend-labels">
-              <span>Low</span>
-              <span>High</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

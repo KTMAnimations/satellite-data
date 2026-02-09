@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import concurrent.futures
 import json
 import time
 from dataclasses import dataclass
@@ -9,6 +8,8 @@ from typing import Any, Literal
 
 # Timeout (seconds) for individual Earth Engine getInfo() calls.
 _GEE_GETINFO_TIMEOUT = 120
+_GEE_TRANSIENT_RETRY_ATTEMPTS = 3
+_GEE_TRANSIENT_RETRY_BASE_DELAY_SECONDS = 0.75
 
 from app.schemas import MetricId
 from app.settings import get_settings
@@ -870,6 +871,21 @@ def format_bucket_date(d: date, granularity: Granularity) -> str:
     return d.isoformat()
 
 
+def _is_transient_gee_error_message(message: str) -> bool:
+    msg = message.lower()
+    markers = (
+        "an internal error has occurred",
+        "internal error",
+        "computation timed out",
+        "deadline exceeded",
+        "service unavailable",
+        "please try again",
+        "connection reset",
+        "temporarily unavailable",
+    )
+    return any(marker in msg for marker in markers)
+
+
 def compute_time_series(
     *,
     geometry_geojson: dict[str, Any],
@@ -885,6 +901,9 @@ def compute_time_series(
     """
     initialize_ee()
     import ee
+
+    # Ensure EE requests fail fast enough to prevent indefinitely stuck export jobs.
+    ee.data.setDeadline(_GEE_GETINFO_TIMEOUT * 1000)
 
     metric_def = METRICS[metric]
     if granularity not in metric_def.supported_granularities:
@@ -943,25 +962,50 @@ def compute_time_series(
         Fetch a chunk of dates, recursively splitting if Earth Engine rejects the
         request due to concurrent aggregation limits.
         """
-        ee_dates = ee.List(dates)
-        fc = ee.FeatureCollection(ee_dates.map(per_bucket))
-        try:
-            # Use a thread-pool future so we can enforce a timeout on getInfo().
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(fc.getInfo)
-                info = future.result(timeout=_GEE_GETINFO_TIMEOUT)
-        except concurrent.futures.TimeoutError:
-            raise TimeoutError(
-                f"Earth Engine getInfo() timed out after {_GEE_GETINFO_TIMEOUT}s "
-                f"for {len(dates)} date buckets. Try a smaller date range or coarser granularity."
-            )
-        except Exception as e:
-            # Common when mapping reduceRegion over many dates.
-            if "Too many concurrent aggregations" in str(e) and len(dates) > 1:
-                mid = len(dates) // 2
-                return fetch_dates(dates[:mid]) + fetch_dates(dates[mid:])
-            raise
-        return _parse_features(info)
+        for attempt in range(_GEE_TRANSIENT_RETRY_ATTEMPTS):
+            ee_dates = ee.List(dates)
+            fc = ee.FeatureCollection(ee_dates.map(per_bucket))
+            try:
+                info = fc.getInfo()
+                return _parse_features(info)
+            except Exception as e:
+                message = str(e)
+                lowered = message.lower()
+
+                # Common when mapping reduceRegion over many dates.
+                if "Too many concurrent aggregations" in message and len(dates) > 1:
+                    mid = len(dates) // 2
+                    return fetch_dates(dates[:mid]) + fetch_dates(dates[mid:])
+
+                timed_out = "timed out" in lowered or "deadline exceeded" in lowered
+                if timed_out:
+                    if attempt < _GEE_TRANSIENT_RETRY_ATTEMPTS - 1:
+                        delay = _GEE_TRANSIENT_RETRY_BASE_DELAY_SECONDS * (2**attempt)
+                        time.sleep(delay)
+                        continue
+
+                    if len(dates) > 1:
+                        mid = len(dates) // 2
+                        return fetch_dates(dates[:mid]) + fetch_dates(dates[mid:])
+
+                    raise TimeoutError(
+                        f"Earth Engine getInfo() timed out after {_GEE_GETINFO_TIMEOUT}s "
+                        f"for {len(dates)} date buckets. Try a smaller date range or coarser granularity."
+                    ) from e
+
+                if _is_transient_gee_error_message(message):
+                    if attempt < _GEE_TRANSIENT_RETRY_ATTEMPTS - 1:
+                        delay = _GEE_TRANSIENT_RETRY_BASE_DELAY_SECONDS * (2**attempt)
+                        time.sleep(delay)
+                        continue
+
+                    if len(dates) > 1:
+                        mid = len(dates) // 2
+                        return fetch_dates(dates[:mid]) + fetch_dates(dates[mid:])
+
+                raise
+
+        raise RuntimeError("Unreachable retry loop state in fetch_dates")
 
     out: list[tuple[str, float]] = []
     for i in range(0, len(date_strings), chunk_size):
@@ -1088,7 +1132,7 @@ def get_tile_template(metric: MetricId, date_bucket: str, granularity: Granulari
         "max": vmax,
         "palette": [f"#{c}" for c in metric_def.palette],
         "opacity": opacity,
-        "attribution": "Earth Engine / source datasets",
+        "attribution": "EE datasets",
     }
 
     _tile_template_cache[cache_key] = (now, payload)

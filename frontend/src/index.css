@@ -500,6 +500,20 @@ input[type="checkbox"] {
   box-shadow: var(--shadow-panel) !important;
 }
 
+.leaflet-control-attribution.leaflet-control {
+  font-size: 0.625rem !important;
+  line-height: 1.25 !important;
+  padding: 0.125rem 0.375rem !important;
+}
+
+.leaflet-control-attribution a {
+  font-size: inherit !important;
+}
+
+.leaflet-control-attribution .leaflet-attribution-flag {
+  display: none !important;
+}
+
 .leaflet-control-zoom a {
   background: var(--surface-panel) !important;
   color: var(--text-secondary) !important;

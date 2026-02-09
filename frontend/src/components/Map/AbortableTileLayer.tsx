@@ -19,6 +19,7 @@ type AbortableTileLayerConstructor = new (
 type AbortableTileLayerProps = {
   url: string;
   opacity?: number;
+  instantOpacity?: boolean;
   attribution?: string;
   zIndex?: number;
   tileSize?: number;
@@ -105,6 +106,7 @@ function createAbortableTileLayer(): AbortableTileLayerConstructor {
 export function AbortableTileLayer({
   url,
   opacity = 1,
+  instantOpacity = false,
   attribution,
   zIndex,
   tileSize,
@@ -208,8 +210,28 @@ export function AbortableTileLayer({
 
   // Keep mutable options in sync without recreating the layer.
   useEffect(() => {
-    layerRef.current?.setOpacity(opacity);
-  }, [opacity]);
+    const layer = layerRef.current;
+    if (!layer) return;
+
+    if (!instantOpacity) {
+      layer.setOpacity(opacity);
+      return;
+    }
+
+    // Leaflet's GridLayer.setOpacity can animate tiles that have just loaded.
+    // For timeline swaps we want immediate replacement with no fade.
+    layer.options.opacity = opacity;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const container = (layer as any)._container as HTMLElement | undefined;
+    if (container) container.style.opacity = String(opacity);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tiles = (layer as any)._tiles as Record<string, { el?: HTMLElement }> | undefined;
+    if (!tiles) return;
+    for (const tile of Object.values(tiles)) {
+      if (tile?.el) tile.el.style.opacity = '1';
+    }
+  }, [opacity, instantOpacity]);
 
   useEffect(() => {
     const layer = layerRef.current;

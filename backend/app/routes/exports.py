@@ -650,7 +650,16 @@ async def _generate_pdf(job_id: str, request: ExportRequest, db_url: str) -> Non
 
             summary_rows: list[list[str]] = [["Metric", "Unit", "Mean", "Min", "Max", "Points"]]
             series_by_metric: dict[str, list[tuple[str, float]]] = {}
-            for metric in metrics:
+            total_metrics = max(1, len(metrics))
+            for index, metric in enumerate(metrics, start=1):
+                await _update_job(
+                    db,
+                    job_id,
+                    progress=5.0 + ((index - 1) / total_metrics) * 80.0,
+                    message=f"Computing {index}/{total_metrics}: {METRICS[metric].label}",
+                )
+                await db.commit()
+
                 series = await gee_to_thread(
                     compute_time_series,
                     geometry_geojson=geometry,
@@ -674,6 +683,17 @@ async def _generate_pdf(job_id: str, request: ExportRequest, db_url: str) -> Non
                         str(len(values)),
                     ]
                 )
+
+                await _update_job(
+                    db,
+                    job_id,
+                    progress=5.0 + (index / total_metrics) * 80.0,
+                    message=f"Computed {index}/{total_metrics}: {METRICS[metric].label}",
+                )
+                await db.commit()
+
+            await _update_job(db, job_id, progress=90.0, message="Building PDF file")
+            await db.commit()
 
             output = Path(settings.exports_path) / f"{job_id}.pdf"
             doc = SimpleDocTemplate(str(output), pagesize=letter)

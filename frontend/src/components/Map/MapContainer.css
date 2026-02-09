@@ -26,14 +26,6 @@
   gap: 0.5rem;
 }
 
-.map-legend {
-  background: var(--color-surface);
-  padding: 0.75rem;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  min-width: 120px;
-}
-
 .map-overlay-hint {
   background: var(--color-surface);
   padding: 0.5rem 0.75rem;
@@ -42,78 +34,6 @@
   font-size: 0.75rem;
   color: var(--color-text-secondary);
   max-width: 220px;
-}
-
-.legend-title {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: capitalize;
-  margin-bottom: 0.5rem;
-}
-
-.legend-gradient {
-  height: 12px;
-  border-radius: 2px;
-  margin-bottom: 0.25rem;
-}
-
-.legend-gradient[data-metric="ndvi"] {
-  background: linear-gradient(to right, #a50026, #f46d43, #fee08b, #a6d96a, #1a9850);
-}
-
-.legend-gradient[data-metric="nightlights"] {
-  background: linear-gradient(to right, #e8c36a, #f3db9d, #faedcb, #fef8ea, #fffdf8, #ffffff);
-}
-
-.legend-gradient[data-metric="surface_water"] {
-  background: linear-gradient(to right, #ffffff, #d4e6f1, #5dade2, #2980b9, #154360);
-}
-
-/* Phase 2: Air quality & weather */
-.legend-gradient[data-metric="no2"] {
-  background: linear-gradient(to right, #313695, #74add1, #ffffbf, #f46d43, #a50026);
-}
-
-.legend-gradient[data-metric="temperature"] {
-  background: linear-gradient(to right, #053061, #4393c3, #f7f7f7, #d6604d, #67001f);
-}
-
-.legend-gradient[data-metric="precipitation"] {
-  background: linear-gradient(to right, #ffffff, #c7e9c0, #74c476, #238b45, #252556);
-}
-
-.legend-gradient[data-metric="aerosol"] {
-  background: linear-gradient(to right, #ffffff, #fde0c5, #eb9f72, #934823, #321405);
-}
-
-/* Phase 3: Agriculture */
-.legend-gradient[data-metric="cropland"] {
-  background: linear-gradient(to right, #bd0026, #f03b20, #fee391, #86efac, #228b22);
-}
-
-.legend-gradient[data-metric="evapotranspiration"] {
-  background: linear-gradient(to right, #a6611a, #dfc27d, #f5f5dc, #80cdc1, #003c30);
-}
-
-.legend-gradient[data-metric="soil_moisture"] {
-  background: linear-gradient(to right, #8b4513, #d2b48c, #f5deb3, #add8e6, #00008b);
-}
-
-/* Phase 4: Historical & specialized */
-.legend-gradient[data-metric="impervious"] {
-  background: linear-gradient(to right, #ffffff, #d9d9d9, #969696, #525252, #000000);
-}
-
-.legend-gradient[data-metric="canopy_height"] {
-  background: linear-gradient(to right, #f7fcf5, #c7e9c0, #74c476, #238b45, #00280f);
-}
-
-.legend-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.625rem;
-  color: var(--color-text-secondary);
 }
 
 /* Leaflet draw toolbar styling */

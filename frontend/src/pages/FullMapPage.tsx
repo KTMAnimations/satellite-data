@@ -77,10 +77,14 @@ export function FullMapPage() {
   useEffect(() => {
     if (!mapInstance) return;
 
-    const lat = Number((searchParams.get('lat') ?? '').trim());
-    const lng = Number((searchParams.get('lng') ?? '').trim());
-    const zoom = Number((searchParams.get('zoom') ?? '').trim());
+    const rawLat = searchParams.get('lat');
+    const rawLng = searchParams.get('lng');
+    const rawZoom = searchParams.get('zoom');
+    if (rawLat === null || rawLng === null || rawZoom === null) return;
 
+    const lat = Number(rawLat.trim());
+    const lng = Number(rawLng.trim());
+    const zoom = Number(rawZoom.trim());
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return;
 
     mapInstance.setView([lat, lng], zoom, { animate: false });
@@ -368,7 +372,7 @@ export function FullMapPage() {
               playbackBlocked={overlayIsLoading}
               onPlayPause={() => setIsTimelinePlaying(!isTimelinePlaying)}
               density="compact"
-              width={720}
+              width={340}
             />
           ) : (
             <div className="map-page-hint">Select a valid date range to view the timeline.</div>
