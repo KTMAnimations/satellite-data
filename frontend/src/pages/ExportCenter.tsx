@@ -50,7 +50,7 @@ export function ExportCenter() {
   const [animationMetric, setAnimationMetric] = useState<MetricType>('nightlights');
   const [animationFormat, setAnimationFormat] = useState<'gif'>('gif');
   const [animationIncludeBasemap, setAnimationIncludeBasemap] = useState(true);
-  const [animationOverlayOpacity, setAnimationOverlayOpacity] = useState(0.67);
+  const [animationOverlayOpacity, setAnimationOverlayOpacity] = useState(0.7);
   const [previewDate, setPreviewDate] = useState<Date | null>(null);
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
   const [previewPlaybackSpeed, setPreviewPlaybackSpeed] = useState(1);

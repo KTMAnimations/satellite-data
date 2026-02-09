@@ -172,7 +172,7 @@ class AnimationRequest(BaseModel):
     metric: MetricId
     format: Literal["gif"] = "gif"
     include_basemap: bool = True
-    overlay_opacity: float = Field(default=0.67, ge=0.0, le=1.0)
+    overlay_opacity: float = Field(default=0.7, ge=0.0, le=1.0)
     start_date: date
     end_date: date
     frame_duration_ms: int = Field(default=500, ge=50, le=5000)
