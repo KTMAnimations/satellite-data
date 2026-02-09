@@ -14,6 +14,7 @@ import {
 import api from '../services/api';
 import { useStore } from '../store';
 import { formatApiError } from '../utils/errors';
+import { formatDateTimeInClientTimeZone } from '../utils/dateTime';
 import type { MetricType } from '../types';
 import { METRIC_OPTIONS } from '../config/metrics';
 import './ExportCenter.css';
@@ -348,7 +349,10 @@ export function ExportCenter() {
                         </span>
                       </div>
                       <div className="export-meta">
-                        <span>Created: {new Date(exp.created_at).toLocaleString()}</span>
+                        <span>Started: {formatDateTimeInClientTimeZone(exp.created_at)}</span>
+                        {exp.status === 'completed' && exp.completed_at && (
+                          <span>Completed: {formatDateTimeInClientTimeZone(exp.completed_at)}</span>
+                        )}
                         {exp.status !== 'completed' && exp.message && (
                           <span className="export-message">{exp.message}</span>
                         )}
