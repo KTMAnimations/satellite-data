@@ -51,6 +51,8 @@ test.describe('Export Center', () => {
 
   test('generate button requires region selection', async ({ page }) => {
     const generateBtn = page.getByRole('button', { name: /generate/i });
-    await expect(generateBtn).toBeDisabled();
+    await expect(generateBtn).toBeEnabled();
+    await generateBtn.click();
+    await expect(page.getByText('Select a region to continue.')).toBeVisible();
   });
 });

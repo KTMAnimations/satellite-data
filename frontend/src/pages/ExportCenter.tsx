@@ -55,6 +55,7 @@ export function ExportCenter() {
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
   const [previewPlaybackSpeed, setPreviewPlaybackSpeed] = useState(1);
   const [previewOverlayIsLoading, setPreviewOverlayIsLoading] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [animationViewportBounds, setAnimationViewportBounds] = useState<
     [number, number, number, number] | null
   >(null);
@@ -286,9 +287,11 @@ export function ExportCenter() {
 
   const handleExport = () => {
     if (!selectedRegionId) {
-      alert('Please select a region to continue.');
+      setValidationError('Select a region to continue.');
       return;
     }
+
+    setValidationError(null);
 
     switch (exportFormat) {
       case 'pdf':
@@ -343,7 +346,10 @@ export function ExportCenter() {
             <label>Region</label>
             <select
               value={selectedRegionId}
-              onChange={(e) => setSelectedRegionId(e.target.value)}
+              onChange={(e) => {
+                setSelectedRegionId(e.target.value);
+                setValidationError(null);
+              }}
               className="form-select"
               disabled={regionsLoading || regionsIsError}
             >
@@ -541,11 +547,16 @@ export function ExportCenter() {
             </>
           )}
 
+          {validationError && (
+            <p className="export-validation-error" role="alert">
+              {validationError}
+            </p>
+          )}
+
           <button
             className="btn btn-primary export-btn"
             onClick={handleExport}
             disabled={
-              !selectedRegionId ||
               pdfMutation.isPending ||
               csvMutation.isPending ||
               animationMutation.isPending

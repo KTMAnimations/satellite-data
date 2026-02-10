@@ -204,6 +204,13 @@
   margin-top: 0.5rem;
 }
 
+.export-validation-error {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #991b1b;
+}
+
 .gif-preview-panel {
   margin-top: 1rem;
   padding: 0.875rem;
