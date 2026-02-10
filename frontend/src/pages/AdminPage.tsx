@@ -98,26 +98,59 @@ function isMetricType(value: unknown): value is MetricType {
   );
 }
 
-function buildMapJumpUrl(event: AdminTelemetryEvent): string | null {
+type MapJumpState = {
+  center: [number, number] | null;
+  zoom: number | null;
+  metric: MetricType | null;
+};
+
+type MapJumpPatch = {
+  center?: [number, number];
+  zoom?: number;
+  metric?: MetricType;
+};
+
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getMapJumpPatch(event: AdminTelemetryEvent): MapJumpPatch {
   const data = event.data ?? {};
   const centerRaw = (data as Record<string, unknown>).center;
   const zoomRaw = (data as Record<string, unknown>).zoom;
-  if (!Array.isArray(centerRaw) || centerRaw.length !== 2) return null;
-
-  const lat = Number(centerRaw[0]);
-  const lng = Number(centerRaw[1]);
-  const zoom = Number(zoomRaw);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return null;
-
   const metricRaw = (data as Record<string, unknown>).metric;
-  const metric = isMetricType(metricRaw) ? metricRaw : null;
 
+  const patch: MapJumpPatch = {};
+
+  if (Array.isArray(centerRaw) && centerRaw.length === 2) {
+    const lat = toFiniteNumber(centerRaw[0]);
+    const lng = toFiniteNumber(centerRaw[1]);
+    if (lat !== null && lng !== null) {
+      patch.center = [lat, lng];
+    }
+  }
+
+  const zoom = toFiniteNumber(zoomRaw);
+  if (zoom !== null) {
+    patch.zoom = zoom;
+  }
+
+  const metric = isMetricType(metricRaw) ? metricRaw : null;
+  if (metric) {
+    patch.metric = metric;
+  }
+
+  return patch;
+}
+
+function buildMapJumpUrl(state: { center: [number, number]; zoom: number; metric: MetricType | null }): string {
   const base = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
   const url = new URL(`${base}map`, window.location.origin);
-  url.searchParams.set('lat', String(lat));
-  url.searchParams.set('lng', String(lng));
-  url.searchParams.set('zoom', String(zoom));
-  if (metric) url.searchParams.set('metric', metric);
+  url.searchParams.set('lat', String(state.center[0]));
+  url.searchParams.set('lng', String(state.center[1]));
+  url.searchParams.set('zoom', String(state.zoom));
+  if (state.metric) url.searchParams.set('metric', state.metric);
   return url.toString();
 }
 
@@ -428,6 +461,8 @@ function InstanceLogView() {
 
   const eventsWithDelta = useMemo(() => {
     const events = data?.events ?? [];
+    const mapState: MapJumpState = { center: null, zoom: null, metric: null };
+
     return events.map((event, idx) => {
       const prev = events[idx - 1];
       const deltaMs =
@@ -437,7 +472,23 @@ function InstanceLogView() {
         && prev?.client_ts_ms !== undefined
           ? event.client_ts_ms - prev.client_ts_ms
           : null;
-      return { event, deltaMs };
+
+      const patch = getMapJumpPatch(event);
+      if (patch.center) mapState.center = patch.center;
+      if (patch.zoom !== undefined) mapState.zoom = patch.zoom;
+      if (patch.metric) mapState.metric = patch.metric;
+
+      const hasMapSignal = patch.center !== undefined || patch.zoom !== undefined || patch.metric !== undefined;
+      const jumpUrl =
+        hasMapSignal && mapState.center && mapState.zoom !== null
+          ? buildMapJumpUrl({
+            center: mapState.center,
+            zoom: mapState.zoom,
+            metric: mapState.metric,
+          })
+          : null;
+
+      return { event, deltaMs, jumpUrl };
     });
   }, [data?.events]);
 
@@ -458,35 +509,32 @@ function InstanceLogView() {
 
       {eventsWithDelta.length ? (
         <div className="admin-log">
-          {eventsWithDelta.map(({ event, deltaMs }) => {
-            const jumpUrl = buildMapJumpUrl(event);
-            return (
-              <div key={event.id} className="admin-log-row">
-                <div className="admin-log-meta">
-                  <div className="admin-log-ts">{formatEventTimestamp(event)}</div>
-                  <div className="admin-log-delta">{formatDeltaMs(deltaMs)}</div>
-                </div>
-                <div className="admin-log-main">
-                  <div className="admin-log-type mono">{event.event_type}</div>
-                  {event.path && <div className="admin-log-path mono">{event.path}</div>}
-                  {event.data && (
-                    <div className="admin-log-data">
-                      <pre>{JSON.stringify(event.data, null, 2)}</pre>
-                    </div>
-                  )}
-                  {jumpUrl && (
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={() => window.open(jumpUrl, '_blank', 'noopener,noreferrer')}
-                    >
-                      Open Map at this view
-                    </button>
-                  )}
-                </div>
+          {eventsWithDelta.map(({ event, deltaMs, jumpUrl }) => (
+            <div key={event.id} className="admin-log-row">
+              <div className="admin-log-meta">
+                <div className="admin-log-ts">{formatEventTimestamp(event)}</div>
+                <div className="admin-log-delta">{formatDeltaMs(deltaMs)}</div>
               </div>
-            );
-          })}
+              <div className="admin-log-main">
+                <div className="admin-log-type mono">{event.event_type}</div>
+                {event.path && <div className="admin-log-path mono">{event.path}</div>}
+                {event.data && (
+                  <div className="admin-log-data">
+                    <pre>{JSON.stringify(event.data, null, 2)}</pre>
+                  </div>
+                )}
+                {jumpUrl && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => window.open(jumpUrl, '_blank', 'noopener,noreferrer')}
+                  >
+                    Open Map at this view
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         !isLoading && <div className="admin-muted">No events.</div>
