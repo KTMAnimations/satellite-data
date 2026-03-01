@@ -188,12 +188,15 @@
     justify-content: center;
   }
 
+  .header {
+    overflow: visible;
+  }
+
   .header-nav {
-    position: fixed;
-    top: 56px;
+    position: absolute;
+    top: 100%;
     left: 0;
     right: 0;
-    width: 100%;
     background: var(--surface-panel);
     border-bottom: 1px solid var(--border-panel);
     flex-direction: column;
