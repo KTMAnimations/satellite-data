@@ -35,7 +35,7 @@ function App() {
       <TelemetryInitializer />
       <Suspense fallback={<div className="loading">Loading...</div>}>
         <Routes>
-          <Route path="/docs" element={<ApiDocsPage />} />
+          <Route path="/documentation" element={<ApiDocsPage />} />
           <Route path="/admin/*" element={<AdminPage />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/map" replace />} />

@@ -116,7 +116,7 @@ export function Layout() {
 
         <div className="header-right">
           <Link
-            to="/docs"
+            to="/documentation"
             state={{ from: `${location.pathname}${location.search}` }}
             className="header-link"
           >
