@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   GlobeHemisphereWest,
@@ -46,6 +46,24 @@ export function Layout() {
   ];
 
   const activeSection = navSectionForPath(location.pathname);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Close mobile menu on outside click
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+        setSidebarOpen(false);
+      }
+    }
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [sidebarOpen, setSidebarOpen]);
+
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname, setSidebarOpen]);
 
   useEffect(() => {
     const section = navSectionForPath(location.pathname);
@@ -56,7 +74,7 @@ export function Layout() {
 
   return (
     <div className="layout">
-      <header className="header">
+      <header className="header" ref={headerRef}>
         <div className="header-left">
           <button
             className="menu-toggle"
