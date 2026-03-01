@@ -1,8 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import './ApiDocsPage.css';
 
-const DEFAULT_API_DOCS_URL = 'http://localhost:8000/docs';
-
 function resolveApiDocsUrl(): string {
   const configuredDocsUrl = import.meta.env.VITE_API_DOCS_URL?.trim();
   if (configuredDocsUrl) {
@@ -12,13 +10,14 @@ function resolveApiDocsUrl(): string {
   const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
   if (configuredApiUrl) {
     try {
-      return new URL('/docs', new URL(configuredApiUrl).origin).toString();
+      const url = new URL(configuredApiUrl, window.location.origin);
+      return new URL('/docs', url.origin).toString();
     } catch {
-      // Ignore invalid or relative API URLs and use the local backend default.
+      // Fall through to default
     }
   }
 
-  return DEFAULT_API_DOCS_URL;
+  return '/docs';
 }
 
 export function ApiDocsPage() {
