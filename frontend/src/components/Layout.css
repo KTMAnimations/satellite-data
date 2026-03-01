@@ -193,6 +193,7 @@
     top: 56px;
     left: 0;
     right: 0;
+    width: 100%;
     background: var(--surface-panel);
     border-bottom: 1px solid var(--border-panel);
     flex-direction: column;
@@ -200,6 +201,8 @@
     gap: 0.25rem;
     display: none;
     box-shadow: var(--shadow-elevated);
+    z-index: 1000;
+    justify-self: auto;
   }
 
   .header-nav.open {
