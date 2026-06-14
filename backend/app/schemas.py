@@ -147,6 +147,28 @@ class GEEStatusResponse(BaseModel):
     error: str | None = None
 
 
+class GeeKeyStatusResponse(BaseModel):
+    """
+    Non-secret status of the stored Earth Engine service-account key.
+
+    Deliberately omits the private key — only safe identifiers are returned so
+    the secret is never sent back to the client.
+    """
+
+    configured: bool
+    project_id: str | None = None
+    client_email: str | None = None
+    private_key_id: str | None = None
+    key_path: str
+    initialized: bool = False
+    error: str | None = None
+
+
+class GeeKeyUpdateRequest(BaseModel):
+    # Raw JSON content of a Google service-account key file.
+    key_json: str = Field(..., min_length=1)
+
+
 class ExportRequest(BaseModel):
     region_id: str
     format: Literal["pdf"]

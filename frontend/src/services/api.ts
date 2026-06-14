@@ -19,6 +19,7 @@ import type {
   AdminIpListResponse,
   AdminInstanceDetailResponse,
   AdminInstanceEventsResponse,
+  GeeKeyStatus,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -208,6 +209,23 @@ class APIClient {
       headers: this.adminHeaders(token),
       signal: options?.signal,
     });
+    return response.data;
+  }
+
+  async adminGetGeeKeyStatus(token?: string, options?: RequestOptions): Promise<GeeKeyStatus> {
+    const response = await this.client.get<GeeKeyStatus>('/admin/credentials/gee', {
+      headers: this.adminHeaders(token),
+      signal: options?.signal,
+    });
+    return response.data;
+  }
+
+  async adminUpdateGeeKey(keyJson: string, token?: string, options?: RequestOptions): Promise<GeeKeyStatus> {
+    const response = await this.client.post<GeeKeyStatus>(
+      '/admin/credentials/gee',
+      { key_json: keyJson },
+      { headers: this.adminHeaders(token), signal: options?.signal },
+    );
     return response.data;
   }
 }

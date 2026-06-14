@@ -259,20 +259,42 @@ def initialize_ee() -> None:
     import ee
 
     settings = get_settings()
-    if settings.gee_service_account_key and settings.gee_project_id:
-        with open(settings.gee_service_account_key, encoding="utf-8") as f:
+    key_path = settings.gee_key_path
+    if key_path.exists():
+        with open(key_path, encoding="utf-8") as f:
             key_data = json.load(f)
         service_account_email = key_data.get("client_email")
         if not service_account_email:
             raise RuntimeError("GEE service account key missing client_email")
 
-        credentials = ee.ServiceAccountCredentials(service_account_email, settings.gee_service_account_key)
-        ee.Initialize(credentials, project=settings.gee_project_id)
+        # Fall back to the key's own project_id if one isn't configured via env.
+        project = settings.gee_project_id or key_data.get("project_id")
+        credentials = ee.ServiceAccountCredentials(service_account_email, str(key_path))
+        ee.Initialize(credentials, project=project)
     else:
         # Uses `earthengine authenticate` credentials.
         ee.Initialize(project=settings.gee_project_id or None)
 
     _ee_initialized = True
+
+
+def reinitialize_ee() -> None:
+    """
+    Force Earth Engine to re-initialize after the service-account key changes
+    (e.g. uploaded via the admin UI). Safe to call at runtime.
+    """
+    global _ee_initialized
+
+    import ee
+
+    try:
+        ee.Reset()
+    except Exception:
+        # Older earthengine-api versions may lack Reset(); the flag reset below
+        # plus a fresh Initialize() is still sufficient.
+        pass
+    _ee_initialized = False
+    initialize_ee()
 
 
 def geojson_to_ee_geometry(geojson: dict[str, Any]):

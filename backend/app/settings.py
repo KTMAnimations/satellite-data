@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     # Earth Engine
     gee_project_id: str | None = None
     gee_service_account_key: str | None = None  # Path to service-account JSON
+    # Where runtime-uploaded credentials (via the admin UI) are stored. Kept off git.
+    gee_secrets_dir: str = Field(default="data/secrets")
 
     # Limits
     max_timeseries_points: int = Field(default=2000, ge=1)
@@ -84,6 +86,23 @@ class Settings(BaseSettings):
             path = _PROJECT_ROOT / path
         path = path.resolve()
         path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def gee_key_path(self) -> Path:
+        """
+        Resolved filesystem path for the Earth Engine service-account key.
+
+        Uses GEE_SERVICE_ACCOUNT_KEY when set (env/production); otherwise a
+        runtime location under the secrets dir that the admin UI writes to.
+        The file may not exist yet (caller checks .exists()).
+        """
+        if self.gee_service_account_key:
+            path = Path(self.gee_service_account_key).expanduser()
+        else:
+            path = Path(self.gee_secrets_dir).expanduser() / "gee-service-account.json"
+        if not path.is_absolute():
+            path = _PROJECT_ROOT / path
         return path
 
     @property

@@ -129,7 +129,7 @@ async def get_region(region_id: str, db: AsyncSession = Depends(get_db)) -> Regi
     )
 
 
-@router.delete("/{region_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{region_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_region(region_id: str, db: AsyncSession = Depends(get_db)) -> None:
     result = await db.execute(select(Region).where(Region.id == region_id))
     region = result.scalar_one_or_none()

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+import json
+import os
+import tempfile
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.gee import initialize_ee, reinitialize_ee
 from app.ip_geolocation import resolve_ip_details, resolve_ip_details_map
 from app.models import TelemetryEvent, TelemetryInstance
 from app.schemas import (
@@ -15,6 +20,8 @@ from app.schemas import (
     AdminIpDetailResponse,
     AdminIpListResponse,
     AdminIpSummary,
+    GeeKeyStatusResponse,
+    GeeKeyUpdateRequest,
 )
 from app.settings import get_settings
 from app.telemetry import loads_json
@@ -52,6 +59,110 @@ def _admin_auth_or_403(request: Request) -> None:
 
 async def require_admin(request: Request) -> None:
     _admin_auth_or_403(request)
+
+
+def _gee_key_status() -> GeeKeyStatusResponse:
+    """Build the non-secret status of the stored Earth Engine key."""
+    settings = get_settings()
+    key_path = settings.gee_key_path
+    configured = key_path.exists()
+
+    project_id = settings.gee_project_id
+    client_email: str | None = None
+    private_key_id: str | None = None
+    if configured:
+        try:
+            data = json.loads(key_path.read_text(encoding="utf-8"))
+            client_email = data.get("client_email")
+            private_key_id = data.get("private_key_id")
+            project_id = project_id or data.get("project_id")
+        except Exception:
+            pass
+
+    initialized = False
+    error: str | None = None
+    try:
+        initialize_ee()
+        initialized = True
+    except Exception as e:  # noqa: BLE001 — surface any init failure to the admin
+        error = str(e)
+
+    return GeeKeyStatusResponse(
+        configured=configured,
+        project_id=project_id,
+        client_email=client_email,
+        private_key_id=private_key_id,
+        key_path=str(key_path),
+        initialized=initialized,
+        error=error,
+    )
+
+
+@router.get(
+    "/credentials/gee",
+    response_model=GeeKeyStatusResponse,
+    dependencies=[Depends(require_admin)],
+)
+async def get_gee_key_status() -> GeeKeyStatusResponse:
+    return _gee_key_status()
+
+
+@router.post(
+    "/credentials/gee",
+    response_model=GeeKeyStatusResponse,
+    dependencies=[Depends(require_admin)],
+)
+async def update_gee_key(payload: GeeKeyUpdateRequest = Body(...)) -> GeeKeyStatusResponse:
+    """
+    Store a new Earth Engine service-account key on the server and apply it
+    immediately. The secret is written to disk (owner-only, off git) and is
+    NEVER returned in the response — only safe identifiers are echoed back.
+    """
+    settings = get_settings()
+
+    # Validate before touching disk.
+    try:
+        data = json.loads(payload.key_json)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {e}") from e
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Key must be a JSON object.")
+    if data.get("type") != "service_account":
+        raise HTTPException(
+            status_code=400,
+            detail='Not a service-account key (expected "type": "service_account").',
+        )
+    for field in ("private_key", "client_email"):
+        if not data.get(field):
+            raise HTTPException(status_code=400, detail=f"Key is missing required field: {field}")
+
+    key_path = settings.gee_key_path
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Atomic write with owner-only permissions.
+    fd, tmp = tempfile.mkstemp(dir=str(key_path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, key_path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+    # Apply without a restart; if EE rejects it, the key is still saved and the
+    # error is reported in the status.
+    try:
+        reinitialize_ee()
+    except Exception as e:  # noqa: BLE001
+        status = _gee_key_status()
+        status.error = str(e)
+        return status
+
+    return _gee_key_status()
 
 
 @router.get("/ips", response_model=AdminIpListResponse, dependencies=[Depends(require_admin)])

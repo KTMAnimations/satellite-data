@@ -307,3 +307,15 @@ export interface AdminInstanceEventsResponse {
   events: AdminTelemetryEvent[];
   total: number;
 }
+
+// Non-secret status of the server-stored Earth Engine key. The private key is
+// never returned by the API — only these safe identifiers.
+export interface GeeKeyStatus {
+  configured: boolean;
+  project_id: string | null;
+  client_email: string | null;
+  private_key_id: string | null;
+  key_path: string;
+  initialized: boolean;
+  error: string | null;
+}

@@ -12,6 +12,7 @@ import type {
   AdminIpListResponse,
   AdminIpSummary,
   AdminTelemetryEvent,
+  GeeKeyStatus,
   MetricType,
 } from '../types';
 import './AdminPage.css';
@@ -215,6 +216,88 @@ function AdminHeader() {
       </div>
       <div className="admin-header-links">
         <Link to="/admin" className="btn btn-ghost">IP List</Link>
+        <Link to="/admin/credentials" className="btn btn-ghost">Credentials</Link>
+      </div>
+    </div>
+  );
+}
+
+function CredentialsView() {
+  const { token } = useAdminAuth();
+  const [keyJson, setKeyJson] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitOk, setSubmitOk] = useState(false);
+
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery<GeeKeyStatus>({
+    queryKey: ['admin', 'gee-key', token],
+    queryFn: ({ signal }) => api.adminGetGeeKeyStatus(token, { signal }),
+  });
+
+  const onSubmit = async () => {
+    const trimmed = keyJson.trim();
+    if (!trimmed) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitOk(false);
+    try {
+      await api.adminUpdateGeeKey(trimmed, token);
+      setKeyJson(''); // never keep the secret in component state
+      setSubmitOk(true);
+      await refetch();
+    } catch (e) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setSubmitError(detail ?? (e as Error)?.message ?? 'Failed to update key');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="admin-body instrument-panel">
+      <div className="admin-section-title-row">
+        <h3>Earth Engine Credentials</h3>
+        <button type="button" className="btn btn-outline" disabled={isFetching} onClick={() => void refetch()}>
+          Refresh
+        </button>
+      </div>
+
+      <p className="admin-muted">
+        Paste a Google service-account JSON key below to update it on the server. The key is stored
+        on the server only and is never sent back — this page shows just its non-secret identifiers.
+      </p>
+
+      {isLoading && <div className="admin-muted">Loading…</div>}
+      {isError && <div className="admin-error">Failed to load status: {(error as Error)?.message ?? String(error)}</div>}
+
+      {data && (
+        <div className="admin-kv">
+          <div><span className="admin-k">Key present</span> {data.configured ? 'Yes' : 'No'}</div>
+          <div><span className="admin-k">Earth Engine</span> {data.initialized ? 'Initialized' : 'Not initialized'}</div>
+          <div><span className="admin-k">Project</span> {data.project_id ?? '—'}</div>
+          <div><span className="admin-k">Service account</span> <span className="mono">{data.client_email ?? '—'}</span></div>
+          <div><span className="admin-k">Key ID</span> <span className="mono">{data.private_key_id ?? '—'}</span></div>
+          <div><span className="admin-k">Path</span> <span className="mono">{data.key_path}</span></div>
+          {data.error && <div><span className="admin-k">Error</span> <span className="admin-error">{data.error}</span></div>}
+        </div>
+      )}
+
+      <h4 className="admin-subtitle">Update key</h4>
+      <textarea
+        className="admin-auth-input"
+        style={{ width: '100%', minHeight: 180, fontFamily: 'monospace', whiteSpace: 'pre' }}
+        placeholder='{ "type": "service_account", "project_id": "...", "private_key": "...", ... }'
+        value={keyJson}
+        onChange={(e) => setKeyJson(e.target.value)}
+        spellCheck={false}
+        autoComplete="off"
+      />
+      <div className="admin-actions" style={{ marginTop: 12 }}>
+        <button type="button" className="btn btn-primary" disabled={submitting || !keyJson.trim()} onClick={() => void onSubmit()}>
+          {submitting ? 'Updating…' : 'Update key'}
+        </button>
+        {submitOk && <span className="admin-muted">Key updated.</span>}
+        {submitError && <span className="admin-error">{submitError}</span>}
       </div>
     </div>
   );
@@ -569,6 +652,7 @@ export function AdminPage() {
         <AdminHeader />
         <Routes>
           <Route index element={<IpListView />} />
+          <Route path="credentials" element={<CredentialsView />} />
           <Route path="ip/:ip" element={<IpDetailView />} />
           <Route path="instance/:instanceId" element={<InstanceDetailView />} />
           <Route path="instance/:instanceId/log" element={<InstanceLogView />} />

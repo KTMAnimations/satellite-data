@@ -80,6 +80,8 @@ frontend/.env.*
 !frontend/.env.example
 credentials/*.json
 backend/credentials/*.json
+# Runtime-uploaded credentials (admin UI key upload)
+data/secrets/
 
 # Frontend
 frontend/dist/
