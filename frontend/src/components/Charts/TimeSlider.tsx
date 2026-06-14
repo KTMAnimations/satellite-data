@@ -174,7 +174,7 @@ export function TimeSlider({
       .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))');
 
     // Date label above thumb
-    thumb
+    const dateLabel = thumb
       .append('text')
       .attr('x', selectedX)
       .attr('y', -2)
@@ -183,6 +183,19 @@ export function TimeSlider({
       .attr('font-size', isCompact ? '10px' : '11px')
       .attr('fill', 'var(--text-primary)')
       .text(labelFormat(selectedDate));
+
+    // Keep the centered label from clipping at the track edges: the outer SVG
+    // clips overflow, so when the thumb is near an end, slide the label inward
+    // so it stays fully visible (it spans [-margin.left, innerWidth+margin.right]).
+    const labelNode = dateLabel.node();
+    if (labelNode) {
+      const halfWidth = labelNode.getBBox().width / 2;
+      const minX = -margin.left + halfWidth + 2;
+      const maxX = innerWidth + margin.right - halfWidth - 2;
+      if (maxX >= minX) {
+        dateLabel.attr('x', Math.max(minX, Math.min(maxX, selectedX)));
+      }
+    }
 
     // Interactive overlay
     const overlay = g
@@ -229,7 +242,7 @@ export function TimeSlider({
       svg.selectAll('*').interrupt();
       svg.selectAll('*').on('.', null); // Remove all event listeners
     };
-  }, [findClosestDate, innerWidth, isCompact, margin.left, margin.top, onDateChange, selectedDate, showAxis, sortedDates, trackY, thumbRadius, thumbStrokeWidth, overlayHeight, xScale]);
+  }, [findClosestDate, innerWidth, isCompact, margin.left, margin.right, margin.top, onDateChange, selectedDate, showAxis, sortedDates, trackY, thumbRadius, thumbStrokeWidth, overlayHeight, xScale]);
 
   // Playback effect
   useEffect(() => {
