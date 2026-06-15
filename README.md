@@ -1,53 +1,27 @@
 # Exeter Astronomy
 
-Local-first satellite proxy metrics explorer for detecting seasonal migration patterns, urban growth, and activity changes using free satellite datasets.
+We made this for the Exeter Astronomy club. Pick a spot on Earth, pick something you want to see (city lights at night, how green a place is, pollution, temperature, snow, water), and the map shows it. Slide through time and watch it change.
 
-This repo is optimized for **personal/local use** and runs **without Docker**:
-- **Backend:** FastAPI + SQLite + Google Earth Engine (server-side compute + map tiles)
-- **Frontend:** React + Vite + Leaflet
+It's live at [geotiles.tech](https://geotiles.tech).
 
-## Quickstart (no Docker)
+![City lights at night, seen from orbit](docs/images/nightlights.png)
 
-### 1) Configure environment
+## What you can do with it
 
-Create a repo-root `.env` (see `.env.example`).
+Spin the globe and flip on a satellite layer. There are about fifteen of them: vegetation, nighttime lights, surface water, air pollution, temperature, rainfall, cropland, soil moisture, tree cover, forest loss, snow, and more. Green continents, glowing cities, smog over the big metros. It's oddly fun to just poke around.
 
-For Earth Engine you can either:
-- Authenticate interactively with `earthengine authenticate`, or
-- Use a service account JSON (`GEE_SERVICE_ACCOUNT_KEY`) + `GEE_PROJECT_ID`.
+![Vegetation across North America](docs/images/ndvi.png)
 
-### 2) Backend
+Jump straight to a city from the preset list, or draw your own shape on the map and the site crunches the numbers for just that area. Want somewhere specific that isn't there? Drop in a GeoJSON file and it shows up.
 
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+![Browse regions or draw your own](docs/images/regions.png)
 
-# predefined regions are auto-seeded on first API request (if missing)
-# (optional) you can also run the seeder manually:
-# python ../scripts/seed_regions.py
+Scrub the timeline to play a place forward month by month, line up two time periods to see what shifted, and save anything you find as an image, a spreadsheet, or a short animation to share at the next meeting.
 
-uvicorn app.main:app --reload --port 8000
-```
+## How it works, roughly
 
-### 3) Frontend
+All the imagery is free and public, pulled from Google Earth Engine, which does the heavy number crunching and hands back map tiles. On top of that sits a React map and a small Python backend.
 
-```bash
-cd frontend
-npm install
+## Made by
 
-# ensure API requests go through the Vite dev proxy (avoids CORS issues):
-# echo "VITE_API_URL=/api/v1" > .env
-
-npm run dev
-```
-
-Open:
-- Frontend: `http://localhost:5173`
-- API docs: `http://localhost:8000/docs`
-
-## Notes
-
-- Map overlays load Earth Engine tiles via the backend tile proxy; an internet connection and valid EE credentials are required.
-- If you see slow tile loads or EE quota errors during fast pans/zooms, tune `GEE_MAX_CONCURRENT_REQUESTS` and the tile cache settings in `.env`.
-- Exports run as lightweight background tasks inside the API process (no Redis/Celery).
+The Exeter Astronomy club. Roy Vaid and Samuel Scheffler.
