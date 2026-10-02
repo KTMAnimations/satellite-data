@@ -15,7 +15,13 @@ import type { Granularity, MapState, Region, GeoJSONPolygon, MetricType, TileTem
 import api from '../../services/api';
 import { telemetry } from '../../services/telemetry';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
-import { MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
+import {
+  BASEMAP_ATTRIBUTION,
+  BASEMAP_DARK_URL,
+  BASEMAP_LIGHT_URL,
+  MAX_MAP_ZOOM,
+  MIN_MAP_ZOOM,
+} from '../../config/map';
 import { formatApiError } from '../../utils/errors';
 import type { CompositeTileEvent } from './CompositeTileLayer';
 import type { FlowPoint } from './FlowLayer';
@@ -27,11 +33,6 @@ const MAPTILER_OMT_RASTER_URL = `https://api.maptiler.com/maps/openstreetmap/{z}
 const MAPTILER_OMT_ATTRIBUTION =
   '<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">&copy; MapTiler</a> ' +
   '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">&copy; OpenStreetMap contributors</a>';
-const CARTO_LIGHT_RASTER_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-const CARTO_DARK_RASTER_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-const CARTO_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors ' +
-  '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>';
 
 function toDateBucket(dateStr: string, granularity: Granularity): string {
   return granularity === 'monthly' ? dateStr.slice(0, 7) : dateStr.slice(0, 10);
@@ -475,10 +476,9 @@ export function MapView({
       >
         {useDarkBasemap ? (
           <TileLayer
-            key="basemap:carto-dark"
-            attribution={CARTO_ATTRIBUTION}
-            url={CARTO_DARK_RASTER_URL}
-            subdomains={['a', 'b', 'c', 'd']}
+            key="basemap:esri-dark"
+            attribution={BASEMAP_ATTRIBUTION}
+            url={BASEMAP_DARK_URL}
             updateWhenIdle={false}
             crossOrigin
           />
@@ -494,10 +494,9 @@ export function MapView({
           />
         ) : (
           <TileLayer
-            key="basemap:carto-light"
-            attribution={CARTO_ATTRIBUTION}
-            url={CARTO_LIGHT_RASTER_URL}
-            subdomains={['a', 'b', 'c', 'd']}
+            key="basemap:esri-light"
+            attribution={BASEMAP_ATTRIBUTION}
+            url={BASEMAP_LIGHT_URL}
             updateWhenIdle={false}
             crossOrigin
           />

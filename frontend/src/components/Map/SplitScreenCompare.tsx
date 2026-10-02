@@ -8,7 +8,7 @@ import {
 import type { Granularity, Region, MetricType } from '../../types';
 import { useTileTemplate } from '../../hooks/useTileTemplate';
 import { METRIC_DEFAULT_GRANULARITY } from '../../config/metrics';
-import { MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
+import { BASEMAP_ATTRIBUTION, BASEMAP_DARK_URL, MAX_MAP_ZOOM, MIN_MAP_ZOOM } from '../../config/map';
 import { AbortableTileLayer } from './AbortableTileLayer';
 import './SplitScreenCompare.css';
 
@@ -392,10 +392,7 @@ export function SplitScreenCompare({
           ref={(m) => setMapA(m || null)}
           zoomControl={false}
         >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-          />
+          <TileLayer url={BASEMAP_DARK_URL} attribution={BASEMAP_ATTRIBUTION} />
           {tileTemplateA?.tile_url && (
             <AbortableTileLayer
               key={`${metric}:${granularity}:${dateBucketA}`}
@@ -448,10 +445,7 @@ export function SplitScreenCompare({
           ref={(m) => setMapB(m || null)}
           zoomControl={false}
         >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-          />
+          <TileLayer url={BASEMAP_DARK_URL} attribution={BASEMAP_ATTRIBUTION} />
           {tileTemplateB?.tile_url && (
             <AbortableTileLayer
               key={`${metric}:${granularity}:${dateBucketB}`}

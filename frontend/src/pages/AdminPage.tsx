@@ -208,7 +208,7 @@ function AdminHeader() {
               setDaytimeBasemap(next);
             }}
           >
-            <option value="carto_light">CARTO Light</option>
+            <option value="esri_light">Esri Light Gray</option>
             <option value="maptiler_osm" disabled={!maptilerAvailable}>MapTiler OpenStreetMap</option>
           </select>
           {!maptilerAvailable && <span className="admin-muted">MapTiler requires `VITE_MAPTILER_KEY`.</span>}

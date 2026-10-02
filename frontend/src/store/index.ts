@@ -4,9 +4,9 @@ import type { Region, MetricType, DateRange, MapState, ExportResponse } from '..
 import { ALL_METRIC_TYPES } from '../config/metrics';
 
 export type NavSection = 'fullmap' | 'dashboard' | 'regions' | 'exports';
-export type DaytimeBasemap = 'carto_light' | 'maptiler_osm';
+export type DaytimeBasemap = 'esri_light' | 'maptiler_osm';
 
-const DAYTIME_BASEMAPS = new Set<DaytimeBasemap>(['carto_light', 'maptiler_osm']);
+const DAYTIME_BASEMAPS = new Set<DaytimeBasemap>(['esri_light', 'maptiler_osm']);
 
 interface AppState {
   // Selected region
@@ -77,7 +77,7 @@ function sanitizeDaytimeBasemap(value: unknown): DaytimeBasemap {
   if (typeof value === 'string' && DAYTIME_BASEMAPS.has(value as DaytimeBasemap)) {
     return value as DaytimeBasemap;
   }
-  return 'carto_light';
+  return 'esri_light';
 }
 
 export const useStore = create<AppState>()(
@@ -131,7 +131,7 @@ export const useStore = create<AppState>()(
       },
       setNavLastPath: (section, path) =>
         set((state) => ({ navLastPath: { ...state.navLastPath, [section]: path } })),
-      daytimeBasemap: 'carto_light',
+      daytimeBasemap: 'esri_light',
       setDaytimeBasemap: (basemap) => set({ daytimeBasemap: sanitizeDaytimeBasemap(basemap) }),
 
       // Export queue (in-memory; not persisted)
